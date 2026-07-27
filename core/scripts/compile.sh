@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================
-# compile.sh — Arduino 项目编译与上传脚本 (v0.2.0)
+# compile.sh — Arduino 项目编译与上传脚本 (v0.2.5)
 #
 # 用法:
 #   ./compile.sh <project-dir>                    # 仅编译

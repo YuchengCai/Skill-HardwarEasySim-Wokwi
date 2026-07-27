@@ -3,7 +3,7 @@ name: wokwi-arduino
 description: Create, compile, and simulate Arduino projects with Wokwi (VS Code extension or wokwi.com). Use when the user mentions Arduino, Wokwi, 单片机, 嵌入式, or when .ino / wokwi.toml / diagram.json files are detected. Explicitly activate with @wokwi or #arduino.
 ---
 
-# Arduino Wokwi Simulation Skill (v0.2.0)
+# Arduino Wokwi Simulation Skill (v0.2.5)
 
 Create, compile, simulate, and upload Arduino projects using Wokwi.
 
@@ -126,3 +126,28 @@ Layout guidelines (see `components.md` for details):
 Read **`core/uno/components.md`** for all verified component pin names, attributes, and connection examples.
 
 For components not yet in the reference, open wokwi.com in a browser, use the visual editor to place the component, and copy the generated `diagram.json` — then add the entry to `components.md` for future use.
+
+---
+
+## Version Check & Auto Update
+
+Current version: **v0.2.5**
+Repository: `https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git`
+
+When this skill activates, check the latest release on GitHub:
+```bash
+curl -s --connect-timeout 3 https://api.github.com/repos/YuchengCai/Skill-HardwarEasySim-Wokwi/releases/latest | grep "tag_name"
+```
+
+If a newer version exists, ask the user:
+> "有新版本 vX.X.X 可用，是否自动更新？"
+
+If user agrees, execute:
+```bash
+git clone https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git /tmp/skill-update
+cd /tmp/skill-update
+bash install.sh
+cd .. && rm -rf /tmp/skill-update
+```
+
+Then notify: "更新完成！请重启会话让新版本生效。"
