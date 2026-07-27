@@ -1,0 +1,19 @@
+// Arduino Wokwi Simulation (v0.2.0)
+// Triggers: arduino/wokwi/uno/单片机 keywords, .ino/wokwi.toml/diagram.json files, @wokwi
+
+## Workflow
+
+1. Generate .ino code, read core/uno/components.md, create diagram.json + wokwi.toml
+2. Run ./core/scripts/compile.sh <dir>
+3. Tell user: F1 → "Wokwi: Start Simulation"
+4. Ask user: "Does the simulation work?" If no, fix and recompile
+5. Run arduino-cli board list:
+   - No board → ask user to connect
+   - One board → auto-select
+   - Multiple → show list for user to pick
+6. Run arduino-cli upload -p <PORT> --fqbn <FQBN> <dir>
+7. Board LED blinks 3x. Ask: "Open Serial Monitor?"
+
+## Component Reference
+
+Read core/uno/components.md for pin names, attributes, routing waypoints.

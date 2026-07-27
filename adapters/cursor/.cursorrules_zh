@@ -1,0 +1,46 @@
+// Arduino Wokwi 仿真 — Cursor Rules
+// 激活: 关键词 (arduino/wokwi/uno/单片机)、文件检测 (.ino/wokwi.toml/diagram.json)、@wokwi
+
+## 项目结构
+
+创建 Arduino Wokwi 项目时，生成三个文件：
+- `*.ino` — Arduino 代码
+- `diagram.json` — 电路图（parts + connections）
+- `wokwi.toml` — [wokwi] version=1 firmware='...'
+
+## ⚠️ 电源引脚连接（已验证，必须遵守）
+
+在 diagram.json 的 connections 中：
+
+| 引脚 | 正确写法 | 错误写法 |
+|------|---------|---------|
+| GND | `uno:GND.1` | `uno:GND`（线不可见）|
+| 5V | `uno:5V` | `uno:5V.1`（线不可见）|
+| 3.3V | `uno:3.3V` | `uno:3V3`（线不可见）|
+| VIN | `uno:VIN` | — |
+
+## 电路连线格式
+
+```json
+["uno:13", "r1:1", "green", []]
+// [from, to, wire_color, options]
+```
+
+## 元件类型
+
+- `wokwi-arduino-uno` — Uno 主板
+- `wokwi-led` — LED (attrs: { color: "red" })
+- `wokwi-resistor` — 电阻 (attrs: { resistance: "220" })
+- `wokwi-pushbutton` — 按钮
+
+## 模板
+
+- `core/uno/blink/` — LED 闪烁
+- `core/uno/led-switch/` — 按钮控制 LED
+
+## 快速命令
+
+```bash
+./core/scripts/create-project.sh <name> <template>
+./core/scripts/compile.sh <project-dir>
+```

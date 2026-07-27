@@ -1,0 +1,6 @@
+# Arduino build outputs
+build/
+*.hex
+*.elf
+*.eep
+*.bin

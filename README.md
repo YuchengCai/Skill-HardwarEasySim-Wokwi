@@ -1,0 +1,181 @@
+# 🧰 Skill-HardwarEasySim-Wokwi
+
+<p align="center">
+  <a href="#english">English</a> · <a href="#chinese">中文</a>
+</p>
+
+---
+
+<a id="english"></a>
+## 📘 English
+
+**Wokwi Arduino Simulation Skill** — v0.2.0 — A portable skill package for AI coding agents (DeepCode, Claude Code, Cursor) that enables automated Arduino hardware prototyping, circuit simulation, code compilation, and firmware upload.
+
+### Features
+
+- 🤖 **AI-Powered** — Drop-in skill for your coding agent. Just describe your hardware idea.
+- ⚡ **One-Command Compile** — Auto-installs `arduino-cli` + Uno core, compiles `.ino` to `.hex`.
+- 🔌 **Cross-Agent** — Works with DeepCode (`SKILL.md`), Claude Code (`CLAUDE.md`), and Cursor (`.cursorrules`).
+- 🧩 **Component Reference** — Verified pin names and attributes in `core/uno/components.md`.
+- 🛠️ **Clean Layouts** — Supports `rotate` and routing waypoints for tidy diagrams.
+
+### Quick Start
+
+```bash
+# 1. Install the skill (from project root)
+bash path/to/install.sh
+
+# 2. Restart your coding agent session
+
+# 3. Tell your agent:
+#    "Create an Arduino project that blinks an LED in Morse code"
+```
+
+The agent will:
+1. Generate `.ino` code + `diagram.json` + `wokwi.toml`
+2. Compile with `compile.sh`
+3. Tell you how to simulate (VS Code extension or wokwi.com)
+
+### Project Structure
+
+```
+Skill-HardwarEasySim-Wokwi/
+├── install.sh                         # One-click installer
+├── adapters/
+│   ├── deepcode/SKILL.md              # DeepCode skill file
+│   ├── claude/CLAUDE.md               # Claude Code skill file
+│   └── cursor/.cursorrules            # Cursor rules file
+└── core/
+    ├── scripts/compile.sh             # OS-aware compile script
+    └── uno/components.md              # 📖 Component reference manual
+```
+
+### Prerequisites
+
+| Tool | Required For | Auto-Install? |
+|------|-------------|---------------|
+| `arduino-cli` | Compiling `.ino` → `.hex` | ✅ Yes (all OS) |
+| VS Code + Wokwi extension | Visual circuit simulation | Manual |
+| wokwi.com account | Browser-based simulation | Free signup |
+
+### Installation
+
+**One-Click (for AI Agent users)**
+Copy this sentence to your coding agent:
+
+> "Clone YuchengCai/Skill-HardwarEasySim-Wokwi from GitHub and run install.sh"
+
+**From GitHub (recommended):**
+```bash
+git clone https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git
+cd Skill-HardwarEasySim-Wokwi
+bash install.sh
+```
+
+**From a local copy:**
+```bash
+bash path/to/Skill-HardwarEasySim-Wokwi/install.sh
+```
+
+The script auto-detects your agent type (DeepCode / Claude Code / Cursor) and installs the correct adapter.
+
+### Usage
+
+Once installed, start a new coding agent session and describe your hardware project:
+
+```
+@wokwi Build a temperature monitor with DHT22 and LCD1602
+```
+
+The agent reads `components.md` for correct pin names, generates the project, compiles, and guides you through simulation.
+
+---
+
+<a id="chinese"></a>
+## 📘 中文
+
+**Wokwi Arduino 仿真 Skill** — 一个可移植的技能包，专为 AI 编程助手（DeepCode、Claude Code、Cursor）设计，实现自动化硬件原型设计、电路仿真和代码编译。
+
+### 功能
+
+- 🤖 **AI 驱动** — 直接跟助手描述你的硬件想法，无需手动查引脚
+- ⚡ **一键编译** — 自动安装 `arduino-cli` + Uno 核心，编译 `.ino` 到 `.hex`
+- 🔌 **跨 Agent** — 支持 DeepCode（`SKILL.md`）、Claude Code（`CLAUDE.md`）和 Cursor（`.cursorrules`）
+- 🧩 **元件参考** — 已验证的引脚命名和属性，统一放在 `core/uno/components.md`
+- 🛠️ **整洁布线** — 支持电阻旋转和路由控制点，生成清晰的电路图
+
+### 快速开始
+
+```bash
+# 1. 安装 Skill（在项目根目录执行）
+bash path/to/install.sh
+
+# 2. 重启你的编程助手会话
+
+# 3. 告诉你的助手：
+#    "帮我做一个莫斯电码闪烁的 Arduino 项目"
+```
+
+助手会自动：
+1. 生成 `.ino` 代码 + `diagram.json` + `wokwi.toml`
+2. 用 `compile.sh` 编译
+3. 指导你如何启动仿真（VS Code 插件或 wokwi.com）
+
+### 项目结构
+
+```
+Skill-HardwarEasySim-Wokwi/
+├── install.sh                         # 一键安装脚本
+├── adapters/
+│   ├── deepcode/SKILL.md              # DeepCode 技能文件
+│   ├── claude/CLAUDE.md               # Claude Code 技能文件
+│   └── cursor/.cursorrules            # Cursor 规则文件
+└── core/
+    ├── scripts/compile.sh             # 跨平台编译脚本
+    └── uno/components.md              # 📖 元件参考手册
+```
+
+### 前置依赖
+
+| 工具 | 用途 | 自动安装？|
+|------|------|---------|
+| `arduino-cli` | 编译 `.ino` → `.hex` | ✅ 是（全平台） |
+| VS Code + Wokwi 扩展 | 可视化电路仿真 | 手动安装 |
+| wokwi.com 账号 | 浏览器端仿真 | 免费注册 |
+
+### 安装
+
+**一句话安装（适合 AI Agent 用户）**
+把这句话复制给你的编程助手：
+
+> "从 GitHub 上克隆 YuchengCai/Skill-HardwarEasySim-Wokwi 并运行 install.sh"
+
+**从 GitHub 安装（推荐）：**
+```bash
+git clone https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git
+cd Skill-HardwarEasySim-Wokwi
+bash install.sh
+```
+
+**从本地复制安装：**
+```bash
+bash path/to/Skill-HardwarEasySim-Wokwi/install.sh
+```
+
+脚本会自动检测你的编程助手类型（DeepCode / Claude Code / Cursor）并安装对应的适配器文件。
+
+### 使用
+
+安装后，重启编程助手会话，描述你的硬件需求即可：
+
+```
+@wokwi 帮我做一个 DHT22 温湿度监控 + LCD1602 显示
+```
+
+助手会查阅 `components.md` 获取正确的引脚命名，生成项目文件，编译并指导仿真。
+
+---
+
+## 📄 License
+
+MIT
