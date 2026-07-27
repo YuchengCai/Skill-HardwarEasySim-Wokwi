@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================
-# compile.sh — Arduino 项目编译与上传脚本 (v0.2.5)
+# compile.sh — Arduino 项目编译与上传脚本 (v0.2.6)
 #
 # 用法:
 #   ./compile.sh <project-dir>                    # 仅编译
@@ -224,6 +224,8 @@ upload_firmware() {
 # ==============================================================
 monitor_serial() {
     local PORT_ARG="$1"
+    local CLI_PATH
+    CLI_PATH=$(command -v arduino-cli 2>/dev/null || echo "arduino-cli")
 
     section "串口输出（捕获 6 秒）"
 
@@ -247,13 +249,13 @@ monitor_serial() {
             ;;
         *)
             echo "自动串口读取仅支持 Windows (PowerShell SerialPort)"
-            echo "请手动运行: arduino-cli monitor -p $PORT_ARG"
+            echo "请手动运行: $CLI_PATH monitor -p $PORT_ARG"
             ;;
     esac
     echo ""
     echo "── 实时查看 ─────────────────────────────"
     echo "在 VS Code 终端运行以下命令可实时查看串口："
-    echo "  arduino-cli monitor -p $PORT_ARG"
+    echo "  $CLI_PATH monitor -p $PORT_ARG"
     echo "──────────────────────────────────────────"
     echo ""
     echo "--- 如需在对话中再抓一次，告诉我 \"再抓一次串口\" ---"
