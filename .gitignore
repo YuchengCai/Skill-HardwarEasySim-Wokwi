@@ -4,3 +4,17 @@ build/
 *.elf
 *.eep
 *.bin
+
+# Node.js (playwright 依赖)
+node_modules/
+package-lock.json
+
+# Playwright browser cache
+ms-playwright/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
