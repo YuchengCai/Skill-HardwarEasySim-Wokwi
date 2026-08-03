@@ -49,15 +49,21 @@ Auto-installs `arduino-cli` + Uno core if missing. Handles MINGW/Windows path co
 - User is in VS Code with the Wokwi extension installed → **Mode B** (manual, no extra deps)
 - User explicitly requests auto browser simulation (`@simulate`) OR no VS Code Wokwi plugin → **Mode A** (browser automation)
 
-**Do NOT install playwright unless Mode A is actually selected.**
+**⚠️ HARD RULE: NEVER install playwright (or any npm package) without explicit user approval.**
+- Check availability first; if missing, ASK the user before installing
+- VS Code + Wokwi plugin users use Mode B — playwright is never needed
 
 #### Mode A: Browser Automation (on-demand)
 
 Only used when the user asks for auto browser simulation, or when no VS Code Wokwi plugin is available.
 
 ```bash
-# Check playwright availability (only now, only for Mode A):
-node -e "require('playwright')" 2>/dev/null || { echo "需要安装 playwright 才能自动浏览器仿真"; npm i playwright; }
+# Check playwright availability — do NOT install automatically
+node -e "require('playwright')" 2>/dev/null && echo "playwright OK" || echo "playwright 未安装"
+
+# If playwright is missing, you MUST ask the user first:
+#   "自动浏览器仿真需要 playwright 依赖，是否安装？"
+# Only proceed after user explicitly agrees.
 
 # Run the automation script
 node core/scripts/wokwi-automate.js <project-dir>
@@ -140,6 +146,6 @@ For components not in the reference, open wokwi.com in a browser, use the visual
 | Dependency | Required For | Install |
 |-----------|-------------|---------|
 | `arduino-cli` | Compile + upload | Auto via compile.sh |
-| `playwright` npm package | Browser automation script | `npm i playwright` |
-| Playwright MCP | Native Monaco fallback | `npx @playwright/mcp@latest` |
+| `playwright` npm package | Browser automation script | Only after user approval |
+| Playwright MCP | Native Monaco fallback | Only after user approval |
 | VS Code + Wokwi ext | Manual simulation | Manual |

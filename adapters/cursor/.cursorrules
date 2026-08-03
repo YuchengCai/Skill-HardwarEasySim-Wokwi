@@ -6,7 +6,7 @@
 
 1. Generate .ino + read core/uno/components.md → diagram.json + wokwi.toml
 2. ./core/scripts/compile.sh <dir>
-3. Simulate: VS Code + Wokwi 插件 → Mode B (F1 手动)。仅用户要求或没插件 → Mode A: node core/scripts/wokwi-automate.js <dir>（此时才装 playwright）
+3. Simulate: VS Code + Wokwi 插件 → Mode B (F1 手动)。仅用户要求或没插件 → Mode A: node core/scripts/wokwi-automate.js <dir>。**HARD RULE: 未经用户明确同意，绝不安装 playwright/npm 包——缺少时先询问**
 4. Verify with user
 5. arduino-cli board list → upload --port <PORT> --fqbn <FQBN> <dir>
 6. --monitor for serial capture

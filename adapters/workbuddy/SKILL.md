@@ -36,7 +36,7 @@ WorkBuddy 专用的 wokwi-arduino skill 适配器。与 deepcode/claude/cursor �
 
 1. **生成** — 写 `.ino` 代码，读 `core/uno/components.md`，生成 `diagram.json` + `wokwi.toml`
 2. **编译** — `./core/scripts/compile.sh <dir>`（自动装 arduino-cli，MINGW 路径已处理）
-3. **仿真** — 环境检测: 用户有 VS Code + Wokwi 插件 → Mode B（F1 手动，零依赖）。仅用户要求自动浏览器仿真（@simulate）或无插件 → Mode A: `node core/scripts/wokwi-automate.js <dir>`（此时才检查/安装 playwright，浏览器回退链 Chrome→Edge→Chromium）
+3. **仿真** — 环境检测: 用户有 VS Code + Wokwi 插件 → Mode B（F1 手动，零依赖）。仅用户要求自动浏览器仿真（@simulate）或无插件 → Mode A: `node core/scripts/wokwi-automate.js <dir>`（浏览器回退链 Chrome→Edge→Chromium）。**HARD RULE: 未经用户明确同意，绝不安装 playwright 或任何 npm 包——缺少时先询问用户**
 4. **确认** — 询问用户"仿真效果是否正确？"
 5. **检测板子** — `arduino-cli board list`
 6. **上传 + 串口** — `compile.sh --upload --port --fqbn --monitor`
