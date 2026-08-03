@@ -229,6 +229,85 @@ compile_project() {
 }
 
 # ==============================================================
+# VID/PID → 常见克隆板提示（解决 CH340 等板型 Unknown 问题）
+# ==============================================================
+# 平台检测方式:
+#   Windows: PowerShell 查询 PnP 设备 VID/PID
+#   macOS:   system_profiler SPUSBDataType
+#   Linux:   lsusb
+# 匹配表:
+#   1A86:7523  CH340  → Uno/克隆板 (FQBN: arduino:avr:uno)
+#   1A86:5523  CH341  → Uno/克隆板 (FQBN: arduino:avr:uno)
+#   10C4:EA60  CP2102 → 通用串口（可能是板子，需用户确认）
+#   0403:6001  FTDI   → 通用串口（可能是板子，需用户确认）
+# ==============================================================
+detect_ch340() {
+    local PORT_ARG="$1"
+
+    case "$OS" in
+        windows)
+            local VIDPID
+            VIDPID=$(powershell -Command "
+                \$com = '$PORT_ARG'
+                Get-CimInstance Win32_PnPEntity | Where-Object {
+                    \$_.Name -like \"*(\$com)\" -and \$_.DeviceID -like 'USB\*'
+                } | ForEach-Object { \$_.DeviceID }
+            " 2>/dev/null | head -1 || true)
+
+            if [ -z "$VIDPID" ]; then
+                return 1
+            fi
+
+            # 提取 VID/PID (格式: USB\VID_1A86&PID_7523\...)
+            local VID PID
+            VID=$(echo "$VIDPID" | grep -o "VID_[0-9A-Fa-f]*" | head -1 | tr 'a-f' 'A-F')
+            PID=$(echo "$VIDPID" | grep -o "PID_[0-9A-Fa-f]*" | head -1 | tr 'a-f' 'A-F')
+
+            case "$VID:$PID" in
+                VID_1A86:PID_7523|VID_1A86:PID_5523) echo "CH340" ;;
+                VID_10C4:PID_EA60) echo "CP2102" ;;
+                VID_0403:PID_6001) echo "FTDI" ;;
+                *) echo "UNKNOWN" ;;
+            esac
+            ;;
+
+        darwin)
+            # macOS: system_profiler 按设备名匹配
+            local USBINFO
+            USBINFO=$(system_profiler SPUSBDataType 2>/dev/null)
+            if echo "$USBINFO" | grep -qi "CH340\|CH341"; then
+                echo "CH340"
+            elif echo "$USBINFO" | grep -qi "CP210"; then
+                echo "CP2102"
+            elif echo "$USBINFO" | grep -qi "FTDI\|FT232"; then
+                echo "FTDI"
+            else
+                echo "UNKNOWN"
+            fi
+            ;;
+
+        linux)
+            # Linux: lsusb 按 VID:PID 匹配
+            local USBID
+            USBID=$(lsusb 2>/dev/null)
+            if echo "$USBID" | grep -qi "1a86:7523\|1a86:5523"; then
+                echo "CH340"
+            elif echo "$USBID" | grep -qi "10c4:ea60"; then
+                echo "CP2102"
+            elif echo "$USBID" | grep -qi "0403:6001"; then
+                echo "FTDI"
+            else
+                echo "UNKNOWN"
+            fi
+            ;;
+
+        *)
+            return 1
+            ;;
+    esac
+}
+
+# ==============================================================
 # 检测已连接的板子
 # ==============================================================
 detect_boards() {
@@ -245,6 +324,37 @@ detect_boards() {
 
     echo "$OUTPUT"
     echo ""
+
+    # 检查是否有 Unknown 板型（CH340 等克隆板常见）
+    local UNKNOWN_PORTS
+    UNKNOWN_PORTS=$(echo "$OUTPUT" | grep "Unknown" | grep -oE "COM[0-9]+|/dev/[a-zA-Z0-9]+" | head -5)
+
+    if [ -n "$UNKNOWN_PORTS" ]; then
+        for P in $UNKNOWN_PORTS; do
+            local CHIP
+            CHIP=$(detect_ch340 "$P" || true)
+            case "$CHIP" in
+                CH340|CH341)
+                    echo "🔍 $P: 检测到 CH340 芯片（通用 USB 转串口，常见于 Arduino Uno 克隆板）"
+                    echo "   建议 FQBN: arduino:avr:uno（上传时使用 --fqbn arduino:avr:uno）"
+                    echo ""
+                    ;;
+                CP2102)
+                    echo "🔍 $P: 检测到 CP2102 芯片（通用串口，可能是板子，请确认板型）"
+                    echo ""
+                    ;;
+                FTDI)
+                    echo "🔍 $P: 检测到 FTDI 芯片（通用串口，可能是板子，请确认板型）"
+                    echo ""
+                    ;;
+                *)
+                    echo "🔍 $P: 板型未识别（可能为克隆板），上传时请手动指定 FQBN，例如:"
+                    echo "   --fqbn arduino:avr:uno（Uno 克隆板）"
+                    echo ""
+                    ;;
+            esac
+        done
+    fi
 
     # 统计板子数量（排除表头行）
     local COUNT

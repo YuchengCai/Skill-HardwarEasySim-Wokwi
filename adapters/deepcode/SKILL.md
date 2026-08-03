@@ -3,7 +3,7 @@ name: wokwi-arduino
 description: Create, compile, simulate, and upload Arduino projects with Wokwi (VS Code extension, wokwi.com browser automation, or web editor). Use when the user mentions Arduino, Wokwi, 单片机, 嵌入式, or when .ino / wokwi.toml / diagram.json files are detected. Explicitly activate with @wokwi, #arduino, or @simulate.
 ---
 
-# Arduino Wokwi Simulation Skill (v0.3.4)
+# Arduino Wokwi Simulation Skill (v0.3.5)
 
 Create, compile, simulate, and upload Arduino projects using Wokwi.
 
@@ -100,8 +100,13 @@ arduino-cli board list
 | Output | Action |
 |--------|--------|
 | No boards | Ask user to connect the board via USB |
-| One board | Auto-select, note port + FQBN |
-| Multiple | Show list with port + board name, let user choose |
+| One board | Show port + board name + FQBN, **ASK user to confirm** |
+| Multiple | Show full list (port + board name), let user choose |
+| Unknown (CH340 clone) | Show port, note board type unrecognized, **ask user to confirm FQBN** (Uno clone → arduino:avr:uno) |
+
+**⚠️ HARD RULE: Before uploading, you MUST show the user the port, board type, and FQBN, and get their confirmation. Never silently auto-upload.** Even with a single board detected, confirm with the user first (they may have connected a different board than expected).
+
+**CH340 clone boards**: `board list` shows `Unknown` — this is normal for clone boards using the CH340 chip. The `compile.sh --detect` command will try to identify the chip via VID/PID and suggest an FQBN. For most CH340 clones, use `--fqbn arduino:avr:uno`.
 
 ### 6. Upload & Monitor
 
@@ -123,7 +128,7 @@ This compiles (if needed), uploads, auto-captures serial output, and prints the 
 
 ## Version Check & Auto Update
 
-Current version: **v0.3.4**
+Current version: **v0.3.5**
 Repository: `https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git`
 
 When activated, check the latest release:
