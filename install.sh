@@ -182,6 +182,14 @@ choose_scope() {
         return  # 已通过 --global/--project 指定
     fi
 
+    # 非交互环境（如 agent 自动调用、无终端输入）→ 默认全局，避免卡住
+    if [ ! -t 0 ]; then
+        INSTALL_SCOPE="global"
+        warn "检测到非交互环境，默认使用全局安装"
+        warn "如需项目安装，请使用参数: ./install.sh --project"
+        return
+    fi
+
     echo ""
     echo "选择安装范围:"
     echo ""

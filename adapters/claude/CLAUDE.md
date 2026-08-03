@@ -26,4 +26,4 @@ On activation, check latest release:
 curl -s --connect-timeout 3 https://api.github.com/repos/YuchengCai/Skill-HardwarEasySim-Wokwi/releases/latest | grep "tag_name"
 ```
 
-If newer, ask user → auto update via `git clone + install.sh` (agent executes, user only says yes).
+If newer, ask user → auto update via `git clone + install.sh` (agent executes, user only says yes). **Always use `--global` flag when updating** unless user explicitly wants project-only.

@@ -24,4 +24,4 @@ On activation:
 ```bash
 curl -s --connect-timeout 3 https://api.github.com/repos/YuchengCai/Skill-HardwarEasySim-Wokwi/releases/latest | grep "tag_name"
 ```
-If newer, ask user → auto update: `git clone + install.sh`.
+If newer, ask user → auto update: `git clone + install.sh --global` (use --global unless user wants project-only).

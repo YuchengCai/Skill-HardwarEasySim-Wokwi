@@ -127,6 +127,8 @@ curl -s --connect-timeout 3 https://api.github.com/repos/YuchengCai/Skill-Hardwa
 
 If newer, ask user to update → `git clone + install.sh` (auto).
 
+⚠️ **When executing the update via install.sh, always use `--global`** (unless the user explicitly wants project-only). The script auto-detects non-interactive environments and defaults to global, but passing `--global` explicitly is more reliable.
+
 ## Component Reference
 
 Read **`core/uno/components.md`** for verified pin names, attributes, and connection examples.
