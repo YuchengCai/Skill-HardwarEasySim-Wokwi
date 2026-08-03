@@ -1,4 +1,4 @@
-// Arduino Wokwi Simulation (v0.3.1)
+// Arduino Wokwi Simulation (v0.3.2)
 // Repo: https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git
 // Triggers: arduino/wokwi/uno/单片机 keywords, .ino/wokwi.toml/diagram.json files, @wokwi @simulate
 
@@ -6,7 +6,7 @@
 
 1. Generate .ino + read core/uno/components.md → diagram.json + wokwi.toml
 2. ./core/scripts/compile.sh <dir>
-3. Simulate: node core/scripts/wokwi-automate.js <dir> (auto browser) OR user F1
+3. Simulate: VS Code + Wokwi 插件 → Mode B (F1 手动)。仅用户要求或没插件 → Mode A: node core/scripts/wokwi-automate.js <dir>（此时才装 playwright）
 4. Verify with user
 5. arduino-cli board list → upload --port <PORT> --fqbn <FQBN> <dir>
 6. --monitor for serial capture

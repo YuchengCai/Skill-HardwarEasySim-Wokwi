@@ -3,7 +3,7 @@ name: wokwi-arduino
 description: Create, compile, simulate, and upload Arduino projects with Wokwi (VS Code extension, wokwi.com browser automation, or web editor). Use when the user mentions Arduino, Wokwi, 单片机, 嵌入式, or when .ino / wokwi.toml / diagram.json files are detected. Explicitly activate with @wokwi, #arduino, or @simulate.
 ---
 
-# Arduino Wokwi Simulation Skill (v0.3.1)
+# Arduino Wokwi Simulation Skill (v0.3.2)
 
 Create, compile, simulate, and upload Arduino projects using Wokwi.
 
@@ -43,15 +43,21 @@ project/
 
 Auto-installs `arduino-cli` + Uno core if missing. Handles MINGW/Windows path conversion automatically.
 
-### 3. Simulate — Two Modes
+### 3. Simulate — Auto-select Mode
 
-#### Mode A: Browser Automation (recommended, auto)
+**First, detect the environment:**
+- User is in VS Code with the Wokwi extension installed → **Mode B** (manual, no extra deps)
+- User explicitly requests auto browser simulation (`@simulate`) OR no VS Code Wokwi plugin → **Mode A** (browser automation)
 
-Requires Playwright MCP or the `playwright` npm package.
+**Do NOT install playwright unless Mode A is actually selected.**
+
+#### Mode A: Browser Automation (on-demand)
+
+Only used when the user asks for auto browser simulation, or when no VS Code Wokwi plugin is available.
 
 ```bash
-# Pre-check: playwright available?
-node -e "require('playwright')" 2>/dev/null || npm i playwright
+# Check playwright availability (only now, only for Mode A):
+node -e "require('playwright')" 2>/dev/null || { echo "需要安装 playwright 才能自动浏览器仿真"; npm i playwright; }
 
 # Run the automation script
 node core/scripts/wokwi-automate.js <project-dir>
@@ -68,9 +74,9 @@ Browser fallback chain: **system Chrome → system Edge → Playwright Chromium*
 
 ⚠️ **If the script fails (non-zero exit code): DO NOT retry. Fall back to native Monaco operations** — see `core/references/monaco-steps.md`. Use the script's error message to diagnose.
 
-#### Mode B: Manual (VS Code or wokwi.com)
+#### Mode B: Manual (VS Code plugin — DEFAULT for VS Code users)
 
-Tell the user: Press F1 → "Wokwi: Start Simulation" (VS Code) or open wokwi.com and upload the project folder.
+Tell the user: Press F1 → "Wokwi: Start Simulation" (VS Code). No extra dependencies needed.
 
 ### 4. Verify with User
 
@@ -111,7 +117,7 @@ This compiles (if needed), uploads, auto-captures serial output, and prints the 
 
 ## Version Check & Auto Update
 
-Current version: **v0.3.1**
+Current version: **v0.3.2**
 Repository: `https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git`
 
 When activated, check the latest release:
