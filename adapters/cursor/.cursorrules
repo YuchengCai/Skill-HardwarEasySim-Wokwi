@@ -18,4 +18,10 @@
 
 ## Version Check
 
-Check GitHub releases on activation, offer auto-update.
+v0.3.2 | Repo: https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git
+
+On activation:
+```bash
+curl -s --connect-timeout 3 https://api.github.com/repos/YuchengCai/Skill-HardwarEasySim-Wokwi/releases/latest | grep "tag_name"
+```
+If newer, ask user → auto update: `git clone + install.sh`.
