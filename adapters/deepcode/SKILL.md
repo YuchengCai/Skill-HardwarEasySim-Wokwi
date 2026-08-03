@@ -1,40 +1,39 @@
 ---
 name: wokwi-arduino
-description: Create, compile, and simulate Arduino projects with Wokwi (VS Code extension or wokwi.com). Use when the user mentions Arduino, Wokwi, 单片机, 嵌入式, or when .ino / wokwi.toml / diagram.json files are detected. Explicitly activate with @wokwi or #arduino.
+description: Create, compile, simulate, and upload Arduino projects with Wokwi (VS Code extension, wokwi.com browser automation, or web editor). Use when the user mentions Arduino, Wokwi, 单片机, 嵌入式, or when .ino / wokwi.toml / diagram.json files are detected. Explicitly activate with @wokwi, #arduino, or @simulate.
 ---
 
-# Arduino Wokwi Simulation Skill (v0.2.6)
+# Arduino Wokwi Simulation Skill (v0.3.0)
 
 Create, compile, simulate, and upload Arduino projects using Wokwi.
 
 ## How This Skill Works
 
-This skill is intentionally lightweight. Component pin names, attributes, and connection patterns are in **`core/uno/components.md`** — read that file when you encounter an unfamiliar component.
+Component pin names, attributes, and connection patterns are in **`core/uno/components.md`** — read that file when you encounter an unfamiliar component.
 
 ## Activation Triggers
 
 - **Keywords**: arduino, wokwi, uno, microcontroller, 单片机, 嵌入式, blink, LED, sensor, servo
 - **File detection**: `.ino`, `wokwi.toml`, `diagram.json` in workspace
-- **Explicit**: user message contains `@wokwi`, `#wokwi`, `@arduino`, `#arduino`
+- **Explicit**: user message contains `@wokwi`, `#wokwi`, `@arduino`, `#arduino`, `@simulate`
 
 ## Project Structure
 
 ```
 project/
-├── project.ino        # Arduino sketch (C++)
+├── project.ino        # Arduino sketch (C++) — MUST match directory name
 ├── diagram.json       # Circuit diagram
 └── wokwi.toml         # [wokwi] version=1 firmware='build/project.ino.hex'
 ```
 
-## Full Workflow (Compile → Simulate → Upload)
+## Full Workflow (Generate → Compile → Simulate → Upload)
 
 ### 1. Generate Code & Circuit
 
-1. Write the `.ino` sketch code
+1. Write the `.ino` sketch code (include a 3x blink in setup() as upload success indicator)
 2. Open **`core/uno/components.md`** — look up every component you intend to use
 3. Generate `diagram.json` with correct pin names and wiring
 4. Generate `wokwi.toml` pointing to `build/project.ino.hex`
-5. Include a **blink sequence (3 times)** at the end of `setup()` as a "burn success" indicator
 
 ### 2. Compile
 
@@ -42,112 +41,97 @@ project/
 ./core/scripts/compile.sh <project-dir>
 ```
 
-Auto-installs `arduino-cli` + Uno core if missing. Direct `.ino` compilation is unreliable — always use pre-compiled `.hex`.
+Auto-installs `arduino-cli` + Uno core if missing. Handles MINGW/Windows path conversion automatically.
 
-### 3. Run Simulation (User Action Required)
+### 3. Simulate — Two Modes
 
-Tell the user to start the simulation:
+#### Mode A: Browser Automation (recommended, auto)
 
+Requires Playwright MCP or the `playwright` npm package.
+
+```bash
+# Pre-check: playwright available?
+node -e "require('playwright')" 2>/dev/null || npm i playwright
+
+# Run the automation script
+node core/scripts/wokwi-automate.js <project-dir>
 ```
-Simulation ready! Press F1 in VS Code → "Wokwi: Start Simulation"
-(or open wokwi.com and upload the project folder)
-```
 
-Then **ask the user**: "Does the simulation show the expected behavior?"
+The script automatically:
+1. Opens wokwi.com new Arduino Uno project page (no login needed)
+2. Waits for Monaco editor
+3. Fills the `.ino` code (via Monaco API, NOT browser_type)
+4. Switches to diagram.json tab and fills the circuit
+5. Clicks "Start the simulation"
 
-- If **yes** → proceed to upload
-- If **no** → fix the code/diagram and recompile
+Browser fallback chain: **system Chrome → system Edge → Playwright Chromium**.
 
-### 4. Detect Connected Board
+⚠️ **If the script fails (non-zero exit code): DO NOT retry. Fall back to native Monaco operations** — see `core/references/monaco-steps.md`. Use the script's error message to diagnose.
 
-After user confirms simulation, run board detection:
+#### Mode B: Manual (VS Code or wokwi.com)
+
+Tell the user: Press F1 → "Wokwi: Start Simulation" (VS Code) or open wokwi.com and upload the project folder.
+
+### 4. Verify with User
+
+Ask the user: "Does the simulation show the expected behavior?"
+
+- **Yes** → proceed to upload
+- **No** → fix code/diagram, recompile, re-simulate
+
+### 5. Detect Connected Board
 
 ```bash
 arduino-cli board list
 ```
 
-**Possible outcomes:**
-
 | Output | Action |
 |--------|--------|
-| No boards found | Tell user: "Please connect your Arduino board via USB" → loop back |
-| One board found | Auto-select it, note the port and FQBN |
-| Multiple boards found | Show the list with port + board name, ask user: "Which board do you want to upload to?" |
+| No boards | Ask user to connect the board via USB |
+| One board | Auto-select, note port + FQBN |
+| Multiple | Show list with port + board name, let user choose |
 
-Example output to show user:
-```
-[1] COM3 — Arduino Uno (arduino:avr:uno)
-[2] COM5 — Arduino Mega (arduino:avr:mega)
-```
-
-### 5. Upload Firmware
-
-```bash
-arduino-cli upload -p <PORT> --fqbn <FQBN> <project-dir>
-```
-
-### 6. Post-Upload — Serial Monitor
-
-After successful upload, run `compile.sh` with `--monitor` to automatically capture serial output:
+### 6. Upload & Monitor
 
 ```bash
 ./core/scripts/compile.sh <project-dir> --upload --port <PORT> --fqbn <FQBN> --monitor
 ```
 
-This will:
-1. Compile (if needed) and upload
-2. Auto-capture 6 seconds of serial output and show in the conversation
-3. Also print the command for real-time viewing in VS Code terminal
-
-**Two ways to view serial output:**
-
-| Method | How | Best for |
-|--------|-----|----------|
-| Auto-capture in conversation | `--monitor` flag | Quick check, no terminal needed |
-| Real-time in VS Code terminal | Copy the printed `arduino-cli monitor -p <PORT>` command | Continuous monitoring |
+This compiles (if needed), uploads, auto-captures serial output, and prints the real-time monitor command.
 
 ---
 
-## Wire Routing
+## Design Rules (Mandatory — Do Not Violate)
 
-The connections array supports routing waypoints to keep wires clean:
-
-```json
-["uno:13", "r1:1", "green", ["h0.4", "v-86.4"]]
-```
-
-Layout guidelines (see `components.md` for details):
-- Place components near target pins
-- Use waypoints to route around the board
-- Keep paths short if crossing is unavoidable
-
-## Component Reference
-
-Read **`core/uno/components.md`** for all verified component pin names, attributes, and connection examples.
-
-For components not yet in the reference, open wokwi.com in a browser, use the visual editor to place the component, and copy the generated `diagram.json` — then add the entry to `components.md` for future use.
+1. **Keep native operation steps in SKILL.md/references** — scripts are shortcuts, not the only path
+2. **Script failure → force fallback to native operations** (monaco-steps.md), never retry the script
+3. **Content generation stays with the agent** — scripts only "fill and click", never "think"
 
 ---
 
 ## Version Check & Auto Update
 
-Current version: **v0.2.6**
+Current version: **v0.3.0**
 Repository: `https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git`
 
-When this skill activates, check the latest release on GitHub:
+When activated, check the latest release:
 ```bash
 curl -s --connect-timeout 3 https://api.github.com/repos/YuchengCai/Skill-HardwarEasySim-Wokwi/releases/latest | grep "tag_name"
 ```
 
-If a newer version exists, ask the user:
-> "有新版本 vX.X.X 可用，是否自动更新？"
+If newer, ask user to update → `git clone + install.sh` (auto).
 
-If user agrees, execute:
-```bash
-git clone https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git /tmp/skill-update
-cd /tmp/skill-update
-bash install.sh
-cd .. && rm -rf /tmp/skill-update
-```
+## Component Reference
 
-Then notify: "更新完成！请重启会话让新版本生效。"
+Read **`core/uno/components.md`** for verified pin names, attributes, and connection examples.
+
+For components not in the reference, open wokwi.com in a browser, use the visual editor to place the component, copy the generated `diagram.json`, and add the entry to `components.md`.
+
+## Environment Dependencies
+
+| Dependency | Required For | Install |
+|-----------|-------------|---------|
+| `arduino-cli` | Compile + upload | Auto via compile.sh |
+| `playwright` npm package | Browser automation script | `npm i playwright` |
+| Playwright MCP | Native Monaco fallback | `npx @playwright/mcp@latest` |
+| VS Code + Wokwi ext | Manual simulation | Manual |

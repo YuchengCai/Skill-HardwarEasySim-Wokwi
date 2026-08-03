@@ -9,13 +9,14 @@
 <a id="english"></a>
 ## 📘 English
 
-**Wokwi Arduino Simulation Skill** — v0.2.0 — A portable skill package for AI coding agents (DeepCode, Claude Code, Cursor) that enables automated Arduino hardware prototyping, circuit simulation, code compilation, and firmware upload.
+**Wokwi Arduino Simulation Skill** — v0.3.0 — A portable skill package for AI coding agents (DeepCode, WorkBuddy, Claude Code, Cursor) that enables automated Arduino hardware prototyping, **auto browser simulation**, circuit compilation, and firmware upload.
 
 ### Features
 
 - 🤖 **AI-Powered** — Drop-in skill for your coding agent. Just describe your hardware idea.
-- ⚡ **One-Command Compile** — Auto-installs `arduino-cli` + Uno core, compiles `.ino` to `.hex`.
-- 🔌 **Cross-Agent** — Works with DeepCode (`SKILL.md`), Claude Code (`CLAUDE.md`), and Cursor (`.cursorrules`).
+- 🌐 **Auto Browser Simulation** — `wokwi-automate.js` opens wokwi.com, fills code + circuit, starts simulation automatically (browser fallback: Chrome → Edge → Chromium).
+- ⚡ **One-Command Compile** — Auto-installs `arduino-cli` + Uno core, compiles `.ino` to `.hex`, handles MINGW path conversion.
+- 🔌 **Cross-Agent** — Works with DeepCode, WorkBuddy (`SKILL.md`), Claude Code (`CLAUDE.md`), and Cursor (`.cursorrules`).
 - 🧩 **Component Reference** — Verified pin names and attributes in `core/uno/components.md`.
 - 🛠️ **Clean Layouts** — Supports `rotate` and routing waypoints for tidy diagrams.
 
@@ -43,10 +44,15 @@ Skill-HardwarEasySim-Wokwi/
 ├── install.sh                         # One-click installer
 ├── adapters/
 │   ├── deepcode/SKILL.md              # DeepCode skill file
+│   ├── workbuddy/SKILL.md             # WorkBuddy skill file
 │   ├── claude/CLAUDE.md               # Claude Code skill file
 │   └── cursor/.cursorrules            # Cursor rules file
 └── core/
-    ├── scripts/compile.sh             # OS-aware compile script
+    ├── scripts/
+    │   ├── compile.sh                 # OS-aware compile/upload script
+    │   └── wokwi-automate.js          # 🌐 Auto browser simulation script
+    ├── references/
+    │   └── monaco-steps.md            # Native Monaco fallback steps
     └── uno/components.md              # 📖 Component reference manual
 ```
 
@@ -55,8 +61,10 @@ Skill-HardwarEasySim-Wokwi/
 | Tool | Required For | Auto-Install? |
 |------|-------------|---------------|
 | `arduino-cli` | Compiling `.ino` → `.hex` | ✅ Yes (all OS) |
-| VS Code + Wokwi extension | Visual circuit simulation | Manual |
-| wokwi.com account | Browser-based simulation | Free signup |
+| `playwright` npm pkg | Auto browser simulation | `npm i playwright` |
+| Playwright MCP | Native Monaco fallback | `npx @playwright/mcp@latest` |
+| VS Code + Wokwi extension | Manual simulation mode | Manual |
+| wokwi.com account | Browser simulation | Free signup |
 
 ### Installation
 
@@ -94,13 +102,14 @@ The agent reads `components.md` for correct pin names, generates the project, co
 <a id="chinese"></a>
 ## 📘 中文
 
-**Wokwi Arduino 仿真 Skill** — 一个可移植的技能包，专为 AI 编程助手（DeepCode、Claude Code、Cursor）设计，实现自动化硬件原型设计、电路仿真和代码编译。
+**Wokwi Arduino 仿真 Skill** — v0.3.0 — 一个可移植的技能包，专为 AI 编程助手（DeepCode、WorkBuddy、Claude Code、Cursor）设计，实现自动化硬件原型设计、**自动浏览器仿真**、代码编译和固件上传。
 
 ### 功能
 
 - 🤖 **AI 驱动** — 直接跟助手描述你的硬件想法，无需手动查引脚
-- ⚡ **一键编译** — 自动安装 `arduino-cli` + Uno 核心，编译 `.ino` 到 `.hex`
-- 🔌 **跨 Agent** — 支持 DeepCode（`SKILL.md`）、Claude Code（`CLAUDE.md`）和 Cursor（`.cursorrules`）
+- 🌐 **自动浏览器仿真** — `wokwi-automate.js` 自动打开 wokwi.com、填入代码和电路图、启动仿真（浏览器回退链：Chrome → Edge → Chromium）
+- ⚡ **一键编译** — 自动安装 `arduino-cli` + Uno 核心，编译 `.ino` 到 `.hex`，处理 MINGW 路径转换
+- 🔌 **跨 Agent** — 支持 DeepCode、WorkBuddy（`SKILL.md`）、Claude Code（`CLAUDE.md`）和 Cursor（`.cursorrules`）
 - 🧩 **元件参考** — 已验证的引脚命名和属性，统一放在 `core/uno/components.md`
 - 🛠️ **整洁布线** — 支持电阻旋转和路由控制点，生成清晰的电路图
 
@@ -128,10 +137,15 @@ Skill-HardwarEasySim-Wokwi/
 ├── install.sh                         # 一键安装脚本
 ├── adapters/
 │   ├── deepcode/SKILL.md              # DeepCode 技能文件
+│   ├── workbuddy/SKILL.md             # WorkBuddy 技能文件
 │   ├── claude/CLAUDE.md               # Claude Code 技能文件
 │   └── cursor/.cursorrules            # Cursor 规则文件
 └── core/
-    ├── scripts/compile.sh             # 跨平台编译脚本
+    ├── scripts/
+    │   ├── compile.sh                 # 跨平台编译/上传脚本
+    │   └── wokwi-automate.js          # 🌐 自动浏览器仿真脚本
+    ├── references/
+    │   └── monaco-steps.md            # 原生 Monaco 降级操作步骤
     └── uno/components.md              # 📖 元件参考手册
 ```
 
@@ -140,7 +154,9 @@ Skill-HardwarEasySim-Wokwi/
 | 工具 | 用途 | 自动安装？|
 |------|------|---------|
 | `arduino-cli` | 编译 `.ino` → `.hex` | ✅ 是（全平台） |
-| VS Code + Wokwi 扩展 | 可视化电路仿真 | 手动安装 |
+| `playwright` npm 包 | 自动浏览器仿真脚本 | `npm i playwright` |
+| Playwright MCP | 原生 Monaco 操作降级路径 | `npx @playwright/mcp@latest` |
+| VS Code + Wokwi 扩展 | 手动仿真模式 | 手动安装 |
 | wokwi.com 账号 | 浏览器端仿真 | 免费注册 |
 
 ### 安装

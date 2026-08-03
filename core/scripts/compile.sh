@@ -142,6 +142,25 @@ ensure_uno_core() {
 }
 
 # ==============================================================
+# 路径归一化（MINGW → Windows 路径，修复 f:\f\ 双写问题）
+# ==============================================================
+normalize_path() {
+    local PATH_ARG="$1"
+    case "$OS" in
+        windows)
+            if command -v cygpath &>/dev/null; then
+                cygpath -w "$PATH_ARG"
+            else
+                echo "$PATH_ARG"
+            fi
+            ;;
+        *)
+            echo "$PATH_ARG"
+            ;;
+    esac
+}
+
+# ==============================================================
 # 编译项目
 # ==============================================================
 compile_project() {
@@ -154,11 +173,15 @@ compile_project() {
     BUILD_DIR="$PROJECT_DIR/build"
     mkdir -p "$BUILD_DIR"
 
+    # 转换为 Windows 路径（MINGW 环境下 arduino-cli 需要）
+    INO_FILE_WIN=$(normalize_path "$INO_FILE")
+    BUILD_DIR_WIN=$(normalize_path "$BUILD_DIR")
+
     section "编译 $PROJECT_NAME"
     arduino-cli compile \
         --fqbn arduino:avr:uno \
-        --output-dir "$BUILD_DIR" \
-        "$INO_FILE"
+        --output-dir "$BUILD_DIR_WIN" \
+        "$INO_FILE_WIN"
 
     info "编译成功！"
 
@@ -208,12 +231,15 @@ upload_firmware() {
     INO_FILE=$(find "$PROJECT_DIR" -maxdepth 1 -name "*.ino" | head -1)
     PROJECT_NAME=$(basename "$INO_FILE" .ino)
 
+    # 转换为 Windows 路径（MINGW 环境下 arduino-cli 需要）
+    INO_FILE_WIN=$(normalize_path "$INO_FILE")
+
     section "上传固件到 $PORT_ARG ($FQBN_ARG)"
 
     arduino-cli upload \
         -p "$PORT_ARG" \
         --fqbn "$FQBN_ARG" \
-        "$INO_FILE"
+        "$INO_FILE_WIN"
 
     info "上传成功！"
     echo "板载 LED 应该会闪烁 3 次（如果代码中包含此逻辑）。"

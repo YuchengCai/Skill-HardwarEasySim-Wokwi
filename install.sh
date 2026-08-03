@@ -13,6 +13,7 @@
 #   deepcode   — DeepCode (安装 SKILL.md 到 .agents/skills/)
 #   claude     — Claude Code (安装 CLAUDE.md 到项目根目录)
 #   cursor     — Cursor (安装 .cursorrules 到项目根目录)
+#   workbuddy  — WorkBuddy (安装 SKILL.md 到 ~/.workbuddy/skills/)
 #
 # 可选参数:
 #   --dry-run  — 仅显示将要执行的操作，不实际安装
@@ -112,6 +113,13 @@ detect_agent() {
         return
     fi
 
+    # 检测 WorkBuddy
+    if [ -d "$HOME/.workbuddy" ]; then
+        warn "检测到 ~/.workbuddy，推断为 WorkBuddy"
+        echo "workbuddy"
+        return
+    fi
+
     # 检测工作目录中已有的配置文件
     if [ -f "$INSTALL_DIR/.cursorrules" ]; then
         warn "检测到已有 .cursorrules，推断为 Cursor"
@@ -144,12 +152,14 @@ if [ -z "$AGENT_TYPE" ]; then
     echo "  1) DeepCode"
     echo "  2) Claude Code"
     echo "  3) Cursor"
+    echo "  4) WorkBuddy"
     echo ""
-    read -rp "输入数字 (1/2/3): " choice
+    read -rp "输入数字 (1/2/3/4): " choice
     case "$choice" in
         1) AGENT_TYPE="deepcode" ;;
         2) AGENT_TYPE="claude" ;;
         3) AGENT_TYPE="cursor" ;;
+        4) AGENT_TYPE="workbuddy" ;;
         *) error "无效选择" ;;
     esac
 fi
@@ -242,11 +252,38 @@ install_cursor() {
     echo "Cursor 将自动读取项目根目录的 .cursorrules。"
 }
 
+install_workbuddy() {
+    local target_dir="$HOME/.workbuddy/skills/$SKILL_NAME"
+    local adapter_path="$SCRIPT_DIR/adapters/workbuddy/SKILL.md"
+
+    section "安装到 WorkBuddy (~/.workbuddy/skills/)"
+
+    if $DRY_RUN; then
+        echo "  将创建: $target_dir/"
+        echo "  将复制: $adapter_path → $target_dir/SKILL.md"
+        echo "  将复制: $SCRIPT_DIR/core → $target_dir/core"
+        return
+    fi
+
+    mkdir -p "$target_dir"
+    cp "$adapter_path" "$target_dir/SKILL.md"
+    cp -r "$SCRIPT_DIR/core" "$target_dir/core"
+
+    info "已安装到 $target_dir"
+    echo ""
+    echo "  SKILL.md → $target_dir/SKILL.md"
+    echo "  core/    → $target_dir/core"
+    echo ""
+    echo "注意: 首次使用前需配置 Playwright MCP (见 SKILL.md)"
+    echo "重启 WorkBuddy 会话后生效。"
+}
+
 # --- 执行安装 ---
 case "$AGENT_TYPE" in
     deepcode) install_deepcode ;;
     claude)   install_claude ;;
     cursor)   install_cursor ;;
+    workbuddy) install_workbuddy ;;
     *)        error "不支持的 Agent 类型: $AGENT_TYPE" ;;
 esac
 
