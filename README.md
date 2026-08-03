@@ -9,7 +9,7 @@
 <a id="english"></a>
 ## 📘 English
 
-**Wokwi Arduino Simulation Skill** — v0.3.2 — A portable skill package for AI coding agents (DeepCode, WorkBuddy, Claude Code, Cursor) that enables automated Arduino hardware prototyping, **auto browser simulation**, circuit compilation, and firmware upload.
+**Wokwi Arduino Simulation Skill** — v0.3.3 — A portable skill package for AI coding agents (DeepCode, WorkBuddy, Claude Code, Cursor) that enables automated Arduino hardware prototyping, **auto browser simulation**, circuit compilation, and firmware upload.
 
 ### Features
 
@@ -85,7 +85,14 @@ bash install.sh
 bash path/to/Skill-HardwarEasySim-Wokwi/install.sh
 ```
 
-The script auto-detects your agent type (DeepCode / Claude Code / Cursor) and installs the correct adapter.
+The script auto-detects your agent type (DeepCode / Claude Code / Cursor / WorkBuddy) and asks you to choose the install scope:
+
+| Scope | Install location | Best for |
+|-------|-----------------|----------|
+| **Global** | `~/.deepcode/skills/`, `~/.claude/`, `~/.cursor/rules/` | Long-term use, all projects |
+| **Project** | `./.agents/skills/`, `./CLAUDE.md`, `./.cursorrules` | Trying it out, one project only |
+
+You can also skip the prompt: `bash install.sh --global` or `bash install.sh --project`.
 
 ### Usage
 
@@ -102,7 +109,7 @@ The agent reads `components.md` for correct pin names, generates the project, co
 <a id="chinese"></a>
 ## 📘 中文
 
-**Wokwi Arduino 仿真 Skill** — v0.3.2 — 一个可移植的技能包，专为 AI 编程助手（DeepCode、WorkBuddy、Claude Code、Cursor）设计，实现自动化硬件原型设计、**自动浏览器仿真**、代码编译和固件上传。
+**Wokwi Arduino 仿真 Skill** — v0.3.3 — 一个可移植的技能包，专为 AI 编程助手（DeepCode、WorkBuddy、Claude Code、Cursor）设计，实现自动化硬件原型设计、**自动浏览器仿真**、代码编译和固件上传。
 
 ### 功能
 
@@ -178,7 +185,14 @@ bash install.sh
 bash path/to/Skill-HardwarEasySim-Wokwi/install.sh
 ```
 
-脚本会自动检测你的编程助手类型（DeepCode / Claude Code / Cursor）并安装对应的适配器文件。
+脚本会自动检测你的编程助手类型（DeepCode / Claude Code / Cursor / WorkBuddy），并让你选择安装范围：
+
+| 范围 | 安装位置 | 适合场景 |
+|------|---------|---------|
+| **全局安装** | `~/.deepcode/skills/`、`~/.claude/`、`~/.cursor/rules/` | 长期使用，所有项目可用 |
+| **仅当前项目** | `./.agents/skills/`、`./CLAUDE.md`、`./.cursorrules` | 临时试用，单个项目 |
+
+也可以跳过询问直接指定：`bash install.sh --global` 或 `bash install.sh --project`。
 
 ### 使用
 

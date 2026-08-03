@@ -1,19 +1,21 @@
 #!/usr/bin/env bash
 # ==============================================================
-# install.sh — Arduino Wokwi Skill 安装脚本 (v0.3.2)
+# install.sh — Arduino Wokwi Skill 安装脚本 (v0.3.3)
 #
 # 自动检测当前 AI 编程 Agent 类型并安装对应适配器。
 #
 # 用法:
-#   ./install.sh                    # 自动检测并安装
+#   ./install.sh                    # 自动检测 + 交互选择安装范围
+#   ./install.sh --global           # 全局安装（所有项目可用）
+#   ./install.sh --project          # 仅当前项目安装
 #   ./install.sh --dir <path>       # 安装到指定项目目录
 #   ./install.sh --agent <type>     # 强制指定 Agent 类型
 #
 # 支持的 Agent 类型:
-#   deepcode   — DeepCode (安装 SKILL.md 到 .agents/skills/)
-#   claude     — Claude Code (安装 CLAUDE.md 到项目根目录)
-#   cursor     — Cursor (安装 .cursorrules 到项目根目录)
-#   workbuddy  — WorkBuddy (安装 SKILL.md 到 ~/.workbuddy/skills/)
+#   deepcode   — DeepCode (SKILL.md)
+#   claude     — Claude Code (CLAUDE.md)
+#   cursor     — Cursor (.cursorrules)
+#   workbuddy  — WorkBuddy (SKILL.md)
 #
 # 可选参数:
 #   --dry-run  — 仅显示将要执行的操作，不实际安装
@@ -41,6 +43,7 @@ SKILL_NAME="wokwi-arduino"
 INSTALL_DIR=""
 FORCE_AGENT=""
 DRY_RUN=false
+INSTALL_SCOPE=""   # "global" 或 "project"，空 = 交互询问
 
 # --- 解析参数 ---
 while [[ $# -gt 0 ]]; do
@@ -53,6 +56,14 @@ while [[ $# -gt 0 ]]; do
             FORCE_AGENT="$2"
             shift 2
             ;;
+        --global)
+            INSTALL_SCOPE="global"
+            shift
+            ;;
+        --project)
+            INSTALL_SCOPE="project"
+            shift
+            ;;
         --dry-run)
             DRY_RUN=true
             shift
@@ -61,12 +72,14 @@ while [[ $# -gt 0 ]]; do
             echo "用法: $0 [选项]"
             echo ""
             echo "选项:"
-            echo "  --dir <path>       安装到指定项目目录"
-            echo "  --agent <type>     强制指定 Agent 类型 (deepcode|claude|cursor)"
-            echo "  --dry-run          仅预览，不执行安装"
-            echo "  --help, -h         显示此帮助"
+            echo "  --global          全局安装（所有项目可用）"
+            echo "  --project         仅当前项目安装"
+            echo "  --dir <path>      安装到指定项目目录"
+            echo "  --agent <type>    强制指定 Agent 类型 (deepcode|claude|cursor|workbuddy)"
+            echo "  --dry-run         仅预览，不执行安装"
+            echo "  --help, -h        显示此帮助"
             echo ""
-            echo "无参数时自动检测当前 Agent 类型。"
+            echo "无参数时自动检测 Agent 类型，并询问安装范围。"
             exit 0
             ;;
         *)
@@ -75,21 +88,8 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# --- 确定目标目录 ---
-if [ -z "$INSTALL_DIR" ]; then
-    # 如果未指定 --dir，使用当前工作目录
-    INSTALL_DIR="$(pwd)"
-fi
-
-if [ ! -d "$INSTALL_DIR" ]; then
-    error "目标目录不存在: $INSTALL_DIR"
-fi
-
-info "目标目录: $INSTALL_DIR"
-
 # --- Agent 类型检测 ---
 detect_agent() {
-    # 如果用户强制指定了类型，直接使用
     if [ -n "$FORCE_AGENT" ]; then
         echo "$FORCE_AGENT"
         return
@@ -121,17 +121,18 @@ detect_agent() {
     fi
 
     # 检测工作目录中已有的配置文件
-    if [ -f "$INSTALL_DIR/.cursorrules" ]; then
+    local cwd_guess="$(pwd)"
+    if [ -f "$cwd_guess/.cursorrules" ]; then
         warn "检测到已有 .cursorrules，推断为 Cursor"
         echo "cursor"
         return
     fi
-    if [ -f "$INSTALL_DIR/CLAUDE.md" ]; then
+    if [ -f "$cwd_guess/CLAUDE.md" ]; then
         warn "检测到已有 CLAUDE.md，推断为 Claude Code"
         echo "claude"
         return
     fi
-    if [ -d "$INSTALL_DIR/.agents" ]; then
+    if [ -d "$cwd_guess/.agents" ]; then
         warn "检测到已有 .agents 目录，推断为 DeepCode"
         echo "deepcode"
         return
@@ -166,12 +167,73 @@ fi
 
 info "检测到 Agent 类型: $AGENT_TYPE"
 
-# --- 安装函数 ---
+# ==============================================================
+# 安装范围选择（全局 vs 项目）
+# ==============================================================
+choose_scope() {
+    # WorkBuddy 本身安装到 ~/.workbuddy/skills/（天然全局），无需询问
+    if [ "$AGENT_TYPE" = "workbuddy" ]; then
+        INSTALL_SCOPE="global"
+        info "WorkBuddy 安装位置固定在用户目录（全局），无需选择"
+        return
+    fi
+
+    if [ -n "$INSTALL_SCOPE" ]; then
+        return  # 已通过 --global/--project 指定
+    fi
+
+    echo ""
+    echo "选择安装范围:"
+    echo ""
+    echo "  1) 全局安装 — 所有项目都能使用此 Skill"
+    echo "     适合长期使用、经常做硬件项目；安装一次，处处可用"
+    echo ""
+    echo "  2) 仅当前项目 — 只在当前目录生效"
+    echo "     适合临时试用、不想影响其他项目；更轻量"
+    echo ""
+    read -rp "输入数字 (1/2): " choice
+    case "$choice" in
+        1) INSTALL_SCOPE="global" ;;
+        2) INSTALL_SCOPE="project" ;;
+        *) error "无效选择" ;;
+    esac
+}
+
+choose_scope
+
+# --- 根据安装范围确定目标位置 ---
+if [ "$INSTALL_SCOPE" = "global" ]; then
+    case "$AGENT_TYPE" in
+        deepcode)  INSTALL_DIR="$HOME/.deepcode/skills" ;;
+        claude)    INSTALL_DIR="$HOME/.claude" ;;
+        cursor)    INSTALL_DIR="$HOME/.cursor" ;;
+        workbuddy) INSTALL_DIR="$HOME/.workbuddy/skills" ;;
+    esac
+    info "安装范围: 全局 (所有项目可用)"
+else
+    if [ -z "$INSTALL_DIR" ]; then
+        INSTALL_DIR="$(pwd)"
+    fi
+    info "安装范围: 仅当前项目 ($INSTALL_DIR)"
+fi
+
+if [ ! -d "$INSTALL_DIR" ]; then
+    mkdir -p "$INSTALL_DIR"
+fi
+
+# ==============================================================
+# 安装函数
+# ==============================================================
 install_deepcode() {
-    local target_dir="$INSTALL_DIR/.agents/skills/$SKILL_NAME"
+    local target_dir
+    if [ "$INSTALL_SCOPE" = "global" ]; then
+        target_dir="$HOME/.deepcode/skills/$SKILL_NAME"
+    else
+        target_dir="$INSTALL_DIR/.agents/skills/$SKILL_NAME"
+    fi
     local adapter_path="$SCRIPT_DIR/adapters/deepcode/SKILL.md"
 
-    section "安装到 DeepCode (.agents/skills/)"
+    section "安装到 DeepCode ($target_dir)"
 
     if $DRY_RUN; then
         echo "  将创建: $target_dir/"
@@ -195,15 +257,24 @@ install_deepcode() {
     echo "  SKILL.md → $target_dir/SKILL.md"
     echo "  core/    → $target_dir/core (符号链接)"
     echo ""
-    echo "下次 DeepCode 会话将自动加载此 Skill。"
+    if [ "$INSTALL_SCOPE" = "global" ]; then
+        echo "全局安装：所有 DeepCode 项目都会自动加载此 Skill。"
+    else
+        echo "项目安装：仅当前项目会加载此 Skill。"
+    fi
     echo "如果 DeepCode 已在运行，请重启以生效。"
 }
 
 install_claude() {
-    local target_file="$INSTALL_DIR/CLAUDE.md"
+    local target_file
+    if [ "$INSTALL_SCOPE" = "global" ]; then
+        target_file="$HOME/.claude/CLAUDE.md"
+    else
+        target_file="$INSTALL_DIR/CLAUDE.md"
+    fi
     local adapter_path="$SCRIPT_DIR/adapters/claude/CLAUDE.md"
 
-    section "安装到 Claude Code (CLAUDE.md)"
+    section "安装到 Claude Code ($target_file)"
 
     if $DRY_RUN; then
         echo "  将追加到: $target_file"
@@ -223,20 +294,30 @@ install_claude() {
     fi
 
     echo ""
-    echo "Claude Code 将自动读取项目根目录的 CLAUDE.md。"
+    if [ "$INSTALL_SCOPE" = "global" ]; then
+        echo "全局安装：所有 Claude Code 项目都会自动读取。"
+    else
+        echo "项目安装：Claude Code 将自动读取项目根目录的 CLAUDE.md。"
+    fi
 }
 
 install_cursor() {
-    local target_file="$INSTALL_DIR/.cursorrules"
+    local target_file
+    if [ "$INSTALL_SCOPE" = "global" ]; then
+        target_file="$HOME/.cursor/rules/.cursorrules"
+    else
+        target_file="$INSTALL_DIR/.cursorrules"
+    fi
     local adapter_path="$SCRIPT_DIR/adapters/cursor/.cursorrules"
 
-    section "安装到 Cursor (.cursorrules)"
+    section "安装到 Cursor ($target_file)"
 
     if $DRY_RUN; then
         echo "  将追加到: $target_file"
         return
     fi
 
+    mkdir -p "$(dirname "$target_file")"
     if [ -f "$target_file" ]; then
         warn ".cursorrules 已存在，将追加内容"
         echo "" >> "$target_file"
@@ -249,7 +330,11 @@ install_cursor() {
     fi
 
     echo ""
-    echo "Cursor 将自动读取项目根目录的 .cursorrules。"
+    if [ "$INSTALL_SCOPE" = "global" ]; then
+        echo "全局安装：所有 Cursor 项目都会自动读取（需要 Cursor 0.46+ 支持全局规则）。"
+    else
+        echo "项目安装：Cursor 将自动读取项目根目录的 .cursorrules。"
+    fi
 }
 
 install_workbuddy() {
