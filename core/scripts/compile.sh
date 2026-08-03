@@ -73,10 +73,36 @@ info "操作系统: $OS"
 # 安装 arduino-cli（如缺失）
 # ==============================================================
 ensure_arduino_cli() {
+    # ① 当前进程 PATH 中查找
     if command -v arduino-cli &>/dev/null; then
-        info "arduino-cli 已安装"
+        info "arduino-cli 已安装 ($(command -v arduino-cli))"
         return 0
     fi
+
+    # ② 常见安装位置查找（解决"已安装但 PATH 未生效"问题）
+    local CANDIDATES=(
+        "${HOME}/.arduino-cli/bin/arduino-cli"
+        "${HOME}/.arduino15/bin/arduino-cli"
+        "${HOME}/bin/arduino-cli"
+        "/usr/local/bin/arduino-cli"
+        "/opt/homebrew/bin/arduino-cli"
+        "/c/tool/arduinoCli/arduino-cli"
+        "/d/tool/arduinoCli/arduino-cli"
+        "/c/Program Files/Arduino CLI/arduino-cli"
+    )
+    for CAND in "${CANDIDATES[@]}"; do
+        if [ -f "$CAND" ]; then
+            info "在 $CAND 找到已安装的 arduino-cli"
+            export PATH="$(dirname "$CAND"):${PATH}"
+            # Windows 下同步到用户级 PATH，让所有进程可见
+            if [ "$OS" = "windows" ]; then
+                WIN_PATH=$(cygpath -w "$(dirname "$CAND")" 2>/dev/null)
+                cmd //c "setx PATH \"$WIN_PATH;%PATH%\"" >/dev/null 2>&1 && \
+                    info "已同步 arduino-cli 到 Windows 用户级 PATH（重启终端/VS Code 后全局生效）"
+            fi
+            return 0
+        fi
+    done
 
     section "安装 arduino-cli"
 
@@ -118,6 +144,12 @@ ensure_arduino_cli() {
             if ! grep -q "arduino-cli" "$RC_FILE" 2>/dev/null; then
                 echo "export PATH=\"${BIN_DIR}:\$PATH\"" >> "$RC_FILE"
             fi
+        fi
+        # Windows: 写入用户级 PATH，让所有进程（终端/VS Code/插件）可见
+        if [ "$OS" = "windows" ]; then
+            WIN_PATH=$(cygpath -w "$BIN_DIR" 2>/dev/null)
+            cmd //c "setx PATH \"$WIN_PATH;%PATH%\"" >/dev/null 2>&1 && \
+                info "已写入 Windows 用户级 PATH（重启终端/VS Code 后全局生效）"
         fi
         arduino-cli config init >/dev/null 2>&1 || true
         info "arduino-cli 安装成功"

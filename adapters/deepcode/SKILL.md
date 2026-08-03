@@ -3,7 +3,7 @@ name: wokwi-arduino
 description: Create, compile, simulate, and upload Arduino projects with Wokwi (VS Code extension, wokwi.com browser automation, or web editor). Use when the user mentions Arduino, Wokwi, 单片机, 嵌入式, or when .ino / wokwi.toml / diagram.json files are detected. Explicitly activate with @wokwi, #arduino, or @simulate.
 ---
 
-# Arduino Wokwi Simulation Skill (v0.3.0)
+# Arduino Wokwi Simulation Skill (v0.3.1)
 
 Create, compile, simulate, and upload Arduino projects using Wokwi.
 
@@ -111,7 +111,7 @@ This compiles (if needed), uploads, auto-captures serial output, and prints the 
 
 ## Version Check & Auto Update
 
-Current version: **v0.3.0**
+Current version: **v0.3.1**
 Repository: `https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git`
 
 When activated, check the latest release:
