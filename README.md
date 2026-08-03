@@ -19,6 +19,8 @@
 - 🔌 **Cross-Agent** — Works with DeepCode, WorkBuddy (`SKILL.md`), Claude Code (`CLAUDE.md`), and Cursor (`.cursorrules`).
 - 🧩 **Component Reference** — Verified pin names and attributes in `core/uno/components.md`.
 - 🛠️ **Clean Layouts** — Supports `rotate` and routing waypoints for tidy diagrams.
+- 🔍 **Clone Board Detection** — Detects CH340/CP2102/FTDI chips via VID/PID (Windows PowerShell, macOS system_profiler, Linux lsusb) and suggests FQBN for clone boards.
+- ✅ **Safe Upload** — Always asks for user confirmation (port + board + FQBN) before uploading. Never silently flashes.
 
 ### Quick Start
 
@@ -119,6 +121,8 @@ The agent reads `components.md` for correct pin names, generates the project, co
 - 🔌 **跨 Agent** — 支持 DeepCode、WorkBuddy（`SKILL.md`）、Claude Code（`CLAUDE.md`）和 Cursor（`.cursorrules`）
 - 🧩 **元件参考** — 已验证的引脚命名和属性，统一放在 `core/uno/components.md`
 - 🛠️ **整洁布线** — 支持电阻旋转和路由控制点，生成清晰的电路图
+- 🔍 **克隆板识别** — 通过 VID/PID 检测 CH340/CP2102/FTDI 芯片（Windows PowerShell / macOS system_profiler / Linux lsusb），为克隆板提供 FQBN 建议
+- ✅ **安全上传** — 上传前始终请求用户确认（端口 + 板型 + FQBN），绝不静默烧录
 
 ### 快速开始
 
