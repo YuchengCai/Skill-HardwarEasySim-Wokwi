@@ -9,7 +9,7 @@
 <a id="english"></a>
 ## 📘 English
 
-**Wokwi Arduino Simulation Skill** — v0.3.5 — A portable skill package for AI coding agents (DeepCode, WorkBuddy, Claude Code, Cursor) that enables automated Arduino hardware prototyping, **auto browser simulation**, circuit compilation, and firmware upload.
+**Wokwi Arduino Simulation Skill** — v0.3.6 — A portable skill package for AI coding agents (DeepCode, WorkBuddy, Claude Code, Cursor) that enables automated Arduino hardware prototyping, **auto browser simulation**, circuit compilation, and firmware upload.
 
 ### Features
 
@@ -17,7 +17,7 @@
 - 🌐 **Auto Browser Simulation** — `wokwi-automate.js` opens wokwi.com, fills code + circuit, starts simulation automatically (browser fallback: Chrome → Edge → Chromium).
 - ⚡ **One-Command Compile** — Auto-installs `arduino-cli` + Uno core, compiles `.ino` to `.hex`, handles MINGW path conversion.
 - 🔌 **Cross-Agent** — Works with DeepCode, WorkBuddy (`SKILL.md`), Claude Code (`CLAUDE.md`), and Cursor (`.cursorrules`).
-- 🧩 **Component Reference** — Verified pin names and attributes in `core/uno/components.md`.
+- 🧩 **Component Reference** — Verified pin names and attributes in `references/uno/components.md`.
 - 🛠️ **Clean Layouts** — Supports `rotate` and routing waypoints for tidy diagrams.
 - 🔍 **Clone Board Detection** — Detects CH340/CP2102/FTDI chips via VID/PID (Windows PowerShell, macOS system_profiler, Linux lsusb) and suggests FQBN for clone boards.
 - ✅ **Safe Upload** — Always asks for user confirmation (port + board + FQBN) before uploading. Never silently flashes.
@@ -49,12 +49,11 @@ Skill-HardwarEasySim-Wokwi/
 │   ├── workbuddy/SKILL.md             # WorkBuddy skill file
 │   ├── claude/CLAUDE.md               # Claude Code skill file
 │   └── cursor/.cursorrules            # Cursor rules file
-└── core/
-    ├── scripts/
-    │   ├── compile.sh                 # OS-aware compile/upload script
-    │   └── wokwi-automate.js          # 🌐 Auto browser simulation script
-    ├── references/
-    │   └── monaco-steps.md            # Native Monaco fallback steps
+├── scripts/
+│   ├── compile.sh                     # OS-aware compile/upload script
+│   └── wokwi-automate.js              # 🌐 Auto browser simulation script
+└── references/
+    ├── monaco-steps.md                # Native Monaco fallback steps
     └── uno/components.md              # 📖 Component reference manual
 ```
 
@@ -111,7 +110,7 @@ The agent reads `components.md` for correct pin names, generates the project, co
 <a id="chinese"></a>
 ## 📘 中文
 
-**Wokwi Arduino 仿真 Skill** — v0.3.5 — 一个可移植的技能包，专为 AI 编程助手（DeepCode、WorkBuddy、Claude Code、Cursor）设计，实现自动化硬件原型设计、**自动浏览器仿真**、代码编译和固件上传。
+**Wokwi Arduino 仿真 Skill** — v0.3.6 — 一个可移植的技能包，专为 AI 编程助手（DeepCode、WorkBuddy、Claude Code、Cursor）设计，实现自动化硬件原型设计、**自动浏览器仿真**、代码编译和固件上传。
 
 ### 功能
 
@@ -119,7 +118,7 @@ The agent reads `components.md` for correct pin names, generates the project, co
 - 🌐 **自动浏览器仿真** — `wokwi-automate.js` 自动打开 wokwi.com、填入代码和电路图、启动仿真（浏览器回退链：Chrome → Edge → Chromium）
 - ⚡ **一键编译** — 自动安装 `arduino-cli` + Uno 核心，编译 `.ino` 到 `.hex`，处理 MINGW 路径转换
 - 🔌 **跨 Agent** — 支持 DeepCode、WorkBuddy（`SKILL.md`）、Claude Code（`CLAUDE.md`）和 Cursor（`.cursorrules`）
-- 🧩 **元件参考** — 已验证的引脚命名和属性，统一放在 `core/uno/components.md`
+- 🧩 **元件参考** — 已验证的引脚命名和属性，统一放在 `references/uno/components.md`
 - 🛠️ **整洁布线** — 支持电阻旋转和路由控制点，生成清晰的电路图
 - 🔍 **克隆板识别** — 通过 VID/PID 检测 CH340/CP2102/FTDI 芯片（Windows PowerShell / macOS system_profiler / Linux lsusb），为克隆板提供 FQBN 建议
 - ✅ **安全上传** — 上传前始终请求用户确认（端口 + 板型 + FQBN），绝不静默烧录
@@ -151,12 +150,11 @@ Skill-HardwarEasySim-Wokwi/
 │   ├── workbuddy/SKILL.md             # WorkBuddy 技能文件
 │   ├── claude/CLAUDE.md               # Claude Code 技能文件
 │   └── cursor/.cursorrules            # Cursor 规则文件
-└── core/
-    ├── scripts/
-    │   ├── compile.sh                 # 跨平台编译/上传脚本
-    │   └── wokwi-automate.js          # 🌐 自动浏览器仿真脚本
-    ├── references/
-    │   └── monaco-steps.md            # 原生 Monaco 降级操作步骤
+├── scripts/
+│   ├── compile.sh                     # 跨平台编译/上传脚本
+│   └── wokwi-automate.js              # 🌐 自动浏览器仿真脚本
+└── references/
+    ├── monaco-steps.md                # 原生 Monaco 降级操作步骤
     └── uno/components.md              # 📖 元件参考手册
 ```
 

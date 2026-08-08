@@ -3,13 +3,13 @@ name: wokwi-arduino
 description: Create, compile, simulate, and upload Arduino projects with Wokwi (VS Code extension, wokwi.com browser automation, or web editor). Use when the user mentions Arduino, Wokwi, 单片机, 嵌入式, or when .ino / wokwi.toml / diagram.json files are detected. Explicitly activate with @wokwi, #arduino, or @simulate.
 ---
 
-# Arduino Wokwi Simulation Skill (v0.3.5)
+# Arduino Wokwi Simulation Skill (v0.3.6)
 
 Create, compile, simulate, and upload Arduino projects using Wokwi.
 
 ## How This Skill Works
 
-Component pin names, attributes, and connection patterns are in **`core/uno/components.md`** — read that file when you encounter an unfamiliar component.
+Component pin names, attributes, and connection patterns are in **`references/uno/components.md`** — read that file when you encounter an unfamiliar component.
 
 ## Activation Triggers
 
@@ -31,14 +31,14 @@ project/
 ### 1. Generate Code & Circuit
 
 1. Write the `.ino` sketch code (include a 3x blink in setup() as upload success indicator)
-2. Open **`core/uno/components.md`** — look up every component you intend to use
+2. Open **`references/uno/components.md`** — look up every component you intend to use
 3. Generate `diagram.json` with correct pin names and wiring
 4. Generate `wokwi.toml` pointing to `build/project.ino.hex`
 
 ### 2. Compile
 
 ```bash
-./core/scripts/compile.sh <project-dir>
+./scripts/compile.sh <project-dir>
 ```
 
 Auto-installs `arduino-cli` + Uno core if missing. Handles MINGW/Windows path conversion automatically.
@@ -66,7 +66,7 @@ node -e "require('playwright')" 2>/dev/null && echo "playwright OK" || echo "pla
 # Only proceed after user explicitly agrees.
 
 # Run the automation script
-node core/scripts/wokwi-automate.js <project-dir>
+node scripts/wokwi-automate.js <project-dir>
 ```
 
 The script automatically:
@@ -78,7 +78,7 @@ The script automatically:
 
 Browser fallback chain: **system Chrome → system Edge → Playwright Chromium**.
 
-⚠️ **If the script fails (non-zero exit code): DO NOT retry. Fall back to native Monaco operations** — see `core/references/monaco-steps.md`. Use the script's error message to diagnose.
+⚠️ **If the script fails (non-zero exit code): DO NOT retry. Fall back to native Monaco operations** — see `references/monaco-steps.md`. Use the script's error message to diagnose.
 
 #### Mode B: Manual (VS Code plugin — DEFAULT for VS Code users)
 
@@ -111,7 +111,7 @@ arduino-cli board list
 ### 6. Upload & Monitor
 
 ```bash
-./core/scripts/compile.sh <project-dir> --upload --port <PORT> --fqbn <FQBN> --monitor
+./scripts/compile.sh <project-dir> --upload --port <PORT> --fqbn <FQBN> --monitor
 ```
 
 This compiles (if needed), uploads, auto-captures serial output, and prints the real-time monitor command.
@@ -126,9 +126,29 @@ This compiles (if needed), uploads, auto-captures serial output, and prints the 
 
 ---
 
+## Self-Healing (Mandatory — Check on Activation)
+
+If any of these files are missing (e.g. skill was installed from a marketplace that only synced SKILL.md), restore them from GitHub before using the skill:
+
+```bash
+# Check and restore missing files
+BASE="https://raw.githubusercontent.com/YuchengCai/Skill-HardwarEasySim-Wokwi/main"
+for F in scripts/compile.sh scripts/wokwi-automate.js references/monaco-steps.md references/uno/components.md; do
+  if [ ! -f "$F" ]; then
+    echo "缺失 $F，正在从 GitHub 恢复..."
+    mkdir -p "$(dirname "$F")"
+    curl -fsSL "$BASE/$F" -o "$F"
+  fi
+done
+```
+
+**⚠️ If the skill directory has `core/` (old structure) instead of `scripts/` + `references/`, run `install.sh` again to migrate, or manually move files into the standard layout.**
+
+---
+
 ## Version Check & Auto Update
 
-Current version: **v0.3.5**
+Current version: **v0.3.6**
 Repository: `https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git`
 
 When activated, check the latest release:
@@ -142,7 +162,7 @@ If newer, ask user to update → `git clone + install.sh` (auto).
 
 ## Component Reference
 
-Read **`core/uno/components.md`** for verified pin names, attributes, and connection examples.
+Read **`references/uno/components.md`** for verified pin names, attributes, and connection examples.
 
 For components not in the reference, open wokwi.com in a browser, use the visual editor to place the component, copy the generated `diagram.json`, and add the entry to `components.md`.
 

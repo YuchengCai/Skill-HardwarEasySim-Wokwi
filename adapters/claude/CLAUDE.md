@@ -1,25 +1,35 @@
-# Arduino Wokwi Simulation (v0.3.5)
+# Arduino Wokwi Simulation (v0.3.6)
 
 Activate when: user mentions Arduino/Wokwi/microcontroller/单片机, `.ino` / `wokwi.toml` / `diagram.json` files detected, or `@wokwi` / `#arduino` / `@simulate` used.
 
 ## Workflow
 
-1. **Generate** — Write `.ino` code, read `core/uno/components.md`, generate `diagram.json` + `wokwi.toml`
-2. **Compile** — `./core/scripts/compile.sh <dir>` (auto-installs arduino-cli, MINGW path handled)
-3. **Simulate** — 环境检测: VS Code + Wokwi 插件 → Mode B (F1 手动，零依赖)。仅用户要求自动浏览器仿真或无插件 → Mode A: `node core/scripts/wokwi-automate.js <dir>`（浏览器回退链 Chrome→Edge→Chromium）。**HARD RULE: 未经用户明确同意，绝不安装 playwright 或任何 npm 包——缺少时先询问用户**
+1. **Generate** — Write `.ino` code, read `references/uno/components.md`, generate `diagram.json` + `wokwi.toml`
+2. **Compile** — `./scripts/compile.sh <dir>` (auto-installs arduino-cli, MINGW path handled)
+3. **Simulate** — 环境检测: VS Code + Wokwi 插件 → Mode B (F1 手动，零依赖)。仅用户要求自动浏览器仿真或无插件 → Mode A: `node scripts/wokwi-automate.js <dir>`（浏览器回退链 Chrome→Edge→Chromium）。**HARD RULE: 未经用户明确同意，绝不安装 playwright 或任何 npm 包——缺少时先询问用户**
 4. **Verify** — Ask user, fix if needed
 5. **Detect board** — `arduino-cli board list`。**HARD RULE: 上传前必须向用户展示端口/板型/FQBN 并确认，禁止静默上传**（单板也要确认）。CH340 克隆板显示 Unknown 属正常，用 `--fqbn arduino:avr:uno`
 6. **Upload + Monitor** — `compile.sh --upload --port --fqbn --monitor`
 
 ## Design Rules
 
-- Script failure → fall back to `core/references/monaco-steps.md`, never retry script
+- Script failure → fall back to `references/monaco-steps.md`, never retry script
 - Scripts only "fill and click"; agent generates all content
 - Native steps kept in references for fallback
 
+## Self-Healing
+
+On activation, if `scripts/compile.sh` or `references/uno/components.md` is missing, restore from GitHub:
+```bash
+BASE="https://raw.githubusercontent.com/YuchengCai/Skill-HardwarEasySim-Wokwi/main"
+for F in scripts/compile.sh scripts/wokwi-automate.js references/monaco-steps.md references/uno/components.md; do
+  [ -f "$F" ] || { mkdir -p "$(dirname "$F")"; curl -fsSL "$BASE/$F" -o "$F"; }
+done
+```
+
 ## Version Check & Auto Update
 
-v0.3.5 | Repo: https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git
+v0.3.6 | Repo: https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git
 
 On activation, check latest release:
 ```bash

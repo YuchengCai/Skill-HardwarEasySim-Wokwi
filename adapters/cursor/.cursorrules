@@ -1,12 +1,12 @@
-// Arduino Wokwi Simulation (v0.3.5)
+// Arduino Wokwi Simulation (v0.3.6)
 // Repo: https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git
 // Triggers: arduino/wokwi/uno/单片机 keywords, .ino/wokwi.toml/diagram.json files, @wokwi @simulate
 
 ## Workflow
 
-1. Generate .ino + read core/uno/components.md → diagram.json + wokwi.toml
-2. ./core/scripts/compile.sh <dir>
-3. Simulate: VS Code + Wokwi 插件 → Mode B (F1 手动)。仅用户要求或没插件 → Mode A: node core/scripts/wokwi-automate.js <dir>。**HARD RULE: 未经用户明确同意，绝不安装 playwright/npm 包——缺少时先询问**
+1. Generate .ino + read references/uno/components.md → diagram.json + wokwi.toml
+2. ./scripts/compile.sh <dir>
+3. Simulate: VS Code + Wokwi 插件 → Mode B (F1 手动)。仅用户要求或没插件 → Mode A: node scripts/wokwi-automate.js <dir>。**HARD RULE: 未经用户明确同意，绝不安装 playwright/npm 包——缺少时先询问**
 4. Verify with user
 5. arduino-cli board list → **先向用户展示端口/板型/FQBN 并确认**，再 upload。**HARD RULE: 禁止静默上传**。CH340 克隆板 Unknown 属正常，用 --fqbn arduino:avr:uno
 6. --monitor for serial capture
@@ -16,9 +16,19 @@
 - Script fail → monaco-steps.md fallback, no retry
 - Script = fill+click only, agent generates content
 
+## Self-Healing
+
+On activation, restore missing scripts/references from GitHub:
+```bash
+BASE="https://raw.githubusercontent.com/YuchengCai/Skill-HardwarEasySim-Wokwi/main"
+for F in scripts/compile.sh scripts/wokwi-automate.js references/monaco-steps.md references/uno/components.md; do
+  [ -f "$F" ] || { mkdir -p "$(dirname "$F")"; curl -fsSL "$BASE/$F" -o "$F"; }
+done
+```
+
 ## Version Check
 
-v0.3.5 | Repo: https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git
+v0.3.6 | Repo: https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git
 
 On activation:
 ```bash

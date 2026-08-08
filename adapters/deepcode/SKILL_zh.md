@@ -50,7 +50,7 @@ project/
 
 ## 模板列表
 
-位于 `core/uno/`：
+位于 `references/uno/`：
 
 | 模板 | 说明 |
 |------|------|
@@ -62,7 +62,7 @@ project/
 ### 1. 创建项目
 
 ```bash
-./core/scripts/create-project.sh <项目名> [模板名]
+./scripts/create-project.sh <项目名> [模板名]
 ```
 
 或手动创建三个文件。
@@ -104,7 +104,7 @@ firmware = 'project.ino'
 ```bash
 arduino-cli compile --fqbn arduino:avr:uno --output-dir build/ sketch.ino
 # 或
-./core/scripts/compile.sh <项目目录>
+./scripts/compile.sh <项目目录>
 ```
 
 ## 常用元件参考
@@ -114,8 +114,8 @@ arduino-cli compile --fqbn arduino:avr:uno --output-dir build/ sketch.ino
 ## 扩展板型
 
 当前仅支持 Arduino Uno。后续可添加:
-- `core/mega/` — Arduino Mega 2560
-- `core/esp32/` — ESP32
-- `core/pico/` — Raspberry Pi Pico
+- `references/mega/` — Arduino Mega 2560
+- `references/esp32/` — ESP32
+- `references/pico/` — Raspberry Pi Pico
 
 每个板型需在对应目录的 README.md 中记录其引脚连接写法。

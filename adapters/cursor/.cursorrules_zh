@@ -35,12 +35,12 @@
 
 ## 模板
 
-- `core/uno/blink/` — LED 闪烁
-- `core/uno/led-switch/` — 按钮控制 LED
+- `references/uno/blink/` — LED 闪烁
+- `references/uno/led-switch/` — 按钮控制 LED
 
 ## 快速命令
 
 ```bash
-./core/scripts/create-project.sh <name> <template>
-./core/scripts/compile.sh <project-dir>
+./scripts/create-project.sh <name> <template>
+./scripts/compile.sh <project-dir>
 ```

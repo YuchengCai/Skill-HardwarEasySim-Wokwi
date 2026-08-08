@@ -43,8 +43,8 @@ project/
 ## 快速命令
 
 ```bash
-./core/scripts/create-project.sh <name> [template]
-./core/scripts/compile.sh <project-dir>
+./scripts/create-project.sh <name> [template]
+./scripts/compile.sh <project-dir>
 ```
 
 ## 运行

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================
-# install.sh — Arduino Wokwi Skill 安装脚本 (v0.3.5)
+# install.sh — Arduino Wokwi Skill 安装脚本 (v0.3.6)
 #
 # 自动检测当前 AI 编程 Agent 类型并安装对应适配器。
 #
@@ -246,24 +246,28 @@ install_deepcode() {
     if $DRY_RUN; then
         echo "  将创建: $target_dir/"
         echo "  将复制: $adapter_path → $target_dir/SKILL.md"
-        echo "  将创建符号链接: $target_dir/core → $SCRIPT_DIR/core"
+        echo "  将创建符号链接: $target_dir/scripts → $SCRIPT_DIR/scripts"
+        echo "  将创建符号链接: $target_dir/references → $SCRIPT_DIR/references"
         return
     fi
 
     mkdir -p "$target_dir"
     cp "$adapter_path" "$target_dir/SKILL.md"
 
-    # 链接 core/ 目录，这样模板更新会同步
-    if [ -L "$target_dir/core" ] || [ -d "$target_dir/core" ]; then
-        warn "core/ 已存在，跳过链接"
-    else
-        ln -s "$SCRIPT_DIR/core" "$target_dir/core"
-    fi
+    # 链接 scripts/ + references/ 目录，这样模板更新会同步
+    for SUB in scripts references; do
+        if [ -L "$target_dir/$SUB" ] || [ -d "$target_dir/$SUB" ]; then
+            warn "$SUB/ 已存在，跳过链接"
+        else
+            ln -s "$SCRIPT_DIR/$SUB" "$target_dir/$SUB"
+        fi
+    done
 
     info "已安装到 $target_dir"
     echo ""
-    echo "  SKILL.md → $target_dir/SKILL.md"
-    echo "  core/    → $target_dir/core (符号链接)"
+    echo "  SKILL.md    → $target_dir/SKILL.md"
+    echo "  scripts/    → $target_dir/scripts (符号链接)"
+    echo "  references/ → $target_dir/references (符号链接)"
     echo ""
     if [ "$INSTALL_SCOPE" = "global" ]; then
         echo "全局安装：所有 DeepCode 项目都会自动加载此 Skill。"
@@ -354,18 +358,21 @@ install_workbuddy() {
     if $DRY_RUN; then
         echo "  将创建: $target_dir/"
         echo "  将复制: $adapter_path → $target_dir/SKILL.md"
-        echo "  将复制: $SCRIPT_DIR/core → $target_dir/core"
+        echo "  将复制: $SCRIPT_DIR/scripts → $target_dir/scripts"
+        echo "  将复制: $SCRIPT_DIR/references → $target_dir/references"
         return
     fi
 
     mkdir -p "$target_dir"
     cp "$adapter_path" "$target_dir/SKILL.md"
-    cp -r "$SCRIPT_DIR/core" "$target_dir/core"
+    cp -r "$SCRIPT_DIR/scripts" "$target_dir/scripts"
+    cp -r "$SCRIPT_DIR/references" "$target_dir/references"
 
     info "已安装到 $target_dir"
     echo ""
-    echo "  SKILL.md → $target_dir/SKILL.md"
-    echo "  core/    → $target_dir/core"
+    echo "  SKILL.md    → $target_dir/SKILL.md"
+    echo "  scripts/    → $target_dir/scripts"
+    echo "  references/ → $target_dir/references"
     echo ""
     echo "注意: 首次使用前需配置 Playwright MCP (见 SKILL.md)"
     echo "重启 WorkBuddy 会话后生效。"
@@ -392,4 +399,4 @@ echo "  - 手动触发:   @wokwi, #wokwi 等标记"
 echo "  - 文件检测:   项目中包含 .ino / wokwi.toml / diagram.json"
 echo ""
 echo "编译项目:"
-echo "  ./core/scripts/compile.sh <项目目录>"
+echo "  ./scripts/compile.sh <项目目录>"
