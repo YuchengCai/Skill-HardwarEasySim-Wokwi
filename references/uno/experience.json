@@ -57,6 +57,18 @@
       ],
       "notes": "引脚名：VCC/SDA/NC/GND。DATA 引脚接任意数字口即可（这里用 pin2）。读取间隔至少 2 秒。",
       "verified": true
+    },
+    {
+      "type": "wokwi-esp32-devkit-v1",
+      "zh": "ESP32 接线（重要教训）",
+      "connection": ["数字引脚带 D 前缀！D2/D15/D13...；GND 用 GND.2 或 GND.1"],
+      "wiring": [
+        ["esp:D2", "r1:1", "green", []],
+        ["led1:C", "esp:GND.2", "black", []],
+        ["esp:D15", "btn1:1.l", "yellow", []]
+      ],
+      "notes": "⚠️ ESP32 数字引脚必须带 D 前缀：esp:D2 不是 esp:2，esp:D15 不是 esp:15！写 esp:2 会导致连线不连接（无回路）。GND 用 GND.2（也有 GND.1）。电源引脚 VIN/3V3。编译产物是 .bin（wokwi.toml 要指向 .bin 而非 .hex）。",
+      "verified": true
     }
   ],
   "layout_tips": [

@@ -310,7 +310,12 @@ compile_project() {
     WOKWI_TOML="$PROJECT_DIR/wokwi.toml"
     if [ -f "$WOKWI_TOML" ]; then
         if grep -q "^firmware" "$WOKWI_TOML"; then
-            sed -i "s|^firmware.*|firmware = 'build/${PROJECT_NAME}.ino.hex'|" "$WOKWI_TOML"
+            # ESP32 产物是 .bin，其他是 .hex
+            local FW_EXT="hex"
+            case "$FQBN" in
+                esp32:*) FW_EXT="bin" ;;
+            esac
+            sed -i "s|^firmware.*|firmware = 'build/${PROJECT_NAME}.ino.${FW_EXT}'|" "$WOKWI_TOML"
         fi
     fi
 

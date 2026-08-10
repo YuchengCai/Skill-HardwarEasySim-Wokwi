@@ -3,7 +3,7 @@ name: wokwi-arduino
 description: Create, compile, simulate, and upload Arduino projects with Wokwi (VS Code extension, wokwi.com browser automation, or web editor). Use when the user mentions Arduino, Wokwi, 单片机, 嵌入式, or when .ino / wokwi.toml / diagram.json files are detected. Explicitly activate with @wokwi, #arduino, or @simulate.
 ---
 
-# Arduino Wokwi Simulation Skill (v0.4.3)
+# Arduino Wokwi Simulation Skill (v0.4.4)
 
 Create, compile, simulate, and upload Arduino projects using Wokwi.
 
@@ -111,7 +111,24 @@ Tell the user: Press F1 → "Wokwi: Start Simulation" (VS Code). No extra depend
 
 ### 4. Verify with User
 
-Ask the user: "Does the simulation show the expected behavior?"
+Before simulation, present a **wiring text description** (generated from `diagram.json`):
+
+```
+📋 Wiring Summary (verify connections):
+① LED anode (A) ← resistor r1 one end
+② resistor r1 other end ← board <PIN> (e.g. ESP32 D2/GPIO2, or pin 13)
+③ LED cathode (C) → board GND
+④ ...(continue for each component)
+```
+
+Rules for the summary:
+- Describe by component function, not just id ("LED anode" not "led1:A")
+- State exact board pin (with D prefix for ESP32, e.g. D2/D15)
+- Group by component; keep it short and human-readable
+- Purpose: user verifies simulation AND uses it to wire physical hardware
+  (compensates until wire-routing aesthetics are optimized)
+
+Then ask: "Does the simulation show the expected behavior?"
 
 - **Yes** → proceed to upload
 - **No** → fix code/diagram, recompile, re-simulate
@@ -188,7 +205,7 @@ done
 
 ## Version Check & Auto Update
 
-Current version: **v0.4.3**
+Current version: **v0.4.4**
 Repository: `https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git`
 
 When activated, check the latest release:
