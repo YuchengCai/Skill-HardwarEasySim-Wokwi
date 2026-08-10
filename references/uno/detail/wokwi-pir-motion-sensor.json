@@ -1,0 +1,11 @@
+{
+  "type": "wokwi-pir-motion-sensor",
+  "file": "pir-motion-sensor-element.ts",
+  "pins": [
+    "VCC",
+    "OUT",
+    "GND"
+  ],
+  "zh": [],
+  "verified": false
+}

@@ -1,0 +1,12 @@
+{
+  "type": "wokwi-stepper-motor",
+  "file": "stepper-motor-element.ts",
+  "pins": [
+    "A-",
+    "A+",
+    "B+",
+    "B-"
+  ],
+  "zh": [],
+  "verified": false
+}

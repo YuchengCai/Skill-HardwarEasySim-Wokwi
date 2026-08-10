@@ -1,0 +1,44 @@
+{
+  "version": "0.1",
+  "notes": "agent 自学习经验库：记录验证过的接线模式、美观布线经验。agent 在生成电路图时参考此文件，成功经验可追加。",
+  "patterns": [
+    {
+      "type": "wokwi-led",
+      "zh": "LED 标准接法",
+      "connection": ["pin13 → 220Ω电阻 → LED阳极(A) → LED阴极(C) → GND"],
+      "wiring": [
+        ["uno:13", "r1:1", "green", ["v-86.4"]],
+        ["r1:2", "led1:A", "red", ["h0"]],
+        ["led1:C", "uno:GND.1", "black", ["v0"]]
+      ],
+      "notes": "电阻串在阳极侧保护 LED；GND 必须写 uno:GND.1（带 .1 线才可见）",
+      "verified": true
+    },
+    {
+      "type": "wokwi-resistor",
+      "zh": "电阻垂直放置",
+      "connection": ["电阻垂直放置用 rotate:270，接线走直线"],
+      "wiring": [],
+      "notes": "垂直电阻 `\"rotate\": 270`，属性用 `\"value\"`（不是 resistance）",
+      "verified": true
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "zh": "按钮接线",
+      "connection": ["按钮 1.l/2.l 是一路（内部连通），1.r/2.r 是另一路"],
+      "wiring": [
+        ["uno:2", "btn1:1.l", "yellow", []],
+        ["btn1:2.l", "uno:GND.1", "black", []]
+      ],
+      "notes": "不用 btn1:1 这种写法；必须用 1.l/1.r/2.l/2.r",
+      "verified": true
+    }
+  ],
+  "layout_tips": [
+    "元件放在目标引脚上方或右侧，减少跨板走线",
+    "waypoints 第 4 参数控制走向：先 h 后 v，避免线跨过板子中央",
+    "电源线（5V/VIN）走 red，GND 走 black，信号走其他色",
+    "GND 引脚必须带后缀 .1（uno:GND.1），否则线不可见",
+    "5V 不带后缀（uno:5V），3.3V 用小数点格式（uno:3.3V）"
+  ]
+}

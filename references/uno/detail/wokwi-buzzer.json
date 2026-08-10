@@ -1,0 +1,10 @@
+{
+  "type": "wokwi-buzzer",
+  "file": "buzzer-element.ts",
+  "pins": [
+    "1",
+    "2"
+  ],
+  "zh": [],
+  "verified": false
+}

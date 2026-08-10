@@ -1,0 +1,16 @@
+{
+  "type": "wokwi-ks2e-m-dc5",
+  "file": "ks2e-m-dc5-element.ts",
+  "pins": [
+    "NO2",
+    "NC2",
+    "P2",
+    "COIL2",
+    "NO1",
+    "NC1",
+    "P1",
+    "COIL1"
+  ],
+  "zh": [],
+  "verified": false
+}

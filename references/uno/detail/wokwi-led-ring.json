@@ -1,0 +1,12 @@
+{
+  "type": "wokwi-led-ring",
+  "file": "led-ring-element.ts",
+  "pins": [
+    "GND",
+    "VCC",
+    "DIN",
+    "DOUT"
+  ],
+  "zh": [],
+  "verified": false
+}

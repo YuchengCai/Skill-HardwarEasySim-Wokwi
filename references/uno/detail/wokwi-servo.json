@@ -1,0 +1,11 @@
+{
+  "type": "wokwi-servo",
+  "file": "servo-element.ts",
+  "pins": [
+    "GND",
+    "V+",
+    "PWM"
+  ],
+  "zh": [],
+  "verified": false
+}

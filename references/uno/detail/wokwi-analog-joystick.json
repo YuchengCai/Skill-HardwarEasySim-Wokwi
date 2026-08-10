@@ -1,0 +1,13 @@
+{
+  "type": "wokwi-analog-joystick",
+  "file": "analog-joystick-element.ts",
+  "pins": [
+    "VCC",
+    "VERT",
+    "HORZ",
+    "SEL",
+    "GND"
+  ],
+  "zh": [],
+  "verified": false
+}

@@ -1,0 +1,13 @@
+{
+  "type": "wokwi-ds1307",
+  "file": "ds1307-element.ts",
+  "pins": [
+    "GND",
+    "5V",
+    "SDA",
+    "SCL",
+    "SQW"
+  ],
+  "zh": [],
+  "verified": false
+}

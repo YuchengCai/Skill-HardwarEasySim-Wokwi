@@ -1,0 +1,11 @@
+{
+  "type": "wokwi-potentiometer",
+  "file": "potentiometer-element.ts",
+  "pins": [
+    "GND",
+    "SIG",
+    "VCC"
+  ],
+  "zh": [],
+  "verified": false
+}

@@ -1,0 +1,12 @@
+{
+  "type": "wokwi-hx711",
+  "file": "hx711-element.ts",
+  "pins": [
+    "VCC",
+    "DT",
+    "SCK",
+    "GND"
+  ],
+  "zh": [],
+  "verified": false
+}

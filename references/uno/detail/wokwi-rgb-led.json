@@ -1,0 +1,12 @@
+{
+  "type": "wokwi-rgb-led",
+  "file": "rgb-led-element.ts",
+  "pins": [
+    "R",
+    "COM",
+    "G",
+    "B"
+  ],
+  "zh": [],
+  "verified": false
+}

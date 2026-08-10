@@ -1,0 +1,11 @@
+{
+  "type": "wokwi-ntc-temperature-sensor",
+  "file": "ntc-temperature-sensor-element.ts",
+  "pins": [
+    "GND",
+    "VCC",
+    "OUT"
+  ],
+  "zh": [],
+  "verified": false
+}

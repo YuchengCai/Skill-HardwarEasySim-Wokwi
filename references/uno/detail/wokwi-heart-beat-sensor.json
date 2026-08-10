@@ -1,0 +1,11 @@
+{
+  "type": "wokwi-heart-beat-sensor",
+  "file": "heart-beat-sensor-element.ts",
+  "pins": [
+    "GND",
+    "VCC",
+    "OUT"
+  ],
+  "zh": [],
+  "verified": false
+}

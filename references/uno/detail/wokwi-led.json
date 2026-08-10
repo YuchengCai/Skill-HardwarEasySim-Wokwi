@@ -1,0 +1,10 @@
+{
+  "type": "wokwi-led",
+  "file": "led-element.ts",
+  "pins": [
+    "A",
+    "C"
+  ],
+  "zh": [],
+  "verified": false
+}

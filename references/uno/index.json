@@ -1,0 +1,1044 @@
+[
+  {
+    "type": "wokwi-7segment",
+    "file": "7segment-element.ts",
+    "pins": [
+      "A",
+      "B",
+      "C",
+      "D",
+      "E",
+      "F",
+      "G",
+      "DP",
+      "DIG1",
+      "DIG2",
+      "DIG3",
+      "DIG4",
+      "COM",
+      "CLN",
+      "COM.1",
+      "COM.2"
+    ],
+    "zh": [
+      "数码管",
+      "7段数码管",
+      "七段数码管"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-analog-joystick",
+    "file": "analog-joystick-element.ts",
+    "pins": [
+      "VCC",
+      "VERT",
+      "HORZ",
+      "SEL",
+      "GND"
+    ],
+    "zh": [
+      "摇杆",
+      "模拟摇杆",
+      "游戏摇杆"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-arduino-mega",
+    "file": "arduino-mega-element.ts",
+    "pins": [
+      "SCL",
+      "SDA",
+      "AREF",
+      "GND.1",
+      "13",
+      "12",
+      "11",
+      "10",
+      "9",
+      "8",
+      "7",
+      "6",
+      "5",
+      "4",
+      "3",
+      "2",
+      "1",
+      "0",
+      "14",
+      "15",
+      "16",
+      "17",
+      "18",
+      "19",
+      "20",
+      "21",
+      "5V.1",
+      "5V.2",
+      "22",
+      "23",
+      "24",
+      "25",
+      "26",
+      "27",
+      "28",
+      "29",
+      "30",
+      "31",
+      "32",
+      "33",
+      "34",
+      "35",
+      "36",
+      "37",
+      "38",
+      "39",
+      "40",
+      "41",
+      "42",
+      "43",
+      "44",
+      "45",
+      "46",
+      "47",
+      "48",
+      "49",
+      "50",
+      "51",
+      "52",
+      "53",
+      "GND.4",
+      "GND.5",
+      "IOREF",
+      "RESET",
+      "3.3V",
+      "5V",
+      "GND.2",
+      "GND.3",
+      "VIN",
+      "A0",
+      "A1",
+      "A2",
+      "A3",
+      "A4",
+      "A5",
+      "A6",
+      "A7",
+      "A8",
+      "A9",
+      "A10",
+      "A11",
+      "A12",
+      "A13",
+      "A14",
+      "A15"
+    ],
+    "zh": [
+      "Arduino Mega",
+      "Mega2560",
+      "大板"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-arduino-nano",
+    "file": "arduino-nano-element.ts",
+    "pins": [
+      "12",
+      "11",
+      "10",
+      "9",
+      "8",
+      "7",
+      "6",
+      "5",
+      "4",
+      "3",
+      "2",
+      "GND.2",
+      "RESET.2",
+      "0",
+      "1",
+      "13",
+      "3.3V",
+      "AREF",
+      "A0",
+      "A1",
+      "A2",
+      "A3",
+      "A4",
+      "A5",
+      "A6",
+      "A7",
+      "5V",
+      "RESET",
+      "GND.1",
+      "VIN",
+      "12.2",
+      "5V.2",
+      "13.2",
+      "11.2",
+      "RESET.3",
+      "GND.3"
+    ],
+    "zh": [
+      "Arduino Nano",
+      "小板"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-arduino-uno",
+    "file": "arduino-uno-element.ts",
+    "pins": [
+      "A5.2",
+      "A4.2",
+      "AREF",
+      "GND.1",
+      "13",
+      "12",
+      "11",
+      "10",
+      "9",
+      "8",
+      "7",
+      "6",
+      "5",
+      "4",
+      "3",
+      "2",
+      "1",
+      "0",
+      "IOREF",
+      "RESET",
+      "3.3V",
+      "5V",
+      "GND.2",
+      "GND.3",
+      "VIN",
+      "A0",
+      "A1",
+      "A2",
+      "A3",
+      "A4",
+      "A5"
+    ],
+    "zh": [
+      "Arduino Uno",
+      "UNO板",
+      "开发板"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-biaxial-stepper",
+    "file": "biaxial-stepper-element.ts",
+    "pins": [
+      "A1-",
+      "A1+",
+      "B1+",
+      "B1-",
+      "A2-",
+      "A2+",
+      "B2+",
+      "B2-"
+    ],
+    "zh": [
+      "双轴步进电机",
+      "步进电机"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-big-sound-sensor",
+    "file": "big-sound-sensor-element.ts",
+    "pins": [
+      "AOUT",
+      "GND",
+      "VCC",
+      "DOUT"
+    ],
+    "zh": [
+      "声音传感器",
+      "声音检测模块"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-buzzer",
+    "file": "buzzer-element.ts",
+    "pins": [
+      "1",
+      "2"
+    ],
+    "zh": [
+      "蜂鸣器",
+      "有源蜂鸣器",
+      "无源蜂鸣器"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-dht22",
+    "file": "dht22-element.ts",
+    "pins": [
+      "VCC",
+      "SDA",
+      "NC",
+      "GND"
+    ],
+    "zh": [
+      "温湿度传感器",
+      "DHT11",
+      "DHT22",
+      "温湿度模块"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-dip-switch-8",
+    "file": "dip-switch-8-element.ts",
+    "pins": [
+      "1a",
+      "2a",
+      "3a",
+      "4a",
+      "5a",
+      "6a",
+      "7a",
+      "8a",
+      "8b",
+      "7b",
+      "6b",
+      "5b",
+      "4b",
+      "3b",
+      "2b",
+      "1b"
+    ],
+    "zh": [
+      "拨码开关",
+      "8位拨码开关",
+      "DIP开关"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-ds1307",
+    "file": "ds1307-element.ts",
+    "pins": [
+      "GND",
+      "5V",
+      "SDA",
+      "SCL",
+      "SQW"
+    ],
+    "zh": [
+      "实时时钟",
+      "RTC时钟模块",
+      "DS1307"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-esp32-devkit-v1",
+    "file": "esp32-devkit-v1-element.ts",
+    "pins": [
+      "VIN",
+      "GND.2",
+      "D13",
+      "D12",
+      "D14",
+      "D27",
+      "D26",
+      "D25",
+      "D33",
+      "D32",
+      "D35",
+      "D34",
+      "VN",
+      "VP",
+      "EN",
+      "3V3",
+      "GND.1",
+      "D15",
+      "D2",
+      "D4",
+      "RX2",
+      "TX2",
+      "D5",
+      "D18",
+      "D19",
+      "D21",
+      "RX0",
+      "TX0",
+      "D22",
+      "D23"
+    ],
+    "zh": [
+      "ESP32开发板",
+      "ESP32 DevKit"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-flame-sensor",
+    "file": "flame-sensor-element.ts",
+    "pins": [
+      "VCC",
+      "GND",
+      "DOUT",
+      "AOUT"
+    ],
+    "zh": [
+      "火焰传感器",
+      "火焰检测模块"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-franzininho",
+    "file": "franzininho-element.ts",
+    "pins": [
+      "GND.1",
+      "VCC.1",
+      "PB4",
+      "PB5",
+      "PB3",
+      "PB2",
+      "PB1",
+      "PB0",
+      "VIN",
+      "GND.2",
+      "VCC.2"
+    ],
+    "zh": [
+      "Franzininho开发板"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-gas-sensor",
+    "file": "gas-sensor-element.ts",
+    "pins": [
+      "AOUT",
+      "DOUT",
+      "GND",
+      "VCC"
+    ],
+    "zh": [
+      "气体传感器",
+      "烟雾传感器",
+      "MQ系列传感器"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-hc-sr04",
+    "file": "hc-sr04-element.ts",
+    "pins": [
+      "VCC",
+      "TRIG",
+      "ECHO",
+      "GND"
+    ],
+    "zh": [
+      "超声波测距模块",
+      "超声波模块",
+      "超声波传感器"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-heart-beat-sensor",
+    "file": "heart-beat-sensor-element.ts",
+    "pins": [
+      "GND",
+      "VCC",
+      "OUT"
+    ],
+    "zh": [
+      "心率传感器",
+      "心跳传感器"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-hx711",
+    "file": "hx711-element.ts",
+    "pins": [
+      "VCC",
+      "DT",
+      "SCK",
+      "GND"
+    ],
+    "zh": [
+      "称重传感器",
+      "压力传感器",
+      "HX711模块"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-ili9341",
+    "file": "ili9341-element.ts",
+    "pins": [
+      "VCC",
+      "GND",
+      "CS",
+      "RST",
+      "D/C",
+      "MOSI",
+      "SCK",
+      "LED",
+      "MISO"
+    ],
+    "zh": [
+      "彩色TFT屏",
+      "ILI9341屏幕",
+      "液晶显示屏"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-ir-receiver",
+    "file": "ir-receiver-element.ts",
+    "pins": [
+      "GND",
+      "VCC",
+      "DAT"
+    ],
+    "zh": [
+      "红外接收头",
+      "红外接收模块"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-ir-remote",
+    "file": "ir-remote-element.ts",
+    "pins": [],
+    "zh": [
+      "红外遥控器",
+      "遥控器"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-ks2e-m-dc5",
+    "file": "ks2e-m-dc5-element.ts",
+    "pins": [
+      "NO2",
+      "NC2",
+      "P2",
+      "COIL2",
+      "NO1",
+      "NC1",
+      "P1",
+      "COIL1"
+    ],
+    "zh": [
+      "继电器",
+      "5V继电器",
+      "继电器模块"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-ky-040",
+    "file": "ky-040-element.ts",
+    "pins": [
+      "CLK",
+      "DT",
+      "SW",
+      "VCC",
+      "GND"
+    ],
+    "zh": [
+      "旋转编码器",
+      "旋钮编码器",
+      "编码器"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-lcd1602",
+    "file": "lcd1602-element.ts",
+    "pins": [
+      "GND",
+      "VCC",
+      "SDA",
+      "SCL",
+      "VSS",
+      "VDD",
+      "V0",
+      "RS",
+      "RW",
+      "E",
+      "D0",
+      "D1",
+      "D2",
+      "D3",
+      "D4",
+      "D5",
+      "D6",
+      "D7",
+      "A",
+      "K"
+    ],
+    "zh": [
+      "LCD1602",
+      "1602液晶屏",
+      "字符液晶屏"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-lcd2004",
+    "file": "lcd2004-element.ts",
+    "pins": [],
+    "zh": [
+      "LCD2004",
+      "2004液晶屏"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-led-bar-graph",
+    "file": "led-bar-graph-element.ts",
+    "pins": [
+      "A1",
+      "A2",
+      "A3",
+      "A4",
+      "A5",
+      "A6",
+      "A7",
+      "A8",
+      "A9",
+      "A10",
+      "C1",
+      "C2",
+      "C3",
+      "C4",
+      "C5",
+      "C6",
+      "C7",
+      "C8",
+      "C9",
+      "C10"
+    ],
+    "zh": [
+      "LED条形灯",
+      "LED光条",
+      "LED柱"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-led",
+    "file": "led-element.ts",
+    "pins": [
+      "A",
+      "C"
+    ],
+    "zh": [
+      "LED",
+      "发光二极管",
+      "指示灯"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-led-ring",
+    "file": "led-ring-element.ts",
+    "pins": [
+      "GND",
+      "VCC",
+      "DIN",
+      "DOUT"
+    ],
+    "zh": [
+      "LED环",
+      "LED灯环",
+      "环形LED"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-membrane-keypad",
+    "file": "membrane-keypad-element.ts",
+    "pins": [
+      "R1",
+      "R2",
+      "R3",
+      "R4",
+      "C1",
+      "C2",
+      "C3",
+      "C4"
+    ],
+    "zh": [
+      "矩阵键盘",
+      "薄膜键盘",
+      "4x4键盘"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-microsd-card",
+    "file": "microsd-card-element.ts",
+    "pins": [
+      "CD",
+      "DO",
+      "GND",
+      "SCK",
+      "VCC",
+      "DI",
+      "CS"
+    ],
+    "zh": [
+      "存储卡模块",
+      "MicroSD卡模块",
+      "SD卡模块"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-mpu6050",
+    "file": "mpu6050-element.ts",
+    "pins": [
+      "INT",
+      "AD0",
+      "XCL",
+      "XDA",
+      "SDA",
+      "SCL",
+      "GND",
+      "VCC"
+    ],
+    "zh": [
+      "陀螺仪加速度计",
+      "MPU6050",
+      "姿态传感器"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-nano-rp2040-connect",
+    "file": "nano-rp2040-connect-element.ts",
+    "pins": [
+      "D12",
+      "D11",
+      "D10",
+      "D9",
+      "D8",
+      "D7",
+      "D6",
+      "D5",
+      "D4",
+      "D3",
+      "D2",
+      "GND.1",
+      "RESET",
+      "RX",
+      "TX",
+      "D13",
+      "3.3V",
+      "AREF",
+      "A0",
+      "A1",
+      "A2",
+      "A3",
+      "A4",
+      "A5",
+      "A6",
+      "A7",
+      "5V",
+      "RESET.2",
+      "GND.2",
+      "VIN"
+    ],
+    "zh": [
+      "Raspberry Pi Pico",
+      "RP2040",
+      "树莓派Pico"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-neopixel",
+    "file": "neopixel-element.ts",
+    "pins": [
+      "VDD",
+      "DOUT",
+      "VSS",
+      "DIN"
+    ],
+    "zh": [
+      "可编程LED",
+      "WS2812",
+      "灯带"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-neopixel-matrix",
+    "file": "neopixel-matrix-element.ts",
+    "pins": [
+      "GND",
+      "VCC",
+      "DIN",
+      "DOUT"
+    ],
+    "zh": [
+      "LED点阵屏",
+      "可编程点阵",
+      "WS2812矩阵"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-ntc-temperature-sensor",
+    "file": "ntc-temperature-sensor-element.ts",
+    "pins": [
+      "GND",
+      "VCC",
+      "OUT"
+    ],
+    "zh": [
+      "热敏电阻",
+      "温度传感器",
+      "NTC"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-photoresistor-sensor",
+    "file": "photoresistor-sensor-element.ts",
+    "pins": [
+      "VCC",
+      "GND",
+      "DO",
+      "AO"
+    ],
+    "zh": [
+      "光敏电阻",
+      "光线传感器",
+      "光照传感器"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-pir-motion-sensor",
+    "file": "pir-motion-sensor-element.ts",
+    "pins": [
+      "VCC",
+      "OUT",
+      "GND"
+    ],
+    "zh": [
+      "人体红外传感器",
+      "PIR",
+      "人体感应模块"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-potentiometer",
+    "file": "potentiometer-element.ts",
+    "pins": [
+      "GND",
+      "SIG",
+      "VCC"
+    ],
+    "zh": [
+      "电位器",
+      "可调电阻",
+      "旋钮"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-pushbutton-6mm",
+    "file": "pushbutton-6mm-element.ts",
+    "pins": [
+      "1.l",
+      "2.l",
+      "1.r",
+      "2.r"
+    ],
+    "zh": [
+      "按钮",
+      "轻触开关",
+      "6mm按钮"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-pushbutton",
+    "file": "pushbutton-element.ts",
+    "pins": [
+      "1.l",
+      "2.l",
+      "1.r",
+      "2.r"
+    ],
+    "zh": [
+      "按钮",
+      "按键",
+      "轻触开关"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-resistor",
+    "file": "resistor-element.ts",
+    "pins": [
+      "1",
+      "2"
+    ],
+    "zh": [
+      "电阻"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-rgb-led",
+    "file": "rgb-led-element.ts",
+    "pins": [
+      "R",
+      "COM",
+      "G",
+      "B"
+    ],
+    "zh": [
+      "RGB LED",
+      "三色LED",
+      "全彩LED"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-rotary-dialer",
+    "file": "rotary-dialer-element.ts",
+    "pins": [
+      "GND",
+      "DIAL",
+      "PULSE"
+    ],
+    "zh": [
+      "旋转拨盘",
+      "拨号盘"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-servo",
+    "file": "servo-element.ts",
+    "pins": [
+      "GND",
+      "V+",
+      "PWM"
+    ],
+    "zh": [
+      "舵机",
+      "伺服电机"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-slide-potentiometer",
+    "file": "slide-potentiometer-element.ts",
+    "pins": [
+      "VCC",
+      "SIG",
+      "GND"
+    ],
+    "zh": [
+      "滑动变阻器",
+      "滑杆电位器",
+      "滑杆"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-slide-switch",
+    "file": "slide-switch-element.ts",
+    "pins": [
+      "1",
+      "2",
+      "3"
+    ],
+    "zh": [
+      "拨动开关",
+      "滑动开关"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-small-sound-sensor",
+    "file": "small-sound-sensor-element.ts",
+    "pins": [
+      "AOUT",
+      "GND",
+      "VCC",
+      "DOUT"
+    ],
+    "zh": [
+      "声音传感器",
+      "麦克风模块",
+      "声音检测"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-ssd1306",
+    "file": "ssd1306-element.ts",
+    "pins": [
+      "DATA",
+      "CLK",
+      "DC",
+      "RST",
+      "CS",
+      "3V3",
+      "VIN",
+      "GND"
+    ],
+    "zh": [
+      "OLED显示屏",
+      "SSD1306",
+      "OLED屏幕"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-stepper-motor",
+    "file": "stepper-motor-element.ts",
+    "pins": [
+      "A-",
+      "A+",
+      "B+",
+      "B-"
+    ],
+    "zh": [
+      "步进电机"
+    ],
+    "verified": false
+  },
+  {
+    "type": "wokwi-tilt-switch",
+    "file": "tilt-switch-element.ts",
+    "pins": [
+      "GND",
+      "VCC",
+      "OUT"
+    ],
+    "zh": [
+      "倾斜开关",
+      "倾斜传感器"
+    ],
+    "verified": false
+  }
+]

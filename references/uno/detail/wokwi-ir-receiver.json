@@ -1,0 +1,11 @@
+{
+  "type": "wokwi-ir-receiver",
+  "file": "ir-receiver-element.ts",
+  "pins": [
+    "GND",
+    "VCC",
+    "DAT"
+  ],
+  "zh": [],
+  "verified": false
+}

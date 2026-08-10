@@ -1,0 +1,11 @@
+{
+  "type": "wokwi-slide-potentiometer",
+  "file": "slide-potentiometer-element.ts",
+  "pins": [
+    "VCC",
+    "SIG",
+    "GND"
+  ],
+  "zh": [],
+  "verified": false
+}

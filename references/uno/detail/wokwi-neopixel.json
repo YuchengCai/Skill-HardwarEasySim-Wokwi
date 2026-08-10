@@ -1,0 +1,12 @@
+{
+  "type": "wokwi-neopixel",
+  "file": "neopixel-element.ts",
+  "pins": [
+    "VDD",
+    "DOUT",
+    "VSS",
+    "DIN"
+  ],
+  "zh": [],
+  "verified": false
+}

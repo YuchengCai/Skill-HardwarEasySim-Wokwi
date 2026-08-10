@@ -1,0 +1,12 @@
+{
+  "type": "wokwi-hc-sr04",
+  "file": "hc-sr04-element.ts",
+  "pins": [
+    "VCC",
+    "TRIG",
+    "ECHO",
+    "GND"
+  ],
+  "zh": [],
+  "verified": false
+}

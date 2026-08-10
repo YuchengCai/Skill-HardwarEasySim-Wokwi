@@ -1,0 +1,10 @@
+{
+  "type": "wokwi-resistor",
+  "file": "resistor-element.ts",
+  "pins": [
+    "1",
+    "2"
+  ],
+  "zh": [],
+  "verified": false
+}

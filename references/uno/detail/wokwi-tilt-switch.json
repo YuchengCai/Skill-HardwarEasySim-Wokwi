@@ -1,0 +1,11 @@
+{
+  "type": "wokwi-tilt-switch",
+  "file": "tilt-switch-element.ts",
+  "pins": [
+    "GND",
+    "VCC",
+    "OUT"
+  ],
+  "zh": [],
+  "verified": false
+}

@@ -109,7 +109,34 @@ arduino-cli compile --fqbn arduino:avr:uno --output-dir build/ sketch.ino
 
 ## 常用元件参考
 
-更多 Wokwi 元件: https://docs.wokwi.com/parts/
+### 查询顺序（快到准）
+
+1. **`references/uno/index.json`** — 全量目录（50 元件），含中文名（`zh`）和引脚。用中文描述匹配 → `type` → 引脚。
+2. **`references/uno/components.md`** — 高频元件验证手册（引脚表、属性、接线示例）。
+3. **`references/uno/experience.json`** — 累积的接线模式与布线技巧（agent 自学习）。生成 diagram.json 时参考。
+4. **`references/uno/detail/<type>.json`** — 每个元件的详细条目（自动生成骨架）。
+
+### 中文名匹配规则
+
+- 用 `index.json` 的 `zh` 字段匹配用户描述（如"温湿度传感器" → `wokwi-dht22`）。
+- **有歧义时（多个候选）**：列出候选询问用户，如"您说的显示屏，是 LCD1602 还是 OLED？"——禁止静默猜测。
+- 用户直接说型号（DHT11/LCD1602/WS2812）→ 直接匹配。
+- 索引表没有 → 询问用户具体型号，或用下方源码兜底。
+
+### 源码兜底（极少用）
+
+元件缺失或引脚不全时，从权威开源库获取：
+```bash
+curl -sL https://raw.githubusercontent.com/wokwi/wokwi-elements/main/src/<file>.ts
+```
+从源码提取 `pinInfo`。验证后记录到 `experience.json` 供以后参考。
+
+### 布线质量
+
+生成 diagram.json 时参考 `experience.json` 的 `layout_tips` 和已有 `patterns`：
+- 线缆避开板子和元件（用 waypoints `["h<偏移>","v<偏移>"]`）
+- 元件放在目标引脚附近（上方或右侧）
+- 颜色规范：红色=电源，黑色=GND，其他=信号
 
 ## 扩展板型
 

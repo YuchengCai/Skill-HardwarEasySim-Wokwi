@@ -1,0 +1,13 @@
+{
+  "type": "wokwi-ky-040",
+  "file": "ky-040-element.ts",
+  "pins": [
+    "CLK",
+    "DT",
+    "SW",
+    "VCC",
+    "GND"
+  ],
+  "zh": [],
+  "verified": false
+}

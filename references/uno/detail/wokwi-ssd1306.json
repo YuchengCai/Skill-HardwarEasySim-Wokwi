@@ -1,0 +1,16 @@
+{
+  "type": "wokwi-ssd1306",
+  "file": "ssd1306-element.ts",
+  "pins": [
+    "DATA",
+    "CLK",
+    "DC",
+    "RST",
+    "CS",
+    "3V3",
+    "VIN",
+    "GND"
+  ],
+  "zh": [],
+  "verified": false
+}

@@ -1,0 +1,12 @@
+{
+  "type": "wokwi-neopixel-matrix",
+  "file": "neopixel-matrix-element.ts",
+  "pins": [
+    "GND",
+    "VCC",
+    "DIN",
+    "DOUT"
+  ],
+  "zh": [],
+  "verified": false
+}

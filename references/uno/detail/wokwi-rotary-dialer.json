@@ -1,0 +1,11 @@
+{
+  "type": "wokwi-rotary-dialer",
+  "file": "rotary-dialer-element.ts",
+  "pins": [
+    "GND",
+    "DIAL",
+    "PULSE"
+  ],
+  "zh": [],
+  "verified": false
+}

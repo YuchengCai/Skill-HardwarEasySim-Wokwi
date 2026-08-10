@@ -1,0 +1,17 @@
+{
+  "type": "wokwi-ili9341",
+  "file": "ili9341-element.ts",
+  "pins": [
+    "VCC",
+    "GND",
+    "CS",
+    "RST",
+    "D/C",
+    "MOSI",
+    "SCK",
+    "LED",
+    "MISO"
+  ],
+  "zh": [],
+  "verified": false
+}

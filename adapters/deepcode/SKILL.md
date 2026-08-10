@@ -3,7 +3,7 @@ name: wokwi-arduino
 description: Create, compile, simulate, and upload Arduino projects with Wokwi (VS Code extension, wokwi.com browser automation, or web editor). Use when the user mentions Arduino, Wokwi, 单片机, 嵌入式, or when .ino / wokwi.toml / diagram.json files are detected. Explicitly activate with @wokwi, #arduino, or @simulate.
 ---
 
-# Arduino Wokwi Simulation Skill (v0.3.6)
+# Arduino Wokwi Simulation Skill (v0.4.0)
 
 Create, compile, simulate, and upload Arduino projects using Wokwi.
 
@@ -133,7 +133,7 @@ If any of these files are missing (e.g. skill was installed from a marketplace t
 ```bash
 # Check and restore missing files
 BASE="https://raw.githubusercontent.com/YuchengCai/Skill-HardwarEasySim-Wokwi/main"
-for F in scripts/compile.sh scripts/wokwi-automate.js references/monaco-steps.md references/uno/components.md; do
+for F in scripts/compile.sh scripts/wokwi-automate.js references/monaco-steps.md references/uno/components.md references/uno/index.json references/uno/experience.json; do
   if [ ! -f "$F" ]; then
     echo "缺失 $F，正在从 GitHub 恢复..."
     mkdir -p "$(dirname "$F")"
@@ -148,7 +148,7 @@ done
 
 ## Version Check & Auto Update
 
-Current version: **v0.3.6**
+Current version: **v0.4.0**
 Repository: `https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git`
 
 When activated, check the latest release:
@@ -162,9 +162,34 @@ If newer, ask user to update → `git clone + install.sh` (auto).
 
 ## Component Reference
 
-Read **`references/uno/components.md`** for verified pin names, attributes, and connection examples.
+### Lookup order (fast → accurate)
 
-For components not in the reference, open wokwi.com in a browser, use the visual editor to place the component, copy the generated `diagram.json`, and add the entry to `components.md`.
+1. **`references/uno/index.json`** — full catalog (50 components) with Chinese names (`zh`) and pins. Match user's Chinese description → `type` → pins.
+2. **`references/uno/components.md`** — verified detailed manual for high-frequency components (pin tables, attributes, wiring examples).
+3. **`references/uno/experience.json`** — accumulated wiring patterns & layout tips (agent-learned). Reference it when generating `diagram.json`.
+4. **`references/uno/detail/<type>.json`** — per-component detail (auto-generated skeleton).
+
+### Chinese name matching rules
+
+- Match user's description against the `zh` field in `index.json` (e.g. "温湿度传感器" → `wokwi-dht22`).
+- **If ambiguous (multiple candidates)**: list candidates and ask the user, e.g. "您说的显示屏，是 LCD1602 还是 OLED？" Do NOT guess silently.
+- If the user names a specific model (DHT11/LCD1602/WS2812), match directly.
+- If not found in `index.json`: ask the user for the exact model, or use the source fallback below.
+
+### Source fallback (rare)
+
+If a component is missing or pins are incomplete, fetch from the authoritative open-source library:
+```bash
+curl -sL https://raw.githubusercontent.com/wokwi/wokwi-elements/main/src/<file>.ts
+```
+Extract `pinInfo` from the source. After verification, note it for future reference (add to `experience.json`).
+
+### Layout & wiring quality
+
+When generating `diagram.json`, consult `experience.json` `layout_tips` and existing `patterns`:
+- Keep wires off the board and components (use waypoints `["h<offset>","v<offset>"]`)
+- Place components near their target pins (above or to the right)
+- Standard color coding: red = power, black = GND, others = signals
 
 ## Environment Dependencies
 

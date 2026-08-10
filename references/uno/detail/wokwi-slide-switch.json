@@ -1,0 +1,11 @@
+{
+  "type": "wokwi-slide-switch",
+  "file": "slide-switch-element.ts",
+  "pins": [
+    "1",
+    "2",
+    "3"
+  ],
+  "zh": [],
+  "verified": false
+}

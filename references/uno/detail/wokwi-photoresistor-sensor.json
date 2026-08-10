@@ -1,0 +1,12 @@
+{
+  "type": "wokwi-photoresistor-sensor",
+  "file": "photoresistor-sensor-element.ts",
+  "pins": [
+    "VCC",
+    "GND",
+    "DO",
+    "AO"
+  ],
+  "zh": [],
+  "verified": false
+}

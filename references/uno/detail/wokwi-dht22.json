@@ -1,0 +1,12 @@
+{
+  "type": "wokwi-dht22",
+  "file": "dht22-element.ts",
+  "pins": [
+    "VCC",
+    "SDA",
+    "NC",
+    "GND"
+  ],
+  "zh": [],
+  "verified": false
+}

@@ -1,0 +1,12 @@
+{
+  "type": "wokwi-flame-sensor",
+  "file": "flame-sensor-element.ts",
+  "pins": [
+    "VCC",
+    "GND",
+    "DOUT",
+    "AOUT"
+  ],
+  "zh": [],
+  "verified": false
+}

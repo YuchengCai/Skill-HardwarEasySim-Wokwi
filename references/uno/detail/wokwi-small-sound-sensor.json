@@ -1,0 +1,12 @@
+{
+  "type": "wokwi-small-sound-sensor",
+  "file": "small-sound-sensor-element.ts",
+  "pins": [
+    "AOUT",
+    "GND",
+    "VCC",
+    "DOUT"
+  ],
+  "zh": [],
+  "verified": false
+}

@@ -1,0 +1,16 @@
+{
+  "type": "wokwi-mpu6050",
+  "file": "mpu6050-element.ts",
+  "pins": [
+    "INT",
+    "AD0",
+    "XCL",
+    "XDA",
+    "SDA",
+    "SCL",
+    "GND",
+    "VCC"
+  ],
+  "zh": [],
+  "verified": false
+}

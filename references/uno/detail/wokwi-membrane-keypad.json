@@ -1,0 +1,16 @@
+{
+  "type": "wokwi-membrane-keypad",
+  "file": "membrane-keypad-element.ts",
+  "pins": [
+    "R1",
+    "R2",
+    "R3",
+    "R4",
+    "C1",
+    "C2",
+    "C3",
+    "C4"
+  ],
+  "zh": [],
+  "verified": false
+}

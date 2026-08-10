@@ -1,0 +1,12 @@
+{
+  "type": "wokwi-gas-sensor",
+  "file": "gas-sensor-element.ts",
+  "pins": [
+    "AOUT",
+    "DOUT",
+    "GND",
+    "VCC"
+  ],
+  "zh": [],
+  "verified": false
+}

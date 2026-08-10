@@ -1,0 +1,12 @@
+{
+  "type": "wokwi-pushbutton",
+  "file": "pushbutton-element.ts",
+  "pins": [
+    "1.l",
+    "2.l",
+    "1.r",
+    "2.r"
+  ],
+  "zh": [],
+  "verified": false
+}

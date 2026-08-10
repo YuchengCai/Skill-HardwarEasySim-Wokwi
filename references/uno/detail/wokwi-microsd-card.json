@@ -1,0 +1,15 @@
+{
+  "type": "wokwi-microsd-card",
+  "file": "microsd-card-element.ts",
+  "pins": [
+    "CD",
+    "DO",
+    "GND",
+    "SCK",
+    "VCC",
+    "DI",
+    "CS"
+  ],
+  "zh": [],
+  "verified": false
+}
