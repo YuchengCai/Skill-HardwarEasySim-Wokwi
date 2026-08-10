@@ -8,14 +8,14 @@
 
 ## 📋 What's New / 本次大版本更新
 
-**v0.4.x — 元件目录 + 多板型适配**
+**v0.4.x — Component Catalog + Multi-Board / 元件目录 + 多板型适配**
 
-- 🧩 **元件目录系统** — 50 种元件（含中文名 + 引脚），从 wokwi-elements 开源库自动提取，离线可用
-- 🔢 **多板型适配** — Uno/Mega/Nano/ESP32，compile.sh 自动推断 FQBN；ESP32 核心通过乐鑫国内镜像自动安装
-- ⚠️ **硬件核对** — 接实物前确认元件型号/版本与模拟一致，提示接口差异（I2C vs SPI）
-- 📋 **接线文字说明** — 模拟确认时生成可读接线摘要，辅助实物接线
-- 🗄️ **数据目录智能选择** — Windows 下 C 盘空间不足时自动迁移到空间最大的盘
-- 🌐 **Mode A 重构** — Playwright MCP 为主路径（适配非 IDE agent），node 脚本降为备用
+- 🧩 **Component Catalog (50 parts)** / 元件目录系统 — 50 components with Chinese names + pins, auto-extracted from wokwi-elements, offline-ready / 50 种元件（含中文名 + 引脚），从 wokwi-elements 开源库自动提取，离线可用
+- 🔢 **Multi-Board (Uno/Mega/Nano/ESP32)** / 多板型适配 — auto-inferred FQBN; ESP32 core installs via official CN mirror / compile.sh 自动推断 FQBN；ESP32 核心通过乐鑫国内镜像自动安装
+- ⚠️ **Hardware Check** / 硬件核对 — confirm component model matches simulation before physical wiring (I2C vs SPI) / 接实物前确认元件型号/版本与模拟一致，提示接口差异
+- 📋 **Wiring Text Summary** / 接线文字说明 — readable wiring description at verification, aids physical wiring / 模拟确认时生成可读接线摘要，辅助实物接线
+- 🗄️ **Auto Data-Dir Selection** / 数据目录智能选择 — Windows: auto-migrate to roomiest drive when C: is low / C 盘空间不足时自动迁移到空间最大的盘
+- 🌐 **Mode A Restructure** / Mode A 重构 — Playwright MCP as primary path (non-IDE agents), node script fallback / Playwright MCP 为主路径（适配非 IDE agent），node 脚本降为备用
 
 ---
 
