@@ -3,7 +3,7 @@ name: wokwi-arduino
 description: Create, compile, simulate, and upload Arduino projects with Wokwi. Use when the user mentions Arduino, Wokwi, 单片机, 嵌入式, or when .ino / wokwi.toml / diagram.json files are detected. Explicitly activate with @wokwi, #arduino, or @simulate.
 ---
 
-# Arduino Wokwi Simulation Skill (v0.4.4) — WorkBuddy Adapter
+# Arduino Wokwi Simulation Skill (v0.4.5) — WorkBuddy Adapter
 
 WorkBuddy 专用的 wokwi-arduino skill 适配器。与 deepcode/claude/cursor 适配器内容一致，仅安装路径不同。
 
@@ -45,7 +45,7 @@ WorkBuddy 专用的 wokwi-arduino skill 适配器。与 deepcode/claude/cursor �
 
 1. **生成** — 写 `.ino` 代码，查 `references/uno/index.json`（中文名匹配）→ components.md → experience.json，生成 `diagram.json` + `wokwi.toml`
 2. **编译** — `./scripts/compile.sh <dir>`（自动装 arduino-cli，MINGW 路径已处理）
-3. **仿真** — 环境检测: 用户有 VS Code + Wokwi 插件 → Mode B（F1 手动，零依赖）。仅用户要求自动浏览器仿真（@simulate）或无插件 → Mode A: `node scripts/wokwi-automate.js <dir>`（浏览器回退链 Chrome→Edge→Chromium）。**HARD RULE: 未经用户明确同意，绝不安装 playwright 或任何 npm 包——缺少时先询问用户**
+3. **仿真** — 环境检测: 用户有 VS Code + Wokwi 插件 → Mode B（F1 手动，零依赖）。仅用户要求自动浏览器仿真（@simulate）或无插件 → Mode A。**Mode A 主路径：Playwright MCP**（按 monaco-steps.md 操作，无需 node）。**备用路径：node scripts/wokwi-automate.js**（仅当能执行命令且无 MCP 时）。**HARD RULE: 未经用户明确同意，绝不安装 playwright 或任何 npm 包**
 4. **确认** — 仿真前先出示**接线文字说明**（从 diagram.json 生成，按元件分组：
    "LED 阳极 → 电阻 → 板子 pin13/D2"，用功能名 + 确切引脚，ESP32 带 D 前缀）。
    然后询问用户"仿真效果是否正确？"
@@ -86,7 +86,7 @@ done
 
 ## 版本检查
 
-当前版本: **v0.4.4**
+当前版本: **v0.4.5**
 仓库: `https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git`
 
 激活时检查最新 release，有新版本询问用户是否更新（git clone + install.sh）。⚠️ 更新时使用 `install.sh --global`（WorkBuddy 本身固定全局）。

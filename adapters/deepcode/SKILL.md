@@ -3,7 +3,7 @@ name: wokwi-arduino
 description: Create, compile, simulate, and upload Arduino projects with Wokwi (VS Code extension, wokwi.com browser automation, or web editor). Use when the user mentions Arduino, Wokwi, 单片机, 嵌入式, or when .ino / wokwi.toml / diagram.json files are detected. Explicitly activate with @wokwi, #arduino, or @simulate.
 ---
 
-# Arduino Wokwi Simulation Skill (v0.4.4)
+# Arduino Wokwi Simulation Skill (v0.4.5)
 
 Create, compile, simulate, and upload Arduino projects using Wokwi.
 
@@ -82,28 +82,22 @@ Auto-installs `arduino-cli` + Uno core if missing. Handles MINGW/Windows path co
 
 Only used when the user asks for auto browser simulation, or when no VS Code Wokwi plugin is available.
 
-```bash
-# Check playwright availability — do NOT install automatically
-node -e "require('playwright')" 2>/dev/null && echo "playwright OK" || echo "playwright 未安装"
+**Two paths (primary → fallback):**
 
-# If playwright is missing, you MUST ask the user first:
-#   "自动浏览器仿真需要 playwright 依赖，是否安装？"
-# Only proceed after user explicitly agrees.
+**Path 1 (PRIMARY): Playwright MCP** — the standard way for non-IDE agents (WorkBuddy, Kimi, Cline, etc.).
+- Works on any agent that supports MCP — no node/npm needed.
+- Follow the step-by-step operations in **`references/monaco-steps.md`**:
+  `browser_navigate` → wait Monaco → `browser_evaluate` (setValue) → switch diagram.json → click Start.
+- If Playwright MCP is not configured, see the adapter's MCP setup section (e.g. WorkBuddy: `~/.workbuddy/mcp.json`).
 
-# Run the automation script
-node scripts/wokwi-automate.js <project-dir>
-```
+**Path 2 (FALLBACK only): `wokwi-automate.js`** — a pre-built node script, **NOT the default**.
+- Only consider when: agent can run commands, MCP is unavailable/unconfigured, AND the user explicitly wants automation.
+- `node scripts/wokwi-automate.js <project-dir>`
+- ⚠️ Requires `playwright` npm package — **NEVER install without explicit user approval** (HARD RULE).
+- The script does the same 5 steps (open → fill .ino → fill diagram.json → start simulation), with browser fallback Chrome → Edge → Chromium.
+- **If the script fails (non-zero exit): DO NOT retry — switch to Path 1 (MCP operations in monaco-steps.md).**
 
-The script automatically:
-1. Opens wokwi.com new Arduino Uno project page (no login needed)
-2. Waits for Monaco editor
-3. Fills the `.ino` code (via Monaco API, NOT browser_type)
-4. Switches to diagram.json tab and fills the circuit
-5. Clicks "Start the simulation"
-
-Browser fallback chain: **system Chrome → system Edge → Playwright Chromium**.
-
-⚠️ **If the script fails (non-zero exit code): DO NOT retry. Fall back to native Monaco operations** — see `references/monaco-steps.md`. Use the script's error message to diagnose.
+> ⚠️ **Fallback nature:** Path 2 exists only for agents that can run commands but lack MCP. Prefer Path 1 whenever MCP is available.
 
 #### Mode B: Manual (VS Code plugin — DEFAULT for VS Code users)
 
@@ -205,7 +199,7 @@ done
 
 ## Version Check & Auto Update
 
-Current version: **v0.4.4**
+Current version: **v0.4.5**
 Repository: `https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git`
 
 When activated, check the latest release:

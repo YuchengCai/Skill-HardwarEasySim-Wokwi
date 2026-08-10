@@ -1,8 +1,8 @@
-# Monaco 原生操作步骤（降级路径）
+# Monaco 浏览器操作步骤（Playwright MCP 主路径）
 
-当 `wokwi-automate.js` 脚本失败时，agent **必须**降级为以下原生操作，禁止重试脚本。
+这是 **Mode A 自动化仿真的主路径**（Playwright MCP 方式）——适用于所有支持 MCP 的 agent（WorkBuddy、Kimi、Cline 等）。
 
-> 设计守则：脚本失败 1 次即降级，用脚本输出的错误信息辅助诊断。
+> 定位：MCP 是首选（无需 node/npm 依赖）；`wokwi-automate.js` 脚本是**备用**（仅当能执行命令且无 MCP 时）。脚本失败也参考本手册用 MCP 操作完成。
 
 ---
 

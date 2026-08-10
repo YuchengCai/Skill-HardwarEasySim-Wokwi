@@ -1,4 +1,4 @@
-// Arduino Wokwi Simulation (v0.4.4)
+// Arduino Wokwi Simulation (v0.4.5)
 // Repo: https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git
 // Triggers: arduino/wokwi/uno/单片机 keywords, .ino/wokwi.toml/diagram.json files, @wokwi @simulate
 
@@ -15,7 +15,7 @@ Uno/Mega/Nano/ESP32 — compile.sh auto-infers FQBN; ESP32 core auto-installs vi
 
 1. Generate .ino + match references/uno/index.json (zh) → components.md → experience.json → diagram.json + wokwi.toml
 2. ./scripts/compile.sh <dir>
-3. Simulate: VS Code + Wokwi 插件 → Mode B (F1 手动)。仅用户要求或没插件 → Mode A: node scripts/wokwi-automate.js <dir>。**HARD RULE: 未经用户明确同意，绝不安装 playwright/npm 包——缺少时先询问**
+3. Simulate: VS Code + Wokwi 插件 → Mode B (F1 手动)。仅用户要求或没插件 → Mode A。**Primary: Playwright MCP** (monaco-steps.md). **Fallback: node scripts/wokwi-automate.js** (commands available, no MCP). **HARD RULE: never install playwright/npm without user approval**
 4. Verify: present wiring text summary (from diagram.json, by component, exact pins, D prefix for ESP32) then confirm with user
 5. arduino-cli board list → **先向用户展示端口/板型/FQBN 并确认**，再 upload。**HARD RULE: 禁止静默上传**。CH340 克隆板 Unknown 属正常，用 --fqbn arduino:avr:uno
 6. --monitor for serial capture
@@ -42,7 +42,7 @@ done
 
 ## Version Check
 
-v0.4.4 | Repo: https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git
+v0.4.5 | Repo: https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git
 
 On activation:
 ```bash
