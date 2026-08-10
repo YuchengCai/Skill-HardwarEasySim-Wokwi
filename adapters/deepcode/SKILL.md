@@ -23,7 +23,32 @@ Component pin names, attributes, and connection patterns are in **`references/un
 project/
 ├── project.ino        # Arduino sketch (C++) — MUST match directory name
 ├── diagram.json       # Circuit diagram
-└── wokwi.toml         # [wokwi] version=1 firmware='build/project.ino.hex'
+├── wokwi.toml         # [wokwi] version=1 firmware='build/project.ino.hex'
+└── libraries.txt      # OPTIONAL: third-party libs, one per line
+```
+
+### wokwi.toml — CORRECT format (verified)
+
+```toml
+[wokwi]
+version = 1
+firmware = 'build/<project>.ino.hex'
+```
+
+⚠️ **Must use `[wokwi]` section** — `[env]` / `[board]` are WRONG and cause "No [wokwi] section found" error.
+
+### libraries.txt — third-party libraries
+
+If the sketch uses third-party libraries (DHT, Adafruit SSD1306, LiquidCrystal, etc.):
+
+1. Create `libraries.txt` in the project root — **one library name per line** (the Arduino Library Manager search name):
+```
+DHT sensor library
+Adafruit SSD1306
+```
+2. **Before compiling**, install the same libraries locally for arduino-cli:
+```bash
+arduino-cli lib install "DHT sensor library" "Adafruit SSD1306"
 ```
 
 ## Full Workflow (Generate → Compile → Simulate → Upload)
@@ -123,6 +148,21 @@ This compiles (if needed), uploads, auto-captures serial output, and prints the 
 1. **Keep native operation steps in SKILL.md/references** — scripts are shortcuts, not the only path
 2. **Script failure → force fallback to native operations** (monaco-steps.md), never retry the script
 3. **Content generation stays with the agent** — scripts only "fill and click", never "think"
+4. **HARD RULE: Simulation → Physical wiring requires hardware check.** Before guiding physical wiring, confirm the user's component model/version matches the simulation. Warn about interface differences (e.g. I2C vs SPI OLED).
+
+---
+
+## Hardware Check (Mandatory before physical wiring)
+
+When the user confirms simulation and wants to wire the real hardware, ALWAYS:
+
+1. **Show a checklist** comparing simulated components vs user's physical parts (model/version confirmation)
+2. **Flag known interface differences** (e.g. wokwi-ssd1306 only simulates I2C; physical OLED may be SPI)
+3. **If user's hardware differs from simulation** (e.g. SPI OLED):
+   - Explain the difference and offer options: (A) regenerate code/wiring for their physical part, or (B) suggest using a part matching the simulation
+   - **⚠️ Set expectations BEFORE regenerating**: the new simulation may show different/absent behavior (e.g. OLED shows nothing on SPI wiring, because the simulator only supports I2C). This is a **simulator limitation, NOT a bug or error** in their code. The physical part will work with the regenerated wiring, but simulation cannot fully verify it.
+   - After regenerating, if the user runs simulation and sees anomalies, remind them again: "这是模拟器限制，不是代码错误——您的实物按新接线会正常工作"
+4. If the user's hardware matches the simulation → proceed normally
 
 ---
 

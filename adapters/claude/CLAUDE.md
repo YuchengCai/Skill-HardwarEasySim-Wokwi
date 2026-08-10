@@ -2,6 +2,11 @@
 
 Activate when: user mentions Arduino/Wokwi/microcontroller/单片机, `.ino` / `wokwi.toml` / `diagram.json` files detected, or `@wokwi` / `#arduino` / `@simulate` used.
 
+## Project Files
+
+- `wokwi.toml` MUST use `[wokwi]` section: `[wokwi] version=1 firmware='build/<proj>.ino.hex'` (`[env]`/`[board]` cause "No [wokwi] section found")
+- Third-party libs: create `libraries.txt` (one lib name per line), then `arduino-cli lib install "LibName"` before compiling
+
 ## Workflow
 
 1. **Generate** — Write `.ino` code, match `references/uno/index.json` (Chinese names) → components.md → experience.json, generate `diagram.json` + `wokwi.toml`
@@ -10,6 +15,12 @@ Activate when: user mentions Arduino/Wokwi/microcontroller/单片机, `.ino` / `
 4. **Verify** — Ask user, fix if needed
 5. **Detect board** — `arduino-cli board list`。**HARD RULE: 上传前必须向用户展示端口/板型/FQBN 并确认，禁止静默上传**（单板也要确认）。CH340 克隆板显示 Unknown 属正常，用 `--fqbn arduino:avr:uno`
 6. **Upload + Monitor** — `compile.sh --upload --port --fqbn --monitor`
+
+## Hardware Check (before physical wiring)
+
+After simulation passes, before wiring real hardware: show checklist (simulated vs physical model/version), flag interface differences (e.g. OLED I2C vs SPI).
+If hardware differs (e.g. SPI OLED): offer options (A) regenerate for physical part (B) use matching part.
+⚠️ Before regenerating, set expectations: new simulation may show anomalies (e.g. OLED blank on SPI — simulator only supports I2C). This is a simulator limitation, NOT a code bug. Physical part works with new wiring; simulation can't fully verify it.
 
 ## Design Rules
 

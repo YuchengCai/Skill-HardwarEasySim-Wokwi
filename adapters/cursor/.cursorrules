@@ -2,6 +2,11 @@
 // Repo: https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git
 // Triggers: arduino/wokwi/uno/单片机 keywords, .ino/wokwi.toml/diagram.json files, @wokwi @simulate
 
+## Project Files
+
+- wokwi.toml: MUST use [wokwi] section (version=1 + firmware='build/x.ino.hex'). [env]/[board] = error.
+- Third-party libs: libraries.txt (one per line) + arduino-cli lib install before compile
+
 ## Workflow
 
 1. Generate .ino + match references/uno/index.json (zh) → components.md → experience.json → diagram.json + wokwi.toml
@@ -10,6 +15,11 @@
 4. Verify with user
 5. arduino-cli board list → **先向用户展示端口/板型/FQBN 并确认**，再 upload。**HARD RULE: 禁止静默上传**。CH340 克隆板 Unknown 属正常，用 --fqbn arduino:avr:uno
 6. --monitor for serial capture
+
+## Hardware Check (before physical wiring)
+
+After sim passes, before wiring: checklist simulated vs physical model; flag interface diffs (OLED I2C/SPI).
+If differs: offer (A) regenerate for physical part (B) use matching part. Warn BEFORE: new sim may show anomalies (simulator limitation, not bug).
 
 ## Design Rules
 

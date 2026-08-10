@@ -32,6 +32,11 @@ WorkBuddy 专用的 wokwi-arduino skill 适配器。与 deepcode/claude/cursor �
 
 启用：WorkBuddy 右上角连接器管理 → 自定义连接器入口 → 对 Playwright 点「信任」→ 重启会话。
 
+## 项目文件格式（重要）
+
+- `wokwi.toml` 必须用 `[wokwi]` section：`[wokwi]\nversion = 1\nfirmware = 'build/<项目名>.ino.hex'`（`[env]`/`[board]` 是错的，会报 "No [wokwi] section found"）
+- 第三方库：项目根目录建 `libraries.txt`（每行一个库名，如 `DHT sensor library`），编译前 `arduino-cli lib install "库名"`
+
 ## 完整工作流
 
 1. **生成** — 写 `.ino` 代码，查 `references/uno/index.json`（中文名匹配）→ components.md → experience.json，生成 `diagram.json` + `wokwi.toml`
@@ -40,6 +45,14 @@ WorkBuddy 专用的 wokwi-arduino skill 适配器。与 deepcode/claude/cursor �
 4. **确认** — 询问用户"仿真效果是否正确？"
 5. **检测板子** — `arduino-cli board list`。**HARD RULE: 上传前必须向用户展示端口/板型/FQBN 并确认，禁止静默上传**（单板也要确认）。CH340 克隆板显示 Unknown 属正常，用 `--fqbn arduino:avr:uno`
 6. **上传 + 串口** — `compile.sh --upload --port --fqbn --monitor`
+
+## 硬件核对（接实物前强制）
+
+模拟通过后接实物前：出示核对清单（模拟元件 vs 实物型号），标注接口差异（如 OLED 的 I2C/SPI）。
+若实物与模拟不一致（如 SPI 版 OLED）：
+- 给选项：A) 重新生成匹配实物的代码/接线 B) 换与模拟一致的元件
+- ⚠️ 重新生成前先说明预期：新模拟可能出现异常（如 SPI 接线 OLED 不显示——模拟器只支持 I2C），**这是模拟器限制，不是代码错误**。实物按新接线会正常工作，但模拟无法完整验证。
+- 用户看到模拟异常时再次提醒"不是 bug"。
 
 ## 设计守则（强制）
 

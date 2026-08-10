@@ -155,6 +155,63 @@ These tell the auto-router which direction to go first before turning, helping k
 
 ---
 
+## wokwi-dht22 — Temperature & Humidity Sensor (DHT22/DHT11)
+
+### Pins
+
+| Pin | Description |
+|-----|-------------|
+| `dht1:VCC` | Power (5V) |
+| `dht1:SDA` | Data line (single-wire protocol) |
+| `dht1:NC` | Not connected |
+| `dht1:GND` | Ground |
+
+### Example — DHT22 to pin 2
+
+```json
+["dht1:VCC", "uno:5V", "red", []],
+["dht1:GND", "uno:GND.1", "black", []],
+["dht1:SDA", "uno:2", "green", []]
+```
+
+Use library "DHT sensor library" (`arduino-cli lib install "DHT sensor library"`), read interval ≥ 2s.
+
+---
+
+## wokwi-ssd1306 — OLED Display 128x64 (I2C!)
+
+### ⚠️ Interface: I2C ONLY in simulation
+
+The wokwi-ssd1306 part simulates **I2C mode only**. DC/RST/CS pins are SPI mode but NOT functional in simulation.
+
+### Pins
+
+| Pin | Description | Uno Pin |
+|-----|-------------|---------|
+| `oled1:DATA` | I2C SDA | **A4** |
+| `oled1:CLK` | I2C SCL | **A5** |
+| `oled1:VIN` | Supply (5V) | 5V |
+| `oled1:GND` | Ground | GND.1 |
+| DC/RST/CS | SPI-only, not simulated | — |
+
+### Example — I2C OLED
+
+```json
+["oled1:VIN", "uno:5V", "red", []],
+["oled1:GND", "uno:GND.1", "black", []],
+["oled1:DATA", "uno:A4", "green", []],
+["oled1:CLK", "uno:A5", "yellow", []]
+```
+
+```cpp
+Adafruit_SSD1306 display(128, 64, &Wire, -1);
+display.begin(SSD1306_SWITCHCAPVCC, 0x3C);  // address 0x3C
+```
+
+⚠️ **Hardware note**: physical OLED comes in I2C (4-pin) and SPI (7-pin) versions. If the user's physical part is SPI, wiring/code differ AND simulation won't show the display (simulator limitation, not a bug). See SKILL.md "Hardware Check".
+
+---
+
 ## For Components Not Listed Here
 
 If the component you need is not in this reference:

@@ -17,9 +17,34 @@ description: 创建、编译和仿真 Arduino 项目（Wokwi）。当用户提�
 
 ```
 project/
-├── project.ino        # Arduino 代码
+├── project.ino        # Arduino 代码（必须与文件夹同名）
 ├── diagram.json       # 电路图（parts + connections）
-└── wokwi.toml         # [wokwi] version=1 firmware='...'
+├── wokwi.toml         # [wokwi] version=1 firmware='build/project.ino.hex'
+└── libraries.txt      # 可选：第三方库，每行一个
+```
+
+### wokwi.toml 正确格式（已验证）
+
+```toml
+[wokwi]
+version = 1
+firmware = 'build/<项目名>.ino.hex'
+```
+
+⚠️ **必须用 `[wokwi]` section** — 用 `[env]` / `[board]` 是错的，会报 "No [wokwi] section found"。
+
+### libraries.txt（第三方库）
+
+如果代码用到第三方库（DHT、Adafruit SSD1306、LiquidCrystal 等）：
+
+1. 项目根目录创建 `libraries.txt`，**每行一个库名**（Arduino 库管理器搜索名）：
+```
+DHT sensor library
+Adafruit SSD1306
+```
+2. **编译前**，用 arduino-cli 安装同名库：
+```bash
+arduino-cli lib install "DHT sensor library" "Adafruit SSD1306"
 ```
 
 ## ⚠️ 电源引脚连接写法（核心知识）
@@ -106,6 +131,18 @@ arduino-cli compile --fqbn arduino:avr:uno --output-dir build/ sketch.ino
 # 或
 ./scripts/compile.sh <项目目录>
 ```
+
+## 硬件核对（接实物前强制）
+
+模拟验证通过后，用户要接实物时，**必须**：
+
+1. **出示核对清单**：对比模拟元件 vs 用户实物（确认型号/版本）
+2. **标注已知接口差异**：如 wokwi-ssd1306 只模拟 I2C 版，实物 OLED 可能是 SPI 版
+3. **若实物与模拟不一致**（如 SPI 版 OLED）：
+   - 说明差异，给两个选项：A) 重新生成匹配实物的代码/接线 B) 建议换成与模拟一致的元件
+   - **⚠️ 重新生成前必须先说明预期**：新模拟可能出现不同/缺失的现象（如 SPI 接线时 OLED 模拟不显示，因为模拟器只支持 I2C）。这是**模拟器限制，不是代码错误/bug**。实物按新接线会正常工作，但模拟无法完整验证。
+   - 重新生成后，若用户看到模拟异常，再次提醒："这是模拟器限制，不是代码错误——您的实物按新接线会正常工作"
+4. 若实物与模拟一致 → 正常继续
 
 ## 常用元件参考
 

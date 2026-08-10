@@ -32,6 +32,31 @@
       ],
       "notes": "不用 btn1:1 这种写法；必须用 1.l/1.r/2.l/2.r",
       "verified": true
+    },
+    {
+      "type": "wokwi-ssd1306",
+      "zh": "OLED 显示屏接线（重要教训）",
+      "connection": ["DATA(SDA) → A4, CLK(SCL) → A5, VIN → 5V, GND → GND.1"],
+      "wiring": [
+        ["oled1:VIN", "uno:5V", "red", []],
+        ["oled1:GND", "uno:GND.1", "black", []],
+        ["oled1:DATA", "uno:A4", "green", []],
+        ["oled1:CLK", "uno:A5", "yellow", []]
+      ],
+      "notes": "⚠️ wokwi-ssd1306 是 I2C 接口（DATA=SDA 接 A4，CLK=SCL 接 A5）！DC/RST/CS 是 SPI 模式但不被仿真支持，不要接。代码用 Adafruit_SSD1306 display(128, 64, &Wire, -1)，begin(SSD1306_SWITCHCAPVCC, 0x3C)。用 SPI 接法（11/13/9/10/8）会导致 OLED 不显示。",
+      "verified": true
+    },
+    {
+      "type": "wokwi-dht22",
+      "zh": "DHT22 温湿度传感器接线",
+      "connection": ["VCC → 5V, GND → GND.1, DATA(SDA) → 数字引脚(如 pin2)"],
+      "wiring": [
+        ["dht1:VCC", "uno:5V", "red", []],
+        ["dht1:GND", "uno:GND.1", "black", []],
+        ["dht1:SDA", "uno:2", "green", []]
+      ],
+      "notes": "引脚名：VCC/SDA/NC/GND。DATA 引脚接任意数字口即可（这里用 pin2）。读取间隔至少 2 秒。",
+      "verified": true
     }
   ],
   "layout_tips": [
