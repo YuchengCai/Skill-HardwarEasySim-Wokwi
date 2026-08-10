@@ -189,3 +189,16 @@ compile.sh 会根据 diagram.json 的板子元件**自动推断 FQBN**（也可 
 - `references/pico/` — Raspberry Pi Pico
 
 每个板型需在对应目录记录其引脚连接写法（实测验证后更新 verified）。
+
+## 自定义 arduino-cli 数据目录（可选）
+
+核心和库（ESP32 可达数 GB）默认装在 ~/.arduino15/（或 %LOCALAPPDATA%\Arduino15）。要迁移到大盘（如 D 盘）：
+
+```bash
+arduino-cli config set directories.data "D:/tool/arduino-data"
+arduino-cli config set directories.downloads "D:/tool/arduino-downloads"
+arduino-cli config set directories.user "D:/tool/arduino-user"
+# 迁移旧数据后验证: arduino-cli core list
+```
+
+compile.sh 调用 arduino-cli 会自动读取此配置，无需改 PATH。

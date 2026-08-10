@@ -251,3 +251,16 @@ When generating `diagram.json`, consult `experience.json` `layout_tips` and exis
 | `playwright` npm package | Browser automation script | Only after user approval |
 | Playwright MCP | Native Monaco fallback | Only after user approval |
 | VS Code + Wokwi ext | Manual simulation | Manual |
+
+### Customizing arduino-cli data directory (optional)
+
+Cores & libraries (can reach several GB with ESP32) install to `~/.arduino15/` (or `%LOCALAPPDATA%\Arduino15`) by default. To relocate to a larger drive (e.g. `D:\tool\arduino-data`):
+
+```bash
+arduino-cli config set directories.data "D:/tool/arduino-data"
+arduino-cli config set directories.downloads "D:/tool/arduino-downloads"
+arduino-cli config set directories.user "D:/tool/arduino-user"
+# Migrate existing data, then verify: arduino-cli core list
+```
+
+`compile.sh` calls `arduino-cli`, which reads this config automatically — no PATH changes needed (arduino-cli itself is already detected/added to PATH by compile.sh).
