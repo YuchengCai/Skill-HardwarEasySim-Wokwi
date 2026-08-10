@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================
-# install.sh — Arduino Wokwi Skill 安装脚本 (v0.4.1)
+# install.sh — Arduino Wokwi Skill 安装脚本 (v0.4.2)
 #
 # 自动检测当前 AI 编程 Agent 类型并安装对应适配器。
 #

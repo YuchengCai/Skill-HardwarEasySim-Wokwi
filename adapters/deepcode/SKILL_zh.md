@@ -181,11 +181,11 @@ curl -sL https://raw.githubusercontent.com/wokwi/wokwi-elements/main/src/<file>.
 - `wokwi-arduino-uno` → `arduino:avr:uno`（默认，接线经验已验证）
 - `wokwi-arduino-mega` → `arduino:avr:mega`（compile.sh 自动推断）
 - `wokwi-arduino-nano` → `arduino:avr:nano`（compile.sh 自动推断）
+- `wokwi-esp32-devkit-v1` → `esp32:esp32:esp32`（自动推断；核心通过乐鑫官方中国镜像自动安装，无需科学上网）
 
-compile.sh 会根据 diagram.json 的板子元件**自动推断 FQBN**（也可 --fqbn 覆盖）。接线经验（experience.json）目前主要基于 Uno；Mega/Nano 引脚数据在 `references/uno/index.json` 中（verified: false，需实测验证）。
+compile.sh 会根据 diagram.json 的板子元件**自动推断 FQBN**（也可 --fqbn 覆盖）。接线经验（experience.json）目前主要基于 Uno；Mega/Nano/ESP32 引脚数据在 `references/uno/index.json` 中（verified: false，需实测验证）。
 
 **未来可添加：**
-- `references/esp32/` — ESP32（需额外核心 arduino:esp32）
 - `references/pico/` — Raspberry Pi Pico
 
 每个板型需在对应目录记录其引脚连接写法（实测验证后更新 verified）。

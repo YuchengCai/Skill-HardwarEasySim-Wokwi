@@ -3,7 +3,7 @@ name: wokwi-arduino
 description: Create, compile, simulate, and upload Arduino projects with Wokwi. Use when the user mentions Arduino, Wokwi, 单片机, 嵌入式, or when .ino / wokwi.toml / diagram.json files are detected. Explicitly activate with @wokwi, #arduino, or @simulate.
 ---
 
-# Arduino Wokwi Simulation Skill (v0.4.1) — WorkBuddy Adapter
+# Arduino Wokwi Simulation Skill (v0.4.2) — WorkBuddy Adapter
 
 WorkBuddy 专用的 wokwi-arduino skill 适配器。与 deepcode/claude/cursor 适配器内容一致，仅安装路径不同。
 
@@ -39,7 +39,7 @@ WorkBuddy 专用的 wokwi-arduino skill 适配器。与 deepcode/claude/cursor �
 
 ## 板型支持
 
-支持 Uno/Mega/Nano（compile.sh 自动从 diagram.json 推断 FQBN，也可 --fqbn 覆盖）。
+支持 Uno/Mega/Nano/ESP32（compile.sh 自动从 diagram.json 推断 FQBN；ESP32 核心通过乐鑫中国镜像自动安装）。
 
 ## 完整工作流
 
@@ -84,7 +84,7 @@ done
 
 ## 版本检查
 
-当前版本: **v0.4.1**
+当前版本: **v0.4.2**
 仓库: `https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git`
 
 激活时检查最新 release，有新版本询问用户是否更新（git clone + install.sh）。⚠️ 更新时使用 `install.sh --global`（WorkBuddy 本身固定全局）。

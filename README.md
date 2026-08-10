@@ -9,14 +9,14 @@
 <a id="english"></a>
 ## 📘 English
 
-**Wokwi Arduino Simulation Skill** — v0.4.1 — A portable skill package for AI coding agents (DeepCode, WorkBuddy, Claude Code, Cursor) that enables automated Arduino hardware prototyping, **auto browser simulation**, circuit compilation, and firmware upload.
+**Wokwi Arduino Simulation Skill** — v0.4.2 — A portable skill package for AI coding agents (DeepCode, WorkBuddy, Claude Code, Cursor) that enables automated Arduino hardware prototyping, **auto browser simulation**, circuit compilation, and firmware upload.
 
 ### Features
 
 - 🤖 **AI-Powered** — Drop-in skill for your coding agent. Just describe your hardware idea.
 - 🌐 **Auto Browser Simulation** — `wokwi-automate.js` opens wokwi.com, fills code + circuit, starts simulation automatically (browser fallback: Chrome → Edge → Chromium).
 - ⚡ **One-Command Compile** — Auto-installs `arduino-cli` + Uno core, compiles `.ino` to `.hex`, handles MINGW path conversion.
-- 🔢 **Multi-Board (Uno/Mega/Nano)** — compile.sh auto-infers FQBN from diagram.json (no config needed).
+- 🔢 **Multi-Board (Uno/Mega/Nano/ESP32)** — compile.sh auto-infers FQBN from diagram.json (no config needed).
 - 🔌 **Cross-Agent** — Works with DeepCode, WorkBuddy (`SKILL.md`), Claude Code (`CLAUDE.md`), and Cursor (`.cursorrules`).
 - 🧩 **Component Catalog (50 parts)** — `index.json` full catalog with Chinese names + pins, `detail/` per-part, auto-extracted from wokwi-elements source. Chinese name matching + ambiguity handling (asks user).
 - 📚 **Experience Library** — `experience.json` accumulates verified wiring patterns & layout tips (agent-learned).
@@ -120,13 +120,13 @@ The agent reads `components.md` for correct pin names, generates the project, co
 <a id="chinese"></a>
 ## 📘 中文
 
-**Wokwi Arduino 仿真 Skill** — v0.4.1 — 一个可移植的技能包，专为 AI 编程助手（DeepCode、WorkBuddy、Claude Code、Cursor）设计，实现自动化硬件原型设计、**自动浏览器仿真**、代码编译和固件上传。
+**Wokwi Arduino 仿真 Skill** — v0.4.2 — 一个可移植的技能包，专为 AI 编程助手（DeepCode、WorkBuddy、Claude Code、Cursor）设计，实现自动化硬件原型设计、**自动浏览器仿真**、代码编译和固件上传。
 
 ### 功能
 
 - 🤖 **AI 驱动** — 直接跟助手描述你的硬件想法，无需手动查引脚
 - 🌐 **自动浏览器仿真** — `wokwi-automate.js` 自动打开 wokwi.com、填入代码和电路图、启动仿真（浏览器回退链：Chrome → Edge → Chromium）
-- 🔢 **多板型（Uno/Mega/Nano）** — compile.sh 自动从 diagram.json 推断 FQBN，无需配置
+- 🔢 **多板型（Uno/Mega/Nano/ESP32）** — compile.sh 自动从 diagram.json 推断 FQBN，无需配置
 - ⚡ **一键编译** — 自动安装 `arduino-cli` + Uno 核心，编译 `.ino` 到 `.hex`，处理 MINGW 路径转换
 - 🔌 **跨 Agent** — 支持 DeepCode、WorkBuddy（`SKILL.md`）、Claude Code（`CLAUDE.md`）和 Cursor（`.cursorrules`）
 - 🧩 **元件目录（50 种）** — `index.json` 全量目录（含中文名+引脚），`detail/` 分元件详情，从 wokwi-elements 源码自动提取；中文名匹配 + 歧义询问

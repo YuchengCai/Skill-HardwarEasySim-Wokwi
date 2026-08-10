@@ -159,18 +159,33 @@ ensure_arduino_cli() {
 }
 
 # ==============================================================
-# 安装 Uno 核心（如缺失）
+# 安装核心（如缺失，按 FQBN 的 vendor 自动安装）
 # ==============================================================
-ensure_uno_core() {
-    if arduino-cli core list 2>/dev/null | grep -q "arduino:avr"; then
-        info "arduino:avr 核心已安装"
+ensure_core() {
+    local FQBN_ARG="$1"
+    local CORE_VENDOR="arduino:avr"
+    local EXTRA_URL=""
+    case "$FQBN_ARG" in
+        esp32:*|arduino:esp32:*)
+            CORE_VENDOR="esp32:esp32"
+            # 国内镜像（乐鑫官方中国源，避免 GitHub 下载超时）
+            EXTRA_URL="https://espressif.github.io/arduino-esp32/package_esp32_dev_index_cn.json"
+            ;;
+    esac
+
+    if arduino-cli core list 2>/dev/null | grep -q "${CORE_VENDOR%%:*}"; then
+        info "核心 ${CORE_VENDOR%%:*} 已安装"
         return 0
     fi
 
-    section "安装 Arduino Uno 核心"
+    section "安装核心 ${CORE_VENDOR}"
+    if [ -n "$EXTRA_URL" ]; then
+        # 配置国内镜像（幂等，重复添加会被 arduino-cli 去重）
+        arduino-cli config add board_manager.additional_urls "$EXTRA_URL" >/dev/null 2>&1 || true
+    fi
     arduino-cli core update-index >/dev/null 2>&1
-    arduino-cli core install arduino:avr
-    info "arduino:avr 核心安装完成"
+    arduino-cli core install "$CORE_VENDOR"
+    info "核心 ${CORE_VENDOR} 安装完成"
 }
 
 # ==============================================================
@@ -199,12 +214,13 @@ infer_fqbn() {
     local DIAGRAM="$PROJECT_DIR/diagram.json"
     local BOARD_TYPE=""
     if [ -f "$DIAGRAM" ]; then
-        BOARD_TYPE=$(grep -oE '"type": "wokwi-arduino-[a-z0-9-]+"' "$DIAGRAM" 2>/dev/null | head -1 | sed 's/"type": "//;s/"//')
+        BOARD_TYPE=$(grep -oE '"type": "wokwi-(arduino|esp32|nano|pico)-[a-z0-9-]+"' "$DIAGRAM" 2>/dev/null | head -1 | sed 's/"type": "//;s/"//')
     fi
     case "$BOARD_TYPE" in
         wokwi-arduino-mega) echo "arduino:avr:mega" ;;
         wokwi-arduino-nano) echo "arduino:avr:nano" ;;
         wokwi-arduino-uno)  echo "arduino:avr:uno" ;;
+        wokwi-esp32-devkit-v1) echo "esp32:esp32:esp32" ;;
         "") echo "arduino:avr:uno" ;;
         *)  echo "arduino:avr:uno" ;;   # 未知板型默认 Uno
     esac
@@ -467,7 +483,8 @@ fi
 # --upload 模式：编译 + 上传
 if $FLAG_UPLOAD; then
     ensure_arduino_cli
-    ensure_uno_core
+    if [ -z "$FQBN" ]; then FQBN=$(infer_fqbn); info "自动推断 FQBN: $FQBN"; fi
+    ensure_core "$FQBN"
     compile_project
 
     # 如果指定了端口和 FQBN，直接上传
@@ -495,7 +512,8 @@ fi
 
 # 默认模式：仅编译
 ensure_arduino_cli
-ensure_uno_core
+if [ -z "$FQBN" ]; then FQBN=$(infer_fqbn); info "自动推断 FQBN: $FQBN"; fi
+ensure_core "$FQBN"
 compile_project
 
 section "完成"
