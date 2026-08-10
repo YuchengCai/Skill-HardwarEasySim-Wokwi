@@ -6,6 +6,19 @@
 
 ---
 
+## 📋 Changelog / 更新日志
+
+> 快速了解各版本的核心变化。最新版本在最上方。
+
+| Version | Key Changes / 核心变化 |
+|---------|----------------------|
+| **v0.4.x** | 🧩 **元件目录系统**（50 元件 + 中文名 + 引脚，从 wokwi-elements 自动提取）+ 🔢 **多板型适配**（Uno/Mega/Nano/ESP32，自动推断 FQBN）+ ESP32 国内镜像安装 + 硬件核对 + 接线文字说明 + 数据目录智能选择 |
+| v0.3.x | 🔍 CH340 克隆板识别 + 🔌 多 Agent 适配（DeepCode/WorkBuddy/Claude/Cursor）+ 自愈机制 + 串口自动捕获 + SkillHub CLI 发布脚本 |
+| v0.2.x | 🔥 自动化烧录工作流 + 板型检测 + 安全上传确认 |
+| v0.1.x | 🌱 首次打包：模板 + 多适配器 + arduino-cli 自动安装 |
+
+---
+
 <a id="english"></a>
 ## 📘 English
 
