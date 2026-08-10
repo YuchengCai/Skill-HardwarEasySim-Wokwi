@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * wokwi-automate.js — Wokwi 网页自动化仿真脚本 (v0.4.5)
+ * wokwi-automate.js — Wokwi 网页自动化仿真脚本 (v0.4.6)
  *
  * 功能：用 Playwright 驱动真实浏览器，自动完成
  *   打开 Wokwi 新项目页 → 填 .ino 代码 → 切 diagram.json 填电路图 → 启动仿真
@@ -233,16 +233,23 @@ async function main() {
   console.log(`[5/5] 启动仿真...`);
   try {
     await page.getByRole('button', { name: 'Start the simulation' }).click();
-    console.log(`[OK]   仿真已启动！`);
-    console.log(`[INFO] 请在浏览器窗口中观察 LED 行为，串口输出见页面底部面板`);
+    console.log(`[OK]   已点击启动仿真`);
+    console.log(`[INFO] 观察浏览器窗口中的电路行为和串口输出面板`);
+    console.log(`[WARN] 如果电路无反应（编译未完成/受限），可稍后手动点击页面上的 Run/Start 按钮重试`);
   } catch (e) {
     console.error(`[ERR]  启动仿真失败: ${e.message}`);
-    await browser.close();
-    process.exit(6);
+    console.log(`[HINT] 可手动点击浏览器中的 Start the simulation 按钮，或关闭窗口后继续下一步`);
   }
 
-  // 保持浏览器打开供用户观察（不关闭）
-  console.log(`[DONE] 浏览器窗口保持打开，由用户观察验证。`);
+  // 等待用户手动关闭浏览器（不超时自动退出）
+  console.log(`[DONE] 仿真已启动。请观察电路行为，观察完成后【手动关闭浏览器窗口】。`);
+  console.log(`[DONE] 如果线上编译未成功（未注册/付费限制）导致电路无反应：`);
+  console.log(`       · 可手动点击页面 Start/运行 按钮重试，或刷新页面后重新运行本脚本`);
+  console.log(`       · 或跳过模拟验证，直接烧录到物理板子测试（见 SKILL.md 烧录步骤）`);
+  await new Promise((resolve) => {
+    browser.on('disconnected', resolve);
+  });
+  console.log(`[INFO] 浏览器已关闭，模拟观察结束。`);
 }
 
 main().catch((e) => {

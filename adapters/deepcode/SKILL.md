@@ -3,7 +3,7 @@ name: wokwi-arduino
 description: Create, compile, simulate, and upload Arduino projects with Wokwi (VS Code extension, wokwi.com browser automation, or web editor). Use when the user mentions Arduino, Wokwi, 单片机, 嵌入式, or when .ino / wokwi.toml / diagram.json files are detected. Explicitly activate with @wokwi, #arduino, or @simulate.
 ---
 
-# Arduino Wokwi Simulation Skill (v0.4.5)
+# Arduino Wokwi Simulation Skill (v0.4.6)
 
 Create, compile, simulate, and upload Arduino projects using Wokwi.
 
@@ -94,7 +94,10 @@ Only used when the user asks for auto browser simulation, or when no VS Code Wok
 - Only consider when: agent can run commands, MCP is unavailable/unconfigured, AND the user explicitly wants automation.
 - `node scripts/wokwi-automate.js <project-dir>`
 - ⚠️ Requires `playwright` npm package — **NEVER install without explicit user approval** (HARD RULE).
-- The script does the same 5 steps (open → fill .ino → fill diagram.json → start simulation), with browser fallback Chrome → Edge → Chromium.
+- ⚠️ **Use REAL browser (non-headless)** — wokwi.com downgrades to read-only preview in headless mode. Do NOT pass `--headless`.
+- The script does 5 steps (open → fill .ino → fill diagram.json → start simulation), then **waits for the user to manually close the browser window** (no auto-exit).
+- **After the script returns** (user closed browser), ask the user to confirm the simulation result.
+- **If simulation shows no behavior** (likely wokwi online-compile limits for unregistered users): suggest (a) manually clicking Start/Run to retry, (b) re-running, or (c) **skip simulation and verify on the physical board** (upload + wire test).
 - **If the script fails (non-zero exit): DO NOT retry — switch to Path 1 (MCP operations in monaco-steps.md).**
 
 > ⚠️ **Fallback nature:** Path 2 exists only for agents that can run commands but lack MCP. Prefer Path 1 whenever MCP is available.
@@ -199,7 +202,7 @@ done
 
 ## Version Check & Auto Update
 
-Current version: **v0.4.5**
+Current version: **v0.4.6**
 Repository: `https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git`
 
 When activated, check the latest release:
