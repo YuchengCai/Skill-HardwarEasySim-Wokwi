@@ -3,7 +3,7 @@ name: wokwi-arduino
 description: Create, compile, simulate, and upload Arduino projects with Wokwi (VS Code extension, wokwi.com browser automation, or web editor). Use when the user mentions Arduino, Wokwi, 单片机, 嵌入式, or when .ino / wokwi.toml / diagram.json files are detected. Explicitly activate with @wokwi, #arduino, or @simulate.
 ---
 
-# Arduino Wokwi Simulation Skill (v0.4.2)
+# Arduino Wokwi Simulation Skill (v0.4.3)
 
 Create, compile, simulate, and upload Arduino projects using Wokwi.
 
@@ -188,7 +188,7 @@ done
 
 ## Version Check & Auto Update
 
-Current version: **v0.4.2**
+Current version: **v0.4.3**
 Repository: `https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git`
 
 When activated, check the latest release:
@@ -251,6 +251,13 @@ When generating `diagram.json`, consult `experience.json` `layout_tips` and exis
 | `playwright` npm package | Browser automation script | Only after user approval |
 | Playwright MCP | Native Monaco fallback | Only after user approval |
 | VS Code + Wokwi ext | Manual simulation | Manual |
+
+### Auto data directory selection (Windows)
+
+On Windows, `compile.sh` checks disk space on first run:
+- If C: has < 20GB free AND another drive has more space → auto-configures cores/libraries to the roomiest drive (`<drive>:/tool/arduino-data`)
+- Skips if already configured or C: has enough space
+- macOS/Linux: uses default `~/.arduino15/` (no action needed)
 
 ### Customizing arduino-cli data directory (optional)
 

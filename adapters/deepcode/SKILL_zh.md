@@ -190,6 +190,13 @@ compile.sh 会根据 diagram.json 的板子元件**自动推断 FQBN**（也可 
 
 每个板型需在对应目录记录其引脚连接写法（实测验证后更新 verified）。
 
+## 数据目录自动选择（Windows）
+
+Windows 下 compile.sh 首次运行会检测磁盘空间：
+- 若 C 盘剩余 < 20GB 且其他盘空间更大 → 自动把核心/库配置到空间最大的盘（`<盘>:/tool/arduino-data`）
+- 已配置或 C 盘充足 → 跳过
+- macOS/Linux：默认 ~/.arduino15/（无需处理）
+
 ## 自定义 arduino-cli 数据目录（可选）
 
 核心和库（ESP32 可达数 GB）默认装在 ~/.arduino15/（或 %LOCALAPPDATA%\Arduino15）。要迁移到大盘（如 D 盘）：

@@ -1,4 +1,4 @@
-// Arduino Wokwi Simulation (v0.4.2)
+// Arduino Wokwi Simulation (v0.4.3)
 // Repo: https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git
 // Triggers: arduino/wokwi/uno/单片机 keywords, .ino/wokwi.toml/diagram.json files, @wokwi @simulate
 
@@ -42,7 +42,7 @@ done
 
 ## Version Check
 
-v0.4.2 | Repo: https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git
+v0.4.3 | Repo: https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git
 
 On activation:
 ```bash

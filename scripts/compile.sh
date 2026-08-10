@@ -159,6 +159,55 @@ ensure_arduino_cli() {
 }
 
 # ==============================================================
+# 数据目录智能选择（Windows：避免 C 盘空间不足）
+# ==============================================================
+ensure_data_dir() {
+    # 仅 Windows 需要（macOS/Linux 文件结构默认合理）
+    [ "$OS" = "windows" ] || return 0
+
+    # 已配置到非默认位置且目录可用 → 跳过
+    local CUR_DATA
+    CUR_DATA=$(arduino-cli config dump 2>/dev/null | grep -A1 "directories:" | tail -1 | grep "data:" | sed 's/.*data: *//' | tr -d ' ')
+    if [ -n "$CUR_DATA" ] && [ "$CUR_DATA" != "~/.arduino15" ] && [ -d "$CUR_DATA" ]; then
+        return 0
+    fi
+
+    # C 盘剩余空间（GB）
+    local C_FREE
+    C_FREE=$(powershell -Command "[math]::Round((Get-PSDrive C).Free/1GB,0)" 2>/dev/null | tr -d '\r')
+
+    # 剩余空间最大的盘
+    local BEST_INFO BEST_DRIVE BEST_FREE
+    BEST_INFO=$(powershell -Command "
+        \$best=''; \$bestFree=0
+        Get-PSDrive -PSProvider FileSystem | Where-Object { \$_.Name -match '^[A-Za-z]$' } | ForEach-Object {
+            if (\$_.Free -gt \$bestFree) { \$bestFree = \$_.Free; \$best = \$_.Name }
+        }
+        Write-Output \"\$best \$bestFree\"
+    " 2>/dev/null | tr -d '\r')
+    BEST_DRIVE=$(echo "$BEST_INFO" | awk '{print $1}')
+    BEST_FREE=$(echo "$BEST_INFO" | awk '{print $2}')
+
+    # 决策：C 盘剩余 < 20GB 且存在更大空间盘 → 迁移
+    local THRESHOLD_GB=20
+    if [ -n "$C_FREE" ] && [ -n "$BEST_DRIVE" ] && [ "$C_FREE" -lt "$THRESHOLD_GB" ] 2>/dev/null; then
+        # 计算最大盘剩余 GB（BEST_FREE 是字节）
+        local BEST_FREE_GB
+        BEST_FREE_GB=$(python -c "print(int($BEST_FREE/1024/1024/1024))" 2>/dev/null)
+        if [ -n "$BEST_FREE_GB" ] && [ "$BEST_FREE_GB" -gt "$C_FREE" ] 2>/dev/null; then
+            local DATA_DIR="/${BEST_DRIVE}/tool/arduino-data"
+            section "C 盘空间不足 (剩余 ${C_FREE}GB)，配置数据目录到 ${BEST_DRIVE}: 盘"
+            mkdir -p "$DATA_DIR"
+            arduino-cli config set directories.data "${BEST_DRIVE}:/tool/arduino-data"
+            arduino-cli config set directories.downloads "${BEST_DRIVE}:/tool/arduino-downloads"
+            arduino-cli config set directories.user "${BEST_DRIVE}:/tool/arduino-user"
+            mkdir -p "${BEST_DRIVE}:/tool/arduino-downloads" "${BEST_DRIVE}:/tool/arduino-user"
+            info "数据目录已配置到 ${BEST_DRIVE}: 盘（剩余 ${BEST_FREE_GB}GB）"
+        fi
+    fi
+}
+
+# ==============================================================
 # 安装核心（如缺失，按 FQBN 的 vendor 自动安装）
 # ==============================================================
 ensure_core() {
@@ -484,6 +533,7 @@ fi
 if $FLAG_UPLOAD; then
     ensure_arduino_cli
     if [ -z "$FQBN" ]; then FQBN=$(infer_fqbn); info "自动推断 FQBN: $FQBN"; fi
+    ensure_data_dir
     ensure_core "$FQBN"
     compile_project
 
@@ -513,6 +563,7 @@ fi
 # 默认模式：仅编译
 ensure_arduino_cli
 if [ -z "$FQBN" ]; then FQBN=$(infer_fqbn); info "自动推断 FQBN: $FQBN"; fi
+ensure_data_dir
 ensure_core "$FQBN"
 compile_project
 

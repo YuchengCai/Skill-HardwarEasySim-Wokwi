@@ -9,7 +9,7 @@
 <a id="english"></a>
 ## 📘 English
 
-**Wokwi Arduino Simulation Skill** — v0.4.2 — A portable skill package for AI coding agents (DeepCode, WorkBuddy, Claude Code, Cursor) that enables automated Arduino hardware prototyping, **auto browser simulation**, circuit compilation, and firmware upload.
+**Wokwi Arduino Simulation Skill** — v0.4.3 — A portable skill package for AI coding agents (DeepCode, WorkBuddy, Claude Code, Cursor) that enables automated Arduino hardware prototyping, **auto browser simulation**, circuit compilation, and firmware upload.
 
 ### Features
 
@@ -120,7 +120,7 @@ The agent reads `components.md` for correct pin names, generates the project, co
 <a id="chinese"></a>
 ## 📘 中文
 
-**Wokwi Arduino 仿真 Skill** — v0.4.2 — 一个可移植的技能包，专为 AI 编程助手（DeepCode、WorkBuddy、Claude Code、Cursor）设计，实现自动化硬件原型设计、**自动浏览器仿真**、代码编译和固件上传。
+**Wokwi Arduino 仿真 Skill** — v0.4.3 — 一个可移植的技能包，专为 AI 编程助手（DeepCode、WorkBuddy、Claude Code、Cursor）设计，实现自动化硬件原型设计、**自动浏览器仿真**、代码编译和固件上传。
 
 ### 功能
 
