@@ -1,6 +1,10 @@
-# Arduino Wokwi Simulation (v0.4.0)
+# Arduino Wokwi Simulation (v0.4.1)
 
 Activate when: user mentions Arduino/Wokwi/microcontroller/单片机, `.ino` / `wokwi.toml` / `diagram.json` files detected, or `@wokwi` / `#arduino` / `@simulate` used.
+
+## Board Support
+
+Uno/Mega/Nano supported — compile.sh auto-infers FQBN from diagram.json (override with --fqbn).
 
 ## Project Files
 
@@ -40,7 +44,7 @@ done
 
 ## Version Check & Auto Update
 
-v0.4.0 | Repo: https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git
+v0.4.1 | Repo: https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git
 
 On activation, check latest release:
 ```bash

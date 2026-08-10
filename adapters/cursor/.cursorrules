@@ -1,6 +1,10 @@
-// Arduino Wokwi Simulation (v0.4.0)
+// Arduino Wokwi Simulation (v0.4.1)
 // Repo: https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git
 // Triggers: arduino/wokwi/uno/单片机 keywords, .ino/wokwi.toml/diagram.json files, @wokwi @simulate
+
+## Board Support
+
+Uno/Mega/Nano — compile.sh auto-infers FQBN from diagram.json (or --fqbn).
 
 ## Project Files
 
@@ -38,7 +42,7 @@ done
 
 ## Version Check
 
-v0.4.0 | Repo: https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git
+v0.4.1 | Repo: https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git
 
 On activation:
 ```bash

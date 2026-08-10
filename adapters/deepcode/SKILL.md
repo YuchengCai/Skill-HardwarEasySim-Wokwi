@@ -3,7 +3,7 @@ name: wokwi-arduino
 description: Create, compile, simulate, and upload Arduino projects with Wokwi (VS Code extension, wokwi.com browser automation, or web editor). Use when the user mentions Arduino, Wokwi, 单片机, 嵌入式, or when .ino / wokwi.toml / diagram.json files are detected. Explicitly activate with @wokwi, #arduino, or @simulate.
 ---
 
-# Arduino Wokwi Simulation Skill (v0.4.0)
+# Arduino Wokwi Simulation Skill (v0.4.1)
 
 Create, compile, simulate, and upload Arduino projects using Wokwi.
 
@@ -188,7 +188,7 @@ done
 
 ## Version Check & Auto Update
 
-Current version: **v0.4.0**
+Current version: **v0.4.1**
 Repository: `https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git`
 
 When activated, check the latest release:
@@ -230,6 +230,17 @@ When generating `diagram.json`, consult `experience.json` `layout_tips` and exis
 - Keep wires off the board and components (use waypoints `["h<offset>","v<offset>"]`)
 - Place components near their target pins (above or to the right)
 - Standard color coding: red = power, black = GND, others = signals
+
+## Board Support
+
+**Supported (compile + auto-inferred FQBN):**
+- `wokwi-arduino-uno` → `arduino:avr:uno` (default, wiring verified)
+- `wokwi-arduino-mega` → `arduino:avr:mega` (auto-inferred by compile.sh)
+- `wokwi-arduino-nano` → `arduino:avr:nano` (auto-inferred by compile.sh)
+
+`compile.sh` reads `diagram.json`, finds the board part, and auto-infers the FQBN (override with `--fqbn`). Wiring experience (`experience.json`) is Uno-based; Mega/Nano pin data exists in `references/uno/index.json` (`verified: false`, needs testing).
+
+**Future:** ESP32 (`references/esp32/`, needs `arduino:esp32` core), Pico.
 
 ## Environment Dependencies
 

@@ -193,6 +193,24 @@ normalize_path() {
 }
 
 # ==============================================================
+# 从 diagram.json 推断板型 FQBN
+# ==============================================================
+infer_fqbn() {
+    local DIAGRAM="$PROJECT_DIR/diagram.json"
+    local BOARD_TYPE=""
+    if [ -f "$DIAGRAM" ]; then
+        BOARD_TYPE=$(grep -oE '"type": "wokwi-arduino-[a-z0-9-]+"' "$DIAGRAM" 2>/dev/null | head -1 | sed 's/"type": "//;s/"//')
+    fi
+    case "$BOARD_TYPE" in
+        wokwi-arduino-mega) echo "arduino:avr:mega" ;;
+        wokwi-arduino-nano) echo "arduino:avr:nano" ;;
+        wokwi-arduino-uno)  echo "arduino:avr:uno" ;;
+        "") echo "arduino:avr:uno" ;;
+        *)  echo "arduino:avr:uno" ;;   # 未知板型默认 Uno
+    esac
+}
+
+# ==============================================================
 # 编译项目
 # ==============================================================
 compile_project() {
@@ -209,9 +227,15 @@ compile_project() {
     INO_FILE_WIN=$(normalize_path "$INO_FILE")
     BUILD_DIR_WIN=$(normalize_path "$BUILD_DIR")
 
+    # FQBN: 优先用 --fqbn 参数，否则从 diagram.json 自动推断
+    if [ -z "$FQBN" ]; then
+        FQBN=$(infer_fqbn)
+        info "自动推断 FQBN: $FQBN"
+    fi
+
     section "编译 $PROJECT_NAME"
     arduino-cli compile \
-        --fqbn arduino:avr:uno \
+        --fqbn "$FQBN" \
         --output-dir "$BUILD_DIR_WIN" \
         "$INO_FILE_WIN"
 
@@ -447,6 +471,11 @@ if $FLAG_UPLOAD; then
     compile_project
 
     # 如果指定了端口和 FQBN，直接上传
+    # FQBN 未指定时自动从 diagram.json 推断（compile_project 已设置）
+    if [ -z "$FQBN" ]; then
+        FQBN=$(infer_fqbn)
+        info "自动推断 FQBN: $FQBN"
+    fi
     if [ -n "$PORT" ] && [ -n "$FQBN" ]; then
         upload_firmware "$PORT" "$FQBN"
         # 上传后自动显示串口输出

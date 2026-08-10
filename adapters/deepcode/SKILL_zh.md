@@ -175,11 +175,17 @@ curl -sL https://raw.githubusercontent.com/wokwi/wokwi-elements/main/src/<file>.
 - 元件放在目标引脚附近（上方或右侧）
 - 颜色规范：红色=电源，黑色=GND，其他=信号
 
-## 扩展板型
+## 板型支持
 
-当前仅支持 Arduino Uno。后续可添加:
-- `references/mega/` — Arduino Mega 2560
-- `references/esp32/` — ESP32
+**已支持（编译 + 自动推断 FQBN）：**
+- `wokwi-arduino-uno` → `arduino:avr:uno`（默认，接线经验已验证）
+- `wokwi-arduino-mega` → `arduino:avr:mega`（compile.sh 自动推断）
+- `wokwi-arduino-nano` → `arduino:avr:nano`（compile.sh 自动推断）
+
+compile.sh 会根据 diagram.json 的板子元件**自动推断 FQBN**（也可 --fqbn 覆盖）。接线经验（experience.json）目前主要基于 Uno；Mega/Nano 引脚数据在 `references/uno/index.json` 中（verified: false，需实测验证）。
+
+**未来可添加：**
+- `references/esp32/` — ESP32（需额外核心 arduino:esp32）
 - `references/pico/` — Raspberry Pi Pico
 
-每个板型需在对应目录的 README.md 中记录其引脚连接写法。
+每个板型需在对应目录记录其引脚连接写法（实测验证后更新 verified）。
