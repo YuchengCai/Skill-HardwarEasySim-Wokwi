@@ -35,8 +35,8 @@
 
 ## 模板
 
-- `references/uno/blink/` — LED 闪烁
-- `references/uno/led-switch/` — 按钮控制 LED
+- `references/arduino/blink/` — LED 闪烁
+- `references/arduino/led-switch/` — 按钮控制 LED
 
 ## 快速命令
 

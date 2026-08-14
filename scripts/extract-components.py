@@ -12,7 +12,7 @@ extract-components.py — 从 wokwi-elements 仓库提取元件索引
 用法：
   python3 extract-components.py [--out <输出目录>]
 
-输出目录默认：<脚本同目录>/../references/uno/
+输出目录默认：<脚本同目录>/../references/arduino/
 """
 
 import json

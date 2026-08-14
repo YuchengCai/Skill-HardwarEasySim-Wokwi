@@ -9,7 +9,7 @@ Create, compile, simulate, and upload Arduino projects using Wokwi.
 
 ## How This Skill Works
 
-Component pin names, attributes, and connection patterns are in **`references/uno/components.md`** — read that file when you encounter an unfamiliar component.
+Component pin names, attributes, and connection patterns are in **`references/arduino/components.md`** — read that file when you encounter an unfamiliar component.
 
 ## Activation Triggers
 
@@ -56,7 +56,7 @@ arduino-cli lib install "DHT sensor library" "Adafruit SSD1306"
 ### 1. Generate Code & Circuit
 
 1. Write the `.ino` sketch code (include a 3x blink in setup() as upload success indicator)
-2. Open **`references/uno/components.md`** — look up every component you intend to use
+2. Open **`references/arduino/components.md`** — look up every component you intend to use
 3. Generate `diagram.json` with correct pin names and wiring
 4. Generate `wokwi.toml` pointing to `build/project.ino.hex`
 
@@ -187,7 +187,9 @@ If any of these files are missing (e.g. skill was installed from a marketplace t
 ```bash
 # Check and restore missing files
 BASE="https://raw.githubusercontent.com/YuchengCai/Skill-HardwarEasySim-Wokwi/main"
-for F in scripts/compile.sh scripts/wokwi-automate.js references/monaco-steps.md references/uno/components.md references/uno/index.json references/uno/experience.json; do
+# Remove stale old-structure dirs (uno renamed to arduino in v0.5)
+if [ -d "references/uno" ]; then rm -rf references/uno; fi
+for F in scripts/compile.sh scripts/wokwi-automate.js references/monaco-steps.md references/common/layout-rules.md references/common/breadboard.md references/common/waypoints.md references/arduino/components.md references/arduino/index.json references/arduino/experience.json; do
   if [ ! -f "$F" ]; then
     echo "缺失 $F，正在从 GitHub 恢复..."
     mkdir -p "$(dirname "$F")"
@@ -197,6 +199,8 @@ done
 ```
 
 **⚠️ If the skill directory has `core/` (old structure) instead of `scripts/` + `references/`, run `install.sh` again to migrate, or manually move files into the standard layout.**
+
+**⚠️ v0.5 renamed `references/uno/` → `references/arduino/`. The self-heal above removes stale `references/uno/` and restores `references/arduino/` + `references/common/` from GitHub.**
 
 ---
 
@@ -218,18 +222,22 @@ If newer, ask user to update → `git clone + install.sh` (auto).
 
 ### Lookup order (fast → accurate)
 
-1. **`references/uno/index.json`** — full catalog (52 components) with Chinese names (`zh`) and pins. Match user's Chinese description → `type` → pins.
-2. **`references/uno/components.md`** — verified detailed manual for high-frequency components (pin tables, attributes, wiring examples). **Includes breadboard (面包板) section** — read it when the project needs breadboard wiring (multiple components, real-world prototyping).
-3. **`references/uno/experience.json`** — accumulated wiring patterns & layout tips (agent-learned). Reference it when generating `diagram.json`.
-4. **`references/uno/detail/<type>.json`** — per-component detail (auto-generated skeleton).
+1. **`references/common/`** — system-level rules (any board/part):
+   - `layout-rules.md` — read BEFORE generating diagram.json (style by component count, positioning, waypoint patterns)
+   - `breadboard.md` — read when using a breadboard (pin naming, `$bb`, power rails)
+   - `waypoints.md` — read when wiring with control points (v/h/* mini-language)
+2. **`references/arduino/index.json`** — full catalog (52 components) with Chinese names (`zh`) and pins. Match user's Chinese description → `type` → pins. **Arduino series (Uno/Mega/Nano) share this catalog; board-specific pins are listed per board type.**
+3. **`references/arduino/components.md`** — verified detailed manual for high-frequency components (pin tables, attributes, wiring examples).
+4. **`references/arduino/experience.json`** — accumulated wiring patterns & layout tips (agent-learned). Reference it when generating `diagram.json`.
+5. **`references/arduino/detail/<type>.json`** — per-component detail (auto-generated skeleton).
 
 ### Breadboard (面包板) quick rules
 
-- Types: `wokwi-breadboard` (full), `wokwi-breadboard-half` (half). Use breadboard when wiring many components together.
+- Types: `wokwi-breadboard` (full), `wokwi-breadboard-half` (half). Use breadboard when wiring many components together (>8 parts).
 - Pins: `<row><t/b>.<col>` (component area, e.g. `bb1:13t.b`) and `<t/b><p/n>.<pos>` (power rails, e.g. `bb1:bp.25`).
 - Component → breadboard: `["$bb"]` + empty color `""` (auto-routed, hidden wire).
 - Power: component VCC/GND → breadboard rails; breadboard rails → board 5V/GND.
-- See `components.md` breadboard section for full details.
+- Full details: see `references/common/breadboard.md`.
 
 ### Chinese name matching rules
 
@@ -261,7 +269,7 @@ When generating `diagram.json`, consult `experience.json` `layout_tips` and exis
 - `wokwi-arduino-nano` → `arduino:avr:nano` (auto-inferred by compile.sh)
 - `wokwi-esp32-devkit-v1` → `esp32:esp32:esp32` (auto-inferred; core auto-installs via CN mirror)
 
-`compile.sh` reads `diagram.json`, finds the board part, and auto-infers the FQBN (override with `--fqbn`). ESP32 core installs automatically using the official China mirror (no VPN needed). Wiring experience (`experience.json`) is Uno-based; Mega/Nano/ESP32 pin data exists in `references/uno/index.json` (`verified: false`, needs testing).
+`compile.sh` reads `diagram.json`, finds the board part, and auto-infers the FQBN (override with `--fqbn`). ESP32 core installs automatically using the official China mirror (no VPN needed). Wiring experience (`experience.json`) is Uno-based; Mega/Nano/ESP32 pin data exists in `references/arduino/index.json` (`verified: false`, needs testing).
 
 **Future:** Pico.
 

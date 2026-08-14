@@ -75,7 +75,7 @@ arduino-cli lib install "DHT sensor library" "Adafruit SSD1306"
 
 ## 模板列表
 
-位于 `references/uno/`：
+位于 `references/arduino/`：
 
 | 模板 | 说明 |
 |------|------|
@@ -166,10 +166,14 @@ arduino-cli compile --fqbn arduino:avr:uno --output-dir build/ sketch.ino
 
 ### 查询顺序（快到准）
 
-1. **`references/uno/index.json`** — 全量目录（50 元件），含中文名（`zh`）和引脚。用中文描述匹配 → `type` → 引脚。
-2. **`references/uno/components.md`** — 高频元件验证手册（引脚表、属性、接线示例）。
-3. **`references/uno/experience.json`** — 累积的接线模式与布线技巧（agent 自学习）。生成 diagram.json 时参考。
-4. **`references/uno/detail/<type>.json`** — 每个元件的详细条目（自动生成骨架）。
+1. **`references/common/`** — 系统级通用规则（任何板型/元件）：
+   - `layout-rules.md` — 生成 diagram.json 前必读（风格选择/摆放/控制点）
+   - `breadboard.md` — 使用面包板时读（引脚命名/$bb/电源轨）
+   - `waypoints.md` — 连线用控制点时读（v/h/* 迷你语言）
+2. **`references/arduino/index.json`** — 全量目录（52 元件），含中文名（`zh`）和引脚。用中文描述匹配 → `type` → 引脚。**Arduino 系列（Uno/Mega/Nano）共用此目录，各板卡引脚在对应板型条目中。**
+3. **`references/arduino/components.md`** — 高频元件验证手册（引脚表、属性、接线示例）。
+4. **`references/arduino/experience.json`** — 累积的接线模式与布线技巧（agent 自学习）。生成 diagram.json 时参考。
+5. **`references/arduino/detail/<type>.json`** — 每个元件的详细条目（自动生成骨架）。
 
 ### 中文名匹配规则
 
@@ -201,7 +205,7 @@ curl -sL https://raw.githubusercontent.com/wokwi/wokwi-elements/main/src/<file>.
 - `wokwi-arduino-nano` → `arduino:avr:nano`（compile.sh 自动推断）
 - `wokwi-esp32-devkit-v1` → `esp32:esp32:esp32`（自动推断；核心通过乐鑫官方中国镜像自动安装，无需科学上网）
 
-compile.sh 会根据 diagram.json 的板子元件**自动推断 FQBN**（也可 --fqbn 覆盖）。接线经验（experience.json）目前主要基于 Uno；Mega/Nano/ESP32 引脚数据在 `references/uno/index.json` 中（verified: false，需实测验证）。
+compile.sh 会根据 diagram.json 的板子元件**自动推断 FQBN**（也可 --fqbn 覆盖）。接线经验（experience.json）目前主要基于 Uno；Mega/Nano/ESP32 引脚数据在 `references/arduino/index.json` 中（verified: false，需实测验证）。
 
 **未来可添加：**
 - `references/pico/` — Raspberry Pi Pico

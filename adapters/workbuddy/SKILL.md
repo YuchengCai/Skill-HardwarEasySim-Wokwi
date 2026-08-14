@@ -43,7 +43,7 @@ WorkBuddy 专用的 wokwi-arduino skill 适配器。与 deepcode/claude/cursor �
 
 ## 完整工作流
 
-1. **生成** — 写 `.ino` 代码，查 `references/uno/index.json`（中文名匹配）→ components.md → experience.json，生成 `diagram.json` + `wokwi.toml`
+1. **生成** — 写 `.ino` 代码，查 `references/arduino/index.json`（中文名匹配）→ components.md → experience.json，生成 `diagram.json` + `wokwi.toml`
 2. **编译** — `./scripts/compile.sh <dir>`（自动装 arduino-cli，MINGW 路径已处理）
 3. **仿真** — 环境检测: 用户有 VS Code + Wokwi 插件 → Mode B（F1 手动，零依赖）。仅用户要求自动浏览器仿真（@simulate）或无插件 → Mode A。**Mode A 主路径：Playwright MCP**（按 monaco-steps.md 操作，无需 node）。**备用路径：node scripts/wokwi-automate.js**（仅当能执行命令且无 MCP 时）。**HARD RULE: 未经用户明确同意，绝不安装 playwright 或任何 npm 包**
 4. **确认** — 仿真前先出示**接线文字说明**（从 diagram.json 生成，按元件分组：
@@ -73,7 +73,7 @@ WorkBuddy 专用的 wokwi-arduino skill 适配器。与 deepcode/claude/cursor �
 ```bash
 # 检查并恢复缺失文件
 BASE="https://raw.githubusercontent.com/YuchengCai/Skill-HardwarEasySim-Wokwi/main"
-for F in scripts/compile.sh scripts/wokwi-automate.js references/monaco-steps.md references/uno/components.md references/uno/index.json references/uno/experience.json; do
+for F in scripts/compile.sh scripts/wokwi-automate.js references/monaco-steps.md references/arduino/components.md references/arduino/index.json references/arduino/experience.json; do
   if [ ! -f "$F" ]; then
     echo "缺失 $F，正在从 GitHub 恢复..."
     mkdir -p "$(dirname "$F")"
