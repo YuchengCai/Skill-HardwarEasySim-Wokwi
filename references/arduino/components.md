@@ -108,6 +108,17 @@ It contains only empirically verified pin names, attributes, and connection patt
 
 The two `.l` pins are internally connected; the two `.r` pins are internally connected. Pressing the button connects row 1 to row 2.
 
+### Wiring recommendation (avoid crossing)
+
+Connect signal on one side, GND on the OPPOSITE side — prevents wires crossing above the button:
+
+```json
+["uno:2", "btn1:1.l", "yellow", ["v-70"]],   // signal from left
+["btn1:2.r", "uno:GND.1", "black", ["v-120", "h-20"]]  // GND from right (opposite side)
+```
+
+Using `2.l` (same side as signal) makes both wires exit the same side → they cross. Prefer `2.r` for GND.
+
 ### Attributes
 
 ```json
