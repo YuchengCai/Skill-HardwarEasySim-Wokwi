@@ -1,0 +1,33 @@
+{
+  "version": "0.1",
+  "notes": "ESP32 接线经验库（基于 21 个真实 wokwi ESP32 项目 + 测试验证）",
+  "patterns": [
+    {
+      "type": "wokwi-esp32-devkit-v1",
+      "zh": "ESP32 数字引脚必须带 D 前缀",
+      "connection": ["esp:D2 不是 esp:2", "esp:D15 不是 esp:15"],
+      "wiring": [
+        ["esp:D2", "r1:1", "green", []],
+        ["esp:D15", "btn1:1.l", "yellow", []]
+      ],
+      "notes": "写 esp:2 会导致连线不连接（无回路）。GND 用 GND.1 或 GND.2。",
+      "verified": true
+    },
+    {
+      "type": "wokwi-esp32-devkit-v1",
+      "zh": "ESP32 电源（21 项目统计）",
+      "connection": ["GND 变体多：GND.1 最常用，其次 GND/GND.2", "3V3 常用（3.3V 逻辑）", "5V 给 5V 器件但信号需电平转换"],
+      "wiring": [],
+      "notes": "ESP32 是 3.3V 逻辑，5V 信号直连会损坏引脚。I2C 用 D21(SDA)/D22(SCL)。",
+      "verified": true
+    },
+    {
+      "type": "wokwi-esp32-devkit-v1",
+      "zh": "ESP32 固件是 .bin",
+      "connection": ["wokwi.toml firmware 指向 .ino.bin 而非 .ino.hex"],
+      "wiring": [],
+      "notes": "compile.sh 自动处理（按 FQBN esp32:esp32:esp32 推断扩展名）。",
+      "verified": true
+    }
+  ]
+}

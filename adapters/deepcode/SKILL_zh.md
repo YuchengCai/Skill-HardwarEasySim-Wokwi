@@ -174,6 +174,7 @@ arduino-cli compile --fqbn arduino:avr:uno --output-dir build/ sketch.ino
 3. **`references/arduino/components.md`** — 高频元件验证手册（引脚表、属性、接线示例）。
 4. **`references/arduino/experience.json`** — 累积的接线模式与布线技巧（agent 自学习）。生成 diagram.json 时参考。
 5. **`references/arduino/detail/<type>.json`** — 每个元件的详细条目（自动生成骨架）。
+6. **`references/esp32/`** — ESP32 板卡参考 + 接线差异（D 前缀引脚、3V3/5V、.bin 固件）。项目用 ESP32 板时读。
 
 ### 中文名匹配规则
 

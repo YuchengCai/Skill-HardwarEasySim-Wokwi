@@ -230,6 +230,7 @@ If newer, ask user to update → `git clone + install.sh` (auto).
 3. **`references/arduino/components.md`** — verified detailed manual for high-frequency components (pin tables, attributes, wiring examples).
 4. **`references/arduino/experience.json`** — accumulated wiring patterns & layout tips (agent-learned). Reference it when generating `diagram.json`.
 5. **`references/arduino/detail/<type>.json`** — per-component detail (auto-generated skeleton).
+6. **`references/esp32/`** — ESP32 board reference + wiring differences (D-prefix pins, 3V3/5V, .bin firmware). Read when the project uses an ESP32 board.
 
 ### Breadboard (面包板) quick rules
 
