@@ -1040,5 +1040,19 @@
       "倾斜传感器"
     ],
     "verified": false
+  },
+  {
+    "type": "wokwi-breadboard",
+    "zh": "面包板（全尺寸）",
+    "pins": [],
+    "verified": true,
+    "note": "引脚为动态命名：<行><t/b>.<列>（元件区）/<t/b><p/n>.<位置>（电源轨）。连接用 [\"$bb\"] + 空颜色。见 components.md 面包板章节。"
+  },
+  {
+    "type": "wokwi-breadboard-half",
+    "zh": "面包板（半尺寸）",
+    "pins": [],
+    "verified": true,
+    "note": "引脚为动态命名：<行><t/b>.<列>（元件区）/<t/b><p/n>.<位置>（电源轨）。连接用 [\"$bb\"] + 空颜色。见 components.md 面包板章节。"
   }
 ]

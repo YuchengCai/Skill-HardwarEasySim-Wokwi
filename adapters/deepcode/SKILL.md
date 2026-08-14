@@ -218,10 +218,18 @@ If newer, ask user to update → `git clone + install.sh` (auto).
 
 ### Lookup order (fast → accurate)
 
-1. **`references/uno/index.json`** — full catalog (50 components) with Chinese names (`zh`) and pins. Match user's Chinese description → `type` → pins.
-2. **`references/uno/components.md`** — verified detailed manual for high-frequency components (pin tables, attributes, wiring examples).
+1. **`references/uno/index.json`** — full catalog (52 components) with Chinese names (`zh`) and pins. Match user's Chinese description → `type` → pins.
+2. **`references/uno/components.md`** — verified detailed manual for high-frequency components (pin tables, attributes, wiring examples). **Includes breadboard (面包板) section** — read it when the project needs breadboard wiring (multiple components, real-world prototyping).
 3. **`references/uno/experience.json`** — accumulated wiring patterns & layout tips (agent-learned). Reference it when generating `diagram.json`.
 4. **`references/uno/detail/<type>.json`** — per-component detail (auto-generated skeleton).
+
+### Breadboard (面包板) quick rules
+
+- Types: `wokwi-breadboard` (full), `wokwi-breadboard-half` (half). Use breadboard when wiring many components together.
+- Pins: `<row><t/b>.<col>` (component area, e.g. `bb1:13t.b`) and `<t/b><p/n>.<pos>` (power rails, e.g. `bb1:bp.25`).
+- Component → breadboard: `["$bb"]` + empty color `""` (auto-routed, hidden wire).
+- Power: component VCC/GND → breadboard rails; breadboard rails → board 5V/GND.
+- See `components.md` breadboard section for full details.
 
 ### Chinese name matching rules
 

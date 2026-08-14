@@ -5,11 +5,34 @@
     {
       "type": "wokwi-led",
       "zh": "LED 标准接法",
-      "connection": ["pin13 → 220Ω电阻 → LED阳极(A) → LED阴极(C) → GND"],
+      "connection": [
+        "pin13 → 220Ω电阻 → LED阳极(A) → LED阴极(C) → GND"
+      ],
       "wiring": [
-        ["uno:13", "r1:1", "green", ["v-86.4"]],
-        ["r1:2", "led1:A", "red", ["h0"]],
-        ["led1:C", "uno:GND.1", "black", ["v0"]]
+        [
+          "uno:13",
+          "r1:1",
+          "green",
+          [
+            "v-86.4"
+          ]
+        ],
+        [
+          "r1:2",
+          "led1:A",
+          "red",
+          [
+            "h0"
+          ]
+        ],
+        [
+          "led1:C",
+          "uno:GND.1",
+          "black",
+          [
+            "v0"
+          ]
+        ]
       ],
       "notes": "电阻串在阳极侧保护 LED；GND 必须写 uno:GND.1（带 .1 线才可见）",
       "verified": true
@@ -17,7 +40,9 @@
     {
       "type": "wokwi-resistor",
       "zh": "电阻垂直放置",
-      "connection": ["电阻垂直放置用 rotate:270，接线走直线"],
+      "connection": [
+        "电阻垂直放置用 rotate:270，接线走直线"
+      ],
       "wiring": [],
       "notes": "垂直电阻 `\"rotate\": 270`，属性用 `\"value\"`（不是 resistance）",
       "verified": true
@@ -25,10 +50,22 @@
     {
       "type": "wokwi-pushbutton",
       "zh": "按钮接线",
-      "connection": ["按钮 1.l/2.l 是一路（内部连通），1.r/2.r 是另一路"],
+      "connection": [
+        "按钮 1.l/2.l 是一路（内部连通），1.r/2.r 是另一路"
+      ],
       "wiring": [
-        ["uno:2", "btn1:1.l", "yellow", []],
-        ["btn1:2.l", "uno:GND.1", "black", []]
+        [
+          "uno:2",
+          "btn1:1.l",
+          "yellow",
+          []
+        ],
+        [
+          "btn1:2.l",
+          "uno:GND.1",
+          "black",
+          []
+        ]
       ],
       "notes": "不用 btn1:1 这种写法；必须用 1.l/1.r/2.l/2.r",
       "verified": true
@@ -36,12 +73,34 @@
     {
       "type": "wokwi-ssd1306",
       "zh": "OLED 显示屏接线（重要教训）",
-      "connection": ["DATA(SDA) → A4, CLK(SCL) → A5, VIN → 5V, GND → GND.1"],
+      "connection": [
+        "DATA(SDA) → A4, CLK(SCL) → A5, VIN → 5V, GND → GND.1"
+      ],
       "wiring": [
-        ["oled1:VIN", "uno:5V", "red", []],
-        ["oled1:GND", "uno:GND.1", "black", []],
-        ["oled1:DATA", "uno:A4", "green", []],
-        ["oled1:CLK", "uno:A5", "yellow", []]
+        [
+          "oled1:VIN",
+          "uno:5V",
+          "red",
+          []
+        ],
+        [
+          "oled1:GND",
+          "uno:GND.1",
+          "black",
+          []
+        ],
+        [
+          "oled1:DATA",
+          "uno:A4",
+          "green",
+          []
+        ],
+        [
+          "oled1:CLK",
+          "uno:A5",
+          "yellow",
+          []
+        ]
       ],
       "notes": "⚠️ wokwi-ssd1306 是 I2C 接口（DATA=SDA 接 A4，CLK=SCL 接 A5）！DC/RST/CS 是 SPI 模式但不被仿真支持，不要接。代码用 Adafruit_SSD1306 display(128, 64, &Wire, -1)，begin(SSD1306_SWITCHCAPVCC, 0x3C)。用 SPI 接法（11/13/9/10/8）会导致 OLED 不显示。",
       "verified": true
@@ -49,11 +108,28 @@
     {
       "type": "wokwi-dht22",
       "zh": "DHT22 温湿度传感器接线",
-      "connection": ["VCC → 5V, GND → GND.1, DATA(SDA) → 数字引脚(如 pin2)"],
+      "connection": [
+        "VCC → 5V, GND → GND.1, DATA(SDA) → 数字引脚(如 pin2)"
+      ],
       "wiring": [
-        ["dht1:VCC", "uno:5V", "red", []],
-        ["dht1:GND", "uno:GND.1", "black", []],
-        ["dht1:SDA", "uno:2", "green", []]
+        [
+          "dht1:VCC",
+          "uno:5V",
+          "red",
+          []
+        ],
+        [
+          "dht1:GND",
+          "uno:GND.1",
+          "black",
+          []
+        ],
+        [
+          "dht1:SDA",
+          "uno:2",
+          "green",
+          []
+        ]
       ],
       "notes": "引脚名：VCC/SDA/NC/GND。DATA 引脚接任意数字口即可（这里用 pin2）。读取间隔至少 2 秒。",
       "verified": true
@@ -61,13 +137,63 @@
     {
       "type": "wokwi-esp32-devkit-v1",
       "zh": "ESP32 接线（重要教训）",
-      "connection": ["数字引脚带 D 前缀！D2/D15/D13...；GND 用 GND.2 或 GND.1"],
+      "connection": [
+        "数字引脚带 D 前缀！D2/D15/D13...；GND 用 GND.2 或 GND.1"
+      ],
       "wiring": [
-        ["esp:D2", "r1:1", "green", []],
-        ["led1:C", "esp:GND.2", "black", []],
-        ["esp:D15", "btn1:1.l", "yellow", []]
+        [
+          "esp:D2",
+          "r1:1",
+          "green",
+          []
+        ],
+        [
+          "led1:C",
+          "esp:GND.2",
+          "black",
+          []
+        ],
+        [
+          "esp:D15",
+          "btn1:1.l",
+          "yellow",
+          []
+        ]
       ],
       "notes": "⚠️ ESP32 数字引脚必须带 D 前缀：esp:D2 不是 esp:2，esp:D15 不是 esp:15！写 esp:2 会导致连线不连接（无回路）。GND 用 GND.2（也有 GND.1）。电源引脚 VIN/3V3。编译产物是 .bin（wokwi.toml 要指向 .bin 而非 .hex）。",
+      "verified": true
+    },
+    {
+      "type": "wokwi-breadboard-half",
+      "zh": "面包板使用（8 项目实测验证）",
+      "connection": [
+        "元件插面包板用 [\"$bb\"] + 空颜色（隐藏线）",
+        "电源架构：元件→电源轨→板子5V/GND",
+        "引脚命名：<行><t/b>.<列>（元件区）/ <t/b><p/n>.<位置>（电源轨）"
+      ],
+      "wiring": [
+        [
+          "led1:A",
+          "bb1:7t.b",
+          "",
+          [
+            "$bb"
+          ]
+        ],
+        [
+          "bb1:bp.25",
+          "uno:5V",
+          "red",
+          []
+        ],
+        [
+          "bb1:bn.25",
+          "uno:GND.2",
+          "black",
+          []
+        ]
+      ],
+      "notes": "$bb = wokwi 自动布线到面包板（线隐藏）。元件 VCC/GND 从电源轨取电，电源轨接板子 5V/GND。板子可 rotate 90 竖放。",
       "verified": true
     }
   ],
