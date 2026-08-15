@@ -1,7 +1,35 @@
-# Layout Rules — Board Layout Guidelines
+# Layout Rules — Board Layout Guidelines (v2)
 
 > 系统级通用布局规则（适用于所有板型/元件）。生成 `diagram.json` 时参考。
-> 验证来源：18+ 真实 wokwi 项目（官方精选 + 社区）。
+> v2：布局-走线协同框架（模型无视觉 → 数字规则补偿 + 一体设计）。
+> 验证来源：18+ 真实项目 + 用户手动布线模板。
+
+## 核心认知：布局与走线必须协同
+
+```
+人类（有视觉）：一开始有"画面" → 元件分布 + 走线同时成型
+模型（无视觉）：只能从坐标判断 → 缺空间直觉
+
+→ 布局决定走线可行性，走线反馈布局
+→ 一体设计：布局时预判走线，走线时受布局约束
+→ 规则 = 把视觉直觉翻译成数字条件（间距阈值/通道/平行）
+```
+
+## 协同框架（3 层）
+
+```
+① 布局规划（含走线预判）
+   元件放哪 → 同时预判每条线走向
+   检查：线被遮挡？平行线有空间？通道够？
+   位置不对 → 提前调整
+
+② 走线规划（受布局约束）
+   线路径 → 检查空间：遮挡/交叉/重叠/平行间距
+   不够 → 调整节点，或回退调整布局
+
+③ 协同校验（检测脚本）
+   布局层 + 走线层双向检查（预防 + 检测）
+```
 
 ## Rule 1: Choose wiring style
 
@@ -22,22 +50,38 @@
 
 Rationale: breadboard rails provide a "bus" for shared GND/power — cleaner than many wires converging on one board pin (causes overlap/confusion).
 
-## Rule 2: Position parts around the board
+## Rule 2: Functional grouping + position (layout planning)
 
-- Place parts ABOVE or to the SIDES of the board (not on top of it)
-- Keep distance from board: 100-500px (enough for wire routing)
-- Minimum spacing between parts: ≥ 30 units (prevent overlap)
-- Group related parts together (button near its LED)
+**① Functional grouping (功能组合靠近) — plan from the start:**
 
-## Rule 3: Use clean waypoint pattern
+- Related parts are placed TOGETHER from the beginning:
+  - LED + resistor (series circuit as a group)
+  - Button group (input area)
+  - Sensor + display (signal chain)
+- Or use breadboard to organize (complex / shared-power scenarios → parts around breadboard)
+- Don't scatter related parts far apart
 
-- Source pin exits vertically first: `["v-<N>", "*", "h<±N>"]`
-  (N = exit distance, small for near parts, larger for far parts)
-- Target side approaches horizontally with small adjust (±6-10px)
+**② Around the board's REAL rendered area:**
+
+- Parts must NOT enter the board's actual rendered rectangle
+  (Uno 72.58×53.34, Mega/ESP32 per their viewBox)
+- Not "around the geometric center" — clear the real image boundary
+- Keep distance from board: enough for wire routing (≈100-500 units)
+
+**③ Spacing for wire channels:**
+
+- Minimum part spacing: ≥ 30 units (prevent overlap)
+- Leave "wire channels" between parts (parallel lines need space)
+- Pre-judge: would a wire from A to B cross another part? Adjust position early
+
+## Rule 3: Clean waypoint pattern + routing discipline
+
+- Source pin exits on its own side first (digital up / power-analog down — see `waypoints.md`)
+- Then 1-2 intermediate nodes: vertical to safe height → horizontal → vertical to target
+- Same-function wires stay PARALLEL (consistent, tidy)
 - Keep waypoints simple — complex multi-segment paths look messy
-- Full waypoint format: see `waypoints.md`
 
-**Avoid converging wires (共线):** when multiple wires target the SAME pin (e.g. several GND lines to `uno:GND.1`), give each a different waypoint path so they arrive separately — otherwise the auto-router merges the final segments into one shared line, which is confusing.
+**Avoid converging wires (共线):** when multiple wires target the SAME pin, give each a different path so they arrive separately — otherwise the auto-router merges them into one shared line (confusing).
 
 ```json
 ["led1:C", "uno:GND.1", "black", ["v-120", "h10"]],     // approach from left
@@ -50,10 +94,12 @@ Rationale: breadboard rails provide a "bus" for shared GND/power — cleaner tha
 - Breadboard style: part VCC/GND → breadboard rails → board 5V/GND
 - Red wire for VCC/5V, black for GND (consistent convention)
 
-## Rule 5: Avoid common mistakes
+## Rule 5: Avoid overlaps (wires AND parts)
 
 - Don't place parts overlapping the board (blocks pins)
 - Don't route wires across the board surface (blocks pin labels)
+- **Wires must not overlap**: parallel lines keep ≥ 5 units spacing (not just cross-check)
+- Same-target wires separated by different paths
 - Don't scatter related parts far apart (unclear function grouping)
 
 ## Wiring colors (convention)

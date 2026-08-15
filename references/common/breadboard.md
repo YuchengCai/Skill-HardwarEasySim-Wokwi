@@ -1,72 +1,109 @@
-# Breadboard — 面包板使用指南
+# Breadboard — 面包板使用指南 (v2)
 
 > 系统级通用面包板知识（适用于所有板型）。
-> 验证来源：8 个真实 wokwi 面包板项目（跨项目共识）。
+> v2 重写：位置关系为核心、$bb 前提、跳线必须、旋转灵活。
+> 验证：真实用户手动布线模板（complex-system-user-wiring.json）。
 
-## Component types
+## 第 1 层：位置关系（核心！）
 
-| Type | Notes |
-|------|-------|
-| `wokwi-breadboard` | Full-size breadboard |
-| `wokwi-breadboard-half` | Half-size breadboard (common in projects) |
-
-Use breadboard when wiring many components together (>8 parts) or for real-world prototyping patterns.
-
-## Pin naming system (cross-project consistent)
+元件放在面包板**周围**（上方/下方/两侧），**相对位置要清楚**：
 
 ```
-Component area (元件区): <id>:<row><half>.<column>
-  e.g. "bb1:13t.b" = row 13, top half (t), column b
-  half: t = top row, b = bottom row
-  column: a-j letters
+布局示意（纵向）：
+  [LED/传感器]    ← 面包板上方（信号区）
+  [面包板 bb1]    ← 中间
+  [按钮/电阻]     ← 面包板下方（操作区）
+  [Arduino 板]    ← 更下方
 
-Power rails (电源轨): <id>:<half><polarity>.<position>
-  e.g. "bb1:bp.25" = bottom (b) positive (p) rail, position 25
-       "bb1:bn.22" = bottom (b) negative (n) rail
-       "bb1:tp.30" = top (t) positive (p) rail
-       "bb1:tn.50" = top (t) negative (n) rail
+要点：
+  - 元件位置 ↔ 面包板孔位要有对应关系（这是 $bb 能用的前提）
+  - 尺寸选择（half/full）是为了容纳元件数量，不是硬性
+  - 旋转（元件/板子/面包板）是为了配合布局线序，不是硬性
+  - 真实场景由使用者交互调整最终位置
 ```
 
-## Connection patterns (verified)
 
-**Pattern A — Component to breadboard (use `["$bb"]` + empty color):**
+## 孔位坐标系统（实测反推，wokwi 编辑器标尺验证）
 
-```json
-["led1:A", "bb1:7t.b", "", ["$bb"]]
+**方向修正（重要）：数字 = 水平方向，字母 = 垂直方向！**
+
+
+## 第 2 层：$bb 语义（虚拟连接）
+
+```
+$bb = 元件引脚 → 面包板孔的【虚拟连接】（隐藏线）
+
+["btn1:1.l", "bb1:16b.g", "", ["$bb"]]
+
+只需写两端：
+  元件引脚（btn1:1.l）
+  面包板孔位（bb1:16b.g）
+
+关键前提：元件位置和面包板孔位已对应
+  → 否则逻辑上连接了，视觉上没连接（元件悬空/线悬空）
+
+$bb 适用于：按钮、传感器（DHT 等）、电阻（跨槽）
+不适用于：LED（用普通线连孔，可见）、蜂鸣器（直连板子）
 ```
 
-- `["$bb"]` = auto-route to breadboard (wokwi connects component pin to the breadboard hole)
-- Empty color `""` = hidden wire (breadboard internal connection, no visual clutter)
+## 第 3 层：电源架构（必须的跳线！）
 
-**Pattern B — Power rails to board power:**
+跳线是电路真正连通的**必要条件**，必须写：
 
-```json
-["bb1:bp.25", "uno:5V", "red", ["v-0.9", "h78.4", "v-57.6"]]
-["bb1:bn.25", "uno:GND.2", "black", ["v-1.3", "h88", "v-57.6"]]
+```
+① 板子 → 面包板电源轨（可见线）
+   ["uno:5V", "bb1:tp.10", "red", [...]]
+   ["uno:GND.2", "bb1:tn.10", "black", [...]]
+
+② 轨间跳线（上下轨连通）
+   ["bb1:tp.1", "bb1:bp.1", "red", [...]]   上正 → 下正
+   ["bb1:tn.1", "bb1:bn.1", "black", [...]] 上负 → 下负
+
+③ 电源轨 → 元件区（元件 VCC 供电）
+   ["bb1:tp.9", "bb1:11b.f", "red", ["v0"]] 正轨 → 元件行
+
+④ 元件区 → 电源轨（元件 GND 回流）
+   ["bb1:16b.h", "bb1:bn.13", "green", ["v0"]] 元件行 → 负轨
+   ["bb1:21b.h", "bb1:bn.17", "green", ["v0"]]
+
+→ 没有跳线 = 元件没通电（逻辑连了电路没通）
 ```
 
-- Breadboard positive rail → board 5V (red)
-- Breadboard negative rail → board GND (black)
+## 第 4 层：元件接线模式（按类型）
 
-**Pattern C — Component power from breadboard rails:**
+| 元件 | 接线模式 | 示例 |
+|------|---------|------|
+| **LED** | A→面包板孔（信号，普通线）、C→bn 轨 | `["bb1:30b.h","led1:A","green",[...]]`、`["led1:C","bb1:bn.25","black",["v0"]]` |
+| **电阻** | 跨槽（t↔b 区），rotate 按布局 | `["r1:1","bb1:30b.g","",["$bb"]]`、`["r1:2","bb1:30t.c","",["$bb"]]` |
+| **按钮** | $bb 连 4 孔 + b 区跳线→bn | `["btn1:1.l","bb1:16b.g","",["$bb"]]` + `["bb1:16b.h","bb1:bn.13","green",["v0"]]` |
+| **DHT/传感器** | $bb 连 b 区 + 电源跳线 | `["dht1:VCC","bb1:11b.i","",["$bb"]]` + `["bb1:tp.9","bb1:11b.f","red",["v0"]]` |
+| **OLED** | SDA/SCL 直连板子 + VCC/GND→bp/bn 轨 | `["oled1:SDA","uno:A4","gold",[...]]`、`["oled1:VCC","bb1:bp.3","red",[...]]` |
+| **蜂鸣器** | 直连板子 + GND→bn 轨 | `["uno:11","bz1:1","red",["v0"]]`、`["bz1:2","bb1:bn.15","black",[...]]` |
 
-```json
-["pir1:VCC", "bb2:bp.21", "red", ["v0"]]
-["pir1:GND", "bb2:bn.21", "black", ["v0"]]
+## 第 5 层：调整手段（非硬性）
+
+```
+尺寸选择：
+  wokwi-breadboard-half → 元件 ≤ 8（多数场景）
+  wokwi-breadboard     → 元件多/需要大区域
+
+旋转：
+  面包板 rotate 180 → 改变孔位方向（配合布局）
+  元件 rotate 90/270 → 改变引脚方向（配合线序）
+  板子 rotate → 改变引脚朝向（配合整体布局）
+
+验证：
+  真实场景由使用者交互调整（拖拽/旋转看效果）
+  规则提供"合理默认"，最终以模拟效果为准
 ```
 
-- Components draw power from breadboard rails (not directly from board)
+## 元件引脚名（用户模板确认）
 
-**Pattern D — Breadboard to board signal (visible wire + waypoints):**
-
-```json
-["bb1:13t.b", "uno:13", "red", ["v-124.8", "h470.4", "v153.6"]]
 ```
+board-ssd1306（OLED，I2C）：SDA / SCL / VCC / GND
+  （注意：不是 wokwi-ssd1306 的 DATA/CLK/VIN！用 board-ssd1306）
 
-## Layout rules (breadboard projects)
-
-1. Components are plugged INTO the breadboard (not scattered around board)
-2. Board often rotated (`"rotate": 90`) for compact breadboard wiring
-3. Power architecture: component VCC/GND → breadboard rails; breadboard rails → board 5V/GND
-4. Use `["$bb"]` + empty color for component-to-breadboard connections (auto-routed, hidden)
-5. Only power/signal wires between breadboard and board are visible (with waypoints)
+wokwi-breadboard-half 孔位：
+  元件区：<行><t/b>.<列>（t=上半区，b=下半区；列 a-j）
+  电源轨：<t/b><p/n>.<位置>（tp=上正、tn=上负、bp=下正、bn=下负）
+```

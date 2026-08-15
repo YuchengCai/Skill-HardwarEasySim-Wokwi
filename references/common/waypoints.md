@@ -41,6 +41,40 @@
 - Target approaches horizontally (small adjust ±6-10px)
 - Board below, parts above → negative v (up); board above, parts below → positive v
 
+## Board pin side rule (critical, verified from real user wiring)
+
+**Board pins are on TWO sides — exit direction depends on WHICH side the pin is on:**
+
+```
+Arduino Uno standard layout (no rotation):
+  【数字侧 Digital side】pin 0-13 → board TOP → exit UP first (v-)
+  【电源/模拟侧 Power/Analog side】5V/GND/3V3/VIN/A0-A5 → board BOTTOM → exit DOWN first (v+)
+
+Verified from real wiring:
+  ["uno:13", ...]  → ["v-144", ...]  (digital, up)
+  ["uno:7", ...]   → ["v-115", ...]  (digital, up)
+  ["uno:5V", ...]  → ["v47.9", ...]  (power, down)
+  ["uno:GND.2", ...] → ["v19.1", ...] (power, down)
+  ["uno:A4", ...]  → ["v76.7", ...]  (analog, down)
+```
+
+**Mistake to avoid**: a 5V/GND wire exiting UP crosses the board surface (covers it). Always exit on the pin's own side.
+
+**Rotation follows the board:**
+- rotate 90 → digital side on RIGHT → exit RIGHT first (h+)
+- rotate 180 → digital side on BOTTOM → exit DOWN first (v+)
+- rotate 270 → digital side on LEFT → exit LEFT first (h-)
+
+## Intermediate nodes (1-2 between board and target)
+
+Do NOT go straight from board pin to component center. Add 1-2 intermediate waypoints:
+
+```json
+["v-60", "h120", "v-80"]   // exit up → move right → reach target height
+```
+
+Pattern: exit on own side → move horizontally to target column → vertical to target → small adjust. This keeps wires clear of other components.
+
 ## Special instruction: `$bb` (breadboard)
 
 ```json

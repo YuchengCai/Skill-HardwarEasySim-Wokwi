@@ -165,35 +165,68 @@
     },
     {
       "type": "wokwi-breadboard-half",
-      "zh": "面包板使用（8 项目实测验证）",
+      "zh": "面包板使用（v2，用户手动模板验证）",
       "connection": [
-        "元件插面包板用 [\"$bb\"] + 空颜色（隐藏线）",
-        "电源架构：元件→电源轨→板子5V/GND",
-        "引脚命名：<行><t/b>.<列>（元件区）/ <t/b><p/n>.<位置>（电源轨）"
+        "位置关系是核心：元件放面包板周围（上/下/侧），位置↔孔位对应",
+        "$bb = 虚拟连接（隐藏线），需位置对应否则视觉没连",
+        "跳线必须：轨间跳线(tp→bp/tn→bn) + 电源轨→元件区 + 元件区→电源轨",
+        "尺寸(half/full)/旋转 = 配合布局的手段，非硬性"
       ],
       "wiring": [
         [
-          "led1:A",
-          "bb1:7t.b",
-          "",
+          "uno:5V",
+          "bb1:tp.10",
+          "red",
           [
-            "$bb"
+            "v47.9",
+            "h387.8"
           ]
         ],
         [
-          "bb1:bp.25",
-          "uno:5V",
-          "red",
-          []
+          "uno:GND.2",
+          "bb1:tn.10",
+          "black",
+          [
+            "v19.1",
+            "h378.3"
+          ]
         ],
         [
-          "bb1:bn.25",
-          "uno:GND.2",
+          "bb1:tp.1",
+          "bb1:bp.1",
+          "red",
+          [
+            "v-0.3",
+            "h46.4"
+          ]
+        ],
+        [
+          "bb1:tn.1",
+          "bb1:bn.1",
           "black",
-          []
+          [
+            "v0.1",
+            "h36.8"
+          ]
+        ],
+        [
+          "led1:C",
+          "bb1:bn.25",
+          "black",
+          [
+            "v0"
+          ]
+        ],
+        [
+          "bb1:16b.h",
+          "bb1:bn.13",
+          "green",
+          [
+            "v0"
+          ]
         ]
       ],
-      "notes": "$bb = wokwi 自动布线到面包板（线隐藏）。元件 VCC/GND 从电源轨取电，电源轨接板子 5V/GND。板子可 rotate 90 竖放。",
+      "notes": "OLED 用 board-ssd1306（SDA/SCL/VCC/GND），不是 wokwi-ssd1306。跳线决定电路连通。验证模板：D:/tool/wokwi-samples/user-verified/complex-system-user-wiring.json",
       "verified": true
     }
   ],

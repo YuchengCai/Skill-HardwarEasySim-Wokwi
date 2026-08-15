@@ -1,0 +1,94 @@
+{
+  "version": "0.1",
+  "notes": "常用元件尺寸表（wokwi 实际规格近似值，单位 px）。脚本检测时加安全边距吸收误差。未知元件默认 20x20。",
+  "sizes": {
+    "wokwi-arduino-uno": {
+      "width": 231.0,
+      "height": 170.0
+    },
+    "wokwi-arduino-mega": {
+      "width": 102.66,
+      "height": 50.8
+    },
+    "wokwi-arduino-nano": {
+      "width": 44.9,
+      "height": 17.8
+    },
+    "wokwi-esp32-devkit-v1": {
+      "width": 107.0,
+      "height": 201.0
+    },
+    "board-esp32-devkit-c-v4": {
+      "width": 55.0,
+      "height": 28.0
+    },
+    "wokwi-led": {
+      "width": 20.0,
+      "height": 20.0
+    },
+    "wokwi-resistor": {
+      "width": 12.0,
+      "height": 5.0
+    },
+    "wokwi-pushbutton": {
+      "width": 20.0,
+      "height": 20.0
+    },
+    "wokwi-buzzer": {
+      "width": 17.0,
+      "height": 20.0
+    },
+    "wokwi-dht22": {
+      "width": 15.1,
+      "height": 30.885
+    },
+    "wokwi-breadboard": {
+      "width": 165.0,
+      "height": 55.0
+    },
+    "wokwi-breadboard-half": {
+      "width": 82.0,
+      "height": 55.0
+    },
+    "wokwi-lcd1602": {
+      "width": 2.95,
+      "height": 5.55
+    },
+    "wokwi-ssd1306": {
+      "width": 27.0,
+      "height": 30.0
+    },
+    "wokwi-pir-motion-sensor": {
+      "width": 90.7,
+      "height": 92.4
+    },
+    "wokwi-hc-sr04": {
+      "width": 45.0,
+      "height": 25.0
+    },
+    "wokwi-7segment": {
+      "width": 20.0,
+      "height": 32.0
+    },
+    "wokwi-74hc595": {
+      "width": 20.0,
+      "height": 10.0
+    },
+    "board-ssd1306": {
+      "width": 27.0,
+      "height": 30.0
+    },
+    "wokwi-servo": {
+      "width": 170.08,
+      "height": 119.55
+    },
+    "wokwi-membrane-keypad": {
+      "width": 11.2,
+      "height": 11.0
+    }
+  },
+  "default": {
+    "width": 20.0,
+    "height": 20.0
+  }
+}
