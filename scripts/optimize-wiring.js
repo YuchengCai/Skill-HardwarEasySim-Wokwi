@@ -265,11 +265,26 @@ function detectConflicts(diagram, partRects) {
   const isBoardType = (type) => type.includes('arduino') || type.includes('esp32');
   const boardParts = parts.filter(p => isBoardType(p.type));
 
-  // ① 元件 vs 板子遮挡
+  // ① 元件 vs 板子遮挡（arduino/esp32 板；面包板：仅插其上的元件豁免）
+  const realBoards = parts.filter(p => p.type.includes('arduino') || p.type.includes('esp32'));
+  const breadboards = parts.filter(p => p.type.includes('breadboard'));
+  const pluggedParts = new Set(); // 插在面包板上的元件（有 $bb 连接）
+  for (const c of (diagram.connections || [])) {
+    const wp = c.length > 3 ? c[3] : [];
+    if (wp.includes('$bb')) pluggedParts.add(c[0].split(':')[0]);
+  }
   for (const p of parts) {
     if (isBoardType(p.type)) continue;
+    if (p.type.includes('breadboard')) continue;
     const pr = partRects.get(p.id);
-    for (const bp of boardParts) {
+    // 面包板：插其上的元件豁免，遮挡面板的元件要检
+    for (const bb of breadboards) {
+      const br = partRects.get(bb.id);
+      if (pr && br && rectsOverlap(pr, br) && !pluggedParts.has(p.id)) {
+        conflicts.push({ type: 'part-on-breadboard', part: p.id, connStr: p.type });
+      }
+    }
+    for (const bp of realBoards) {
       const br = partRects.get(bp.id);
       if (pr && br && rectsOverlap(pr, br)) {
         conflicts.push({ type: 'part-on-board', part: p.id, connStr: p.type });
@@ -278,11 +293,12 @@ function detectConflicts(diagram, partRects) {
     }
   }
 
-  // ② 元件 vs 元件重叠
+  // ② 元件 vs 元件重叠（排除面包板参与：面板是载体）
   for (let i = 0; i < parts.length; i++) {
     for (let j = i + 1; j < parts.length; j++) {
       const a = parts[i], b = parts[j];
       if (isBoardType(a.type) && isBoardType(b.type)) continue;
+      if (a.type.includes('breadboard') || b.type.includes('breadboard')) continue;
       const ar = partRects.get(a.id), br = partRects.get(b.id);
       if (ar && br && rectsOverlap(ar, br)) {
         conflicts.push({ type: 'parts-overlap', a: a.id, b: b.id, connStr: `${a.id} ↔ ${b.id}` });
@@ -357,10 +373,11 @@ function detectConflicts(diagram, partRects) {
       const conn2 = conns[j];
       const wp2 = conn2.length > 3 ? conn2[3] : [];
       if (wp2.includes('$bb')) continue;
-      const c2From = conn2[0].split(':')[0];
-      const c2To = conn2[1].split(':')[0];
-      // 共享任何元件 → 跳过（同源/同目标的线在引脚区自然密集）
-      if (c1From === c2From || c1From === c2To || c1To === c2From || c1To === c2To) continue;
+      // 只检测共享同一引脚端点的线对（如都连 uno:5V → 共线问题）
+      // 不共享端点 → 跳过（不同引脚的线密集是正常的）
+      const sharedPin = (conn[0] === conn2[0] || conn[0] === conn2[1] ||
+                         conn[1] === conn2[0] || conn[1] === conn2[1]);
+      if (!sharedPin) continue;
       const points2 = connectionPath(conn2, parts);
       if (!points2) continue;
       const segs2 = polylineToSegments(points2);
@@ -437,6 +454,7 @@ function main() {
     'hits-part': '线穿元件',
     'cross': '线交叉',
     'part-on-board': '元件遮挡板子',
+    'part-on-breadboard': '元件遮挡面包板',
     'parts-overlap': '元件重叠',
     'wire-through-board': '线穿板子',
     'overlap': '线重叠'
