@@ -251,14 +251,14 @@ function main() {
 
     // ============================================================
     // 电源架构（A2）：GND/5V 走电源轨，而非直连板子引脚（就近走轨不穿板）
-    // 轨坐标 rotate 180（y 近似；轨列错位从 dragramtest 实测反推）：
+    // 轨坐标 rotate 180（y 近似；轨列错位已实测确认：用户悬停孔名 + dragramtest 模板）：
     //   bn=下负轨(视觉顶部) bp=下正轨 tn=上负轨 tp=上正轨(视觉底部)
-    // 轨列 ≠ 主区列：bn/bp 位置号 n 对齐主区第 n+3 列，tn/tp 对齐第 n+2 列
+    // 轨列 ≠ 主区列：bn/bp 位置号 n 对齐主区第 n+5 列，tn/tp 对齐第 n+2 列
     // 轨位置号有效范围 1..25（>25 的引用 Wokwi 不渲染 → 线消失）
     // ============================================================
     const RAIL_MAX = 25;
     const railY = { bn: bb.top + 4, bp: bb.top + 10, tn: bb.top + 156, tp: bb.top + 162 };
-    const railOff = (rail) => (rail === 'bn' || rail === 'bp') ? 3 : 2;
+    const railOff = (rail) => (rail === 'bn' || rail === 'bp') ? 5 : 2;
     const railPos = (rail, n) => ({ x: rx(n + railOff(rail)), y: railY[rail] });
     // 识别电源连线（目标 = uno:GND/5V/3V3/VIN）→ 连对应轨
     const railUsed = { bn: new Set(), bp: new Set(), tn: new Set(), tp: new Set() };
@@ -359,15 +359,15 @@ function main() {
 
     // 电源轨主线：板子 GND/5V → 就近轨（板子在下 → 上负轨 tn / 上正轨 tp），
     // 再跳线 tn→bn、tp→bp 连到元件取电用的轨（上下轨连通）。
-    // 一孔一接：主线接 tn.24/tp.24（主区第 26 列空档），跳线用 tn.21→bn.20 / tp.21→bp.20
-    // （tn.n 与 bn.(n-1) 同 x=第 23 列空档，竖直、零交叉，且不与元件轨孔/主线孔共用）。
+    // 一孔一接：主线接 tn.24/tp.24（主区第 26 列空档），跳线用 tn.21→bn.18 / tp.21→bp.18
+    // （tn.n 与 bn.(n-3) 同 x=第 23 列空档，竖直、零交叉，且不与元件轨孔/主线孔共用）。
     if (railUsed['bn'].size > 0) {
       wireConns.push(['uno:GND.2', 'bb1:tn.24', 'black', routeWp('uno', 'GND.2', pinPos('uno', 'GND.2'), railPos('tn', 24), 0)]);
-      wireConns.push(['bb1:tn.21', 'bb1:bn.20', 'black', routeWp('bb1', '', railPos('tn', 21), railPos('bn', 20), 0)]);
+      wireConns.push(['bb1:tn.21', 'bb1:bn.18', 'black', routeWp('bb1', '', railPos('tn', 21), railPos('bn', 18), 0)]);
     }
     if (railUsed['tp'].size > 0) {
       wireConns.push(['uno:5V', 'bb1:tp.24', 'red', routeWp('uno', '5V', pinPos('uno', '5V'), railPos('tp', 24), 0)]);
-      wireConns.push(['bb1:tp.21', 'bb1:bp.20', 'red', routeWp('bb1', '', railPos('tp', 21), railPos('bp', 20), 0)]);
+      wireConns.push(['bb1:tp.21', 'bb1:bp.18', 'red', routeWp('bb1', '', railPos('tp', 21), railPos('bp', 18), 0)]);
     }
 
     // 输出
