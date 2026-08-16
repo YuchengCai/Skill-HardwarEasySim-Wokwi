@@ -51,7 +51,7 @@ function main() {
 
   // 板子位置（面包板模式：板子右侧；直连：下方居中）
   const useBB = !!intent.breadboard;
-  const board = { type: intent.board || 'wokwi-arduino-uno', left: useBB ? 400 : 40, top: useBB ? 100 : 200 };
+  const board = { type: intent.board || 'wokwi-arduino-uno', left: useBB ? 400 : 40, top: useBB ? 300 : 200 };
   const boardSize = sizesData.sizes[board.type] || sizesData.default;
   board.w = boardSize.width;
   board.h = boardSize.height;
@@ -300,12 +300,15 @@ function main() {
       wireConns.push([fromRef, toRef, c.color || 'green', routeWp(fid, fpin, a, b, stagger)]);
     });
 
-    // 电源轨主线：板子 GND/5V → 轨（一条，替代多条直连到板子引脚）
+    // 电源轨主线：板子 GND/5V → 就近轨（板子在下 → 上负轨 tn / 上正轨 tp），
+    // 再跳线 tn→bn、tp→bp 连到元件取电用的轨（上下轨连通）
     if (railSeen['bn']) {
-      wireConns.push(['uno:GND.2', 'bb1:bn.1', 'black', routeWp('uno', 'GND.2', pinPos('uno', 'GND.2'), railPos('bn', 1), 0)]);
+      wireConns.push(['uno:GND.2', 'bb1:tn.1', 'black', routeWp('uno', 'GND.2', pinPos('uno', 'GND.2'), railPos('tn', 1), 0)]);
+      wireConns.push(['bb1:tn.30', 'bb1:bn.30', 'black', ['v0']]);
     }
     if (railSeen['tp']) {
       wireConns.push(['uno:5V', 'bb1:tp.1', 'red', routeWp('uno', '5V', pinPos('uno', '5V'), railPos('tp', 1), 0)]);
+      wireConns.push(['bb1:tp.30', 'bb1:bp.30', 'red', ['v0']]);
     }
 
     // 输出
