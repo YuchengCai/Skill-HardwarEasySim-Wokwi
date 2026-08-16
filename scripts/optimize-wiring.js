@@ -143,13 +143,15 @@ function pinPosition(part, pinName) {
       ox = 10.6 + (num - 1) * 9.6;
       oy = 9 + letterIdx * 9.6 + (half === 'b' ? 19.2 : 0);
     } else {
-      // 电源轨: <t/b><p/n>.<位置号> 如 bn.25, tp.9（近似，待实测校准）
+      // 电源轨: <t/b><p/n>.<位置号> 如 bn.25, tp.9
+      // 轨列与主区列错位（dragramtest 实测反推）：bn/bp 偏移 +3 列，tn/tp 偏移 +2 列
       const railMatch = pin.match(/^([tb])([pn])\.(\d+)$/);
       if (railMatch) {
         const half = railMatch[1];
         const polarity = railMatch[2];
         const pos = parseInt(railMatch[3]);
-        ox = 10.6 + (pos - 1) * 9.6;
+        const off = half === 'b' ? 3 : 2;
+        ox = 10.6 + (pos + off - 1) * 9.6;
         if (half === 't') oy = (polarity === 'p' ? 4 : 10);
         else oy = BOARD_H - (polarity === 'p' ? 10 : 4);
       } else {
