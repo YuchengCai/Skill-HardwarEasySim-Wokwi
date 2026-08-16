@@ -77,6 +77,7 @@ function main() {
   // 孔位 (row n, half h∈{t,b}, letter L∈{a..j}) 画布坐标：
   //   rx(n)   = bb.left + 303 - (n-1)*9.6        （数字=水平，rotate180 后反向）
   //   ry(L,h) = bb.top  + 157 - idx(L)*9.6 - (h==='b' ? 19.2 : 0)
+  // ⚠️ 半区每侧仅 5 孔：t 半区字母 a-e，b 半区字母 f-j（freeHole 只在这些字母里选，见 HALF_RANGE）
   // 各元件 $bb 配方（引脚→孔位 + 位置锚点，均实测校准）：
   //   按钮(rot90): 1.r→(n,t,b) 2.r→(n+2,t,b) 1.l→(n,b,g) 2.l→(n+2,b,g)；锚点 1.l 偏移 (44.5,-9.5)
   //   电阻(rot90): 1→(n,b,g) 2→(n,t,c)；锚点 1 偏移 (29.35,-24.0)
@@ -95,15 +96,35 @@ function main() {
 
     const bbConns = [];   // $bb 插接连接
     const wireConns = []; // 可见线连接（LED 等）
-    // 每类元件的起始行游标（行=水平方向，rotate180 后行号越大越靠左）
-    // 类型分带（与 dragramtest 模板一致，各带之间留物理宽度空档，避免相邻带重叠）：
-    //   dht22: 4-9   传感区（右侧 x≈207-236）
-    //   led  : 8-13  指示区（面板上方，可见线连这些行）
-    //   按钮 : 16-25 输入区（中间 x≈92-159）
-    //   电阻 : 27-30 指示区（左侧 x≈25-53）
-    const cursors = { pushbutton: 16, resistor: 27, dht22: 4, led: 8 };
+    // 每类元件的起始列游标（行=水平方向，rotate180 后行号越大越靠左）
+    // 类型分带（与 dragramtest 模板一致）：
+    //   dht22: 4-9    传感区（右侧）
+    //   按钮 : 16-25  输入区（中间）
+    //   电阻 : 27-30  指示区（左侧；LED 与配对电阻同列 → 信号线最短、竖直）
+    const cursors = { pushbutton: 16, resistor: 27, dht22: 4, led: 26 };
     const is = (p, t) => (p.type || '').includes(t);
-    let ledCount = 0;   // LED 纵向错开计数（避免多个 LED 的 A 脚同高 → 信号线共线）
+
+    // 从网表推导 LED↔电阻配对（如 r1:2 → led1:A），让 LED 放到其电阻正上方同列，
+    // 避免「电阻在左、LED 在右」造成的长水平拖线 + 多段转弯
+    const resOfLed = {};   // ledId -> resistorId
+    (intent.connections || []).forEach(c => {
+      const f = c.from.split(':')[0], t = c.to.split(':')[0];
+      if (/^led/i.test(f) && /^r\d+/i.test(t)) resOfLed[f] = t;
+      else if (/^r\d+/i.test(f) && /^led/i.test(t)) resOfLed[t] = f;
+    });
+    // 预分配列：电阻先占列；LED 复用其配对电阻的列（无配对电阻的 LED 用独立游标）
+    const resColumn = {};   // resId -> column
+    let resCursor = cursors.resistor;
+    bbParts.forEach(p => { if (is(p, 'resistor')) { resColumn[p.id] = resCursor; resCursor += 3; } });
+    const ledColumn = {};   // ledId -> column
+    let ledCursor = cursors.led;
+    bbParts.forEach(p => {
+      if (is(p, 'led')) {
+        const resId = resOfLed[p.id];
+        if (resId && resColumn[resId] != null) ledColumn[p.id] = resColumn[resId];
+        else { ledColumn[p.id] = ledCursor; ledCursor += 3; }
+      }
+    });
 
     bbParts.forEach(p => {
       if (is(p, 'pushbutton')) {
@@ -117,13 +138,12 @@ function main() {
         p.top = Math.round(ry('g', 'b') + 9.5);
         cursors.pushbutton += 5;
       } else if (is(p, 'resistor')) {
-        const n = cursors.resistor;
+        const n = resColumn[p.id];
         bbConns.push([`${p.id}:1`, `bb1:${n}b.g`, '', ['$bb']]);
         bbConns.push([`${p.id}:2`, `bb1:${n}t.c`, '', ['$bb']]);
         p.rotate = 90;
         p.left = Math.round(rx(n) - 29.35);
         p.top = Math.round(ry('g', 'b') + 24.0);
-        cursors.resistor += 3;
       } else if (is(p, 'dht')) {
         const n = cursors.dht22;
         bbConns.push([`${p.id}:GND`, `bb1:${n}b.i`, '', ['$bb']]);
@@ -134,13 +154,10 @@ function main() {
         p.top = Math.round(ry('i', 'b') - 114.9);
         cursors.dht22 += 6;
       } else if (is(p, 'led')) {
-        // LED：面包板上方放置（连线由 intent.connections 网表生成，不用 $bb）
-        // 多个 LED 纵向错开 15px，避免 A 脚同高导致信号线水平共线
-        const n = cursors.led;
+        // LED：放到配对电阻的正上方同列（不用 $bb，连线由网表生成可见线）
+        const n = ledColumn[p.id];
         p.left = Math.round(rx(n) - 25);   // A 引脚 x 对准孔
-        p.top = bb.top - 80 + ledCount * 15;
-        cursors.led += 5;
-        ledCount++;
+        p.top = bb.top - 80;
       } else {
         // 未知类型：回退为直连（放板子旁）
         boardParts.push(p);
@@ -208,14 +225,25 @@ function main() {
         (usedHoles[key] = usedHoles[key] || new Set()).add(letter);
       }
     });
-    const freeHole = (row, half, dir) => {
-      const key = `${row}:${half}`;
-      const used = usedHoles[key] || new Set();
-      // dir>=0: 选「最上方」空闲字母（跳出元件本体 → 线从上方可见）；dir<0: 最下方
-      const order = dir >= 0 ? [9, 8, 7, 6, 5, 4, 3, 2, 1, 0] : [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
-      for (const idx of order) {
-        const letter = 'abcdefghij'[idx];
-        if (!used.has(letter)) return { row, half, letter };
+    // 孔位字母区间：t 半区 = a-e，b 半区 = f-j（每半区仅 5 孔，中间 trench 隔开）。
+    // 内部连通 = 同行 + 同半区 + 同 5 孔组；跨半区（t↔b）或跨组（a-e↔f-j）都必须跳线。
+    // 因此 freeHole 只能在所属半区的 5 个字母里选，且优先选「离元件引脚最近的空闲孔」，
+    // 让可见线落在元件脚旁边（内部 hop 最短），而不是跳到最外侧的 a/j 多绕路。
+    const HALF_RANGE = { t: [0, 4], b: [5, 9] };   // [minIdx, maxIdx] of 'abcdefghij'
+    const freeHole = (row, half, pinLetter, dir) => {
+      const [lo, hi] = HALF_RANGE[half];
+      const used = usedHoles[`${row}:${half}`] || new Set();
+      const pinIdx = LETTER.indexOf(pinLetter);
+      const step = dir >= 0 ? 1 : -1;
+      // 朝 dir 方向（dir>=0 朝更大 idx，即视觉上方）找离 pin 最近的空闲孔
+      for (let i = pinIdx + step; i >= lo && i <= hi; i += step) {
+        const L = LETTER[i];
+        if (!used.has(L)) return { row, half, letter: L };
+      }
+      // 方向到头了 → 反向回退找
+      for (let i = pinIdx - step; i >= lo && i <= hi; i -= step) {
+        const L = LETTER[i];
+        if (!used.has(L)) return { row, half, letter: L };
       }
       return null;
     };
@@ -246,15 +274,19 @@ function main() {
     // ② 水平到目标列 → 垂直到达（L/Z 形）
     // ③ 多条线汇到同一引脚时错开水平通道（stagger），避免共线
     const routeWp = (fid, fpin, a, b, stagger) => {
+      const r1 = v => Math.round(v * 10) / 10;   // 1 位小数（Wokwi waypoint 支持小数，模板用 1 位）
       if (fid === 'uno') {
         const p = (pins[board.type] || {})[fpin];
         const isTop = p && p[1] < 100;
         const safeY = (isTop ? board.top - 15 : board.top + board.h + 15) + stagger;
-        return [`v${Math.round(safeY - a.y)}`, `h${Math.round(b.x - a.x)}`, `v${Math.round(b.y - safeY)}`];
+        const v1 = r1(safeY - a.y);
+        const h1 = r1(b.x - a.x);
+        const v3 = r1(b.y - (a.y + v1));   // 精确补到目标 y，避免整数舍入造成 0.5px 偏差（误报共线）
+        return [`v${v1}`, `h${h1}`, `v${v3}`];
       }
       // 元件/面包板孔 → 目标：先到目标 y（带错开），再水平，再回到目标 y
       const dy = b.y - a.y;
-      return [`v${Math.round(dy + stagger)}`, `h${Math.round(b.x - a.x)}`, `v${Math.round(-stagger)}`];
+      return [`v${r1(dy + stagger)}`, `h${r1(b.x - a.x)}`, `v${r1(-stagger)}`];
     };
 
     // 统计同目标引脚的连线数，用于共线错开
@@ -280,12 +312,12 @@ function main() {
         //    freeHole 朝「线的来向」选外侧孔，让线露在元件外侧（不被元件盖住）
         const fHole = pinHole[c.from];
         if (fHole) {
-          const h = freeHole(fHole.row, fHole.half, b.y < a.y ? 1 : -1);
+          const h = freeHole(fHole.row, fHole.half, fHole.letter, b.y < a.y ? 1 : -1);
           if (h) { fid = 'bb1'; fromRef = `bb1:${h.row}${h.half}.${h.letter}`; a = holePos(h); }
         }
         const tHole = pinHole[c.to];
         if (tHole) {
-          const h = freeHole(tHole.row, tHole.half, a.y < b.y ? 1 : -1);
+          const h = freeHole(tHole.row, tHole.half, tHole.letter, a.y < b.y ? 1 : -1);
           if (h) { toRef = `bb1:${h.row}${h.half}.${h.letter}`; b = holePos(h); }
         }
       }
@@ -304,11 +336,12 @@ function main() {
     // 再跳线 tn→bn、tp→bp 连到元件取电用的轨（上下轨连通）
     if (railSeen['bn']) {
       wireConns.push(['uno:GND.2', 'bb1:tn.1', 'black', routeWp('uno', 'GND.2', pinPos('uno', 'GND.2'), railPos('tn', 1), 0)]);
-      wireConns.push(['bb1:tn.30', 'bb1:bn.30', 'black', ['v0']]);
+      // 跳线 tn→bn（上下负轨连通）。用 routeWp 生成真实竖直路径，替换原来渲染不出的 ["v0"]
+      wireConns.push(['bb1:tn.1', 'bb1:bn.1', 'black', routeWp('bb1', '', railPos('tn', 1), railPos('bn', 1), 0)]);
     }
     if (railSeen['tp']) {
       wireConns.push(['uno:5V', 'bb1:tp.1', 'red', routeWp('uno', '5V', pinPos('uno', '5V'), railPos('tp', 1), 0)]);
-      wireConns.push(['bb1:tp.30', 'bb1:bp.30', 'red', ['v0']]);
+      wireConns.push(['bb1:tp.1', 'bb1:bp.1', 'red', routeWp('bb1', '', railPos('tp', 1), railPos('bp', 1), 0)]);
     }
 
     // 输出

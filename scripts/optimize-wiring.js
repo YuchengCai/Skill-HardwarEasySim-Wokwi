@@ -425,11 +425,15 @@ function main() {
   const parts = diagram.parts || [];
   const partRects = new Map();
   for (const p of parts) {
-    const size = (sizesData.sizes && sizesData.sizes[p.type]) || sizesData.default || { width: 20, height: 20 };
+    let size = (sizesData.sizes && sizesData.sizes[p.type]) || sizesData.default || { width: 20, height: 20 };
     const rotated = p.rotate === 90 || p.rotate === 270;
-    p.w = rotated ? size.height : size.width;
-    p.h = rotated ? size.width : size.height;
-    partRects.set(p.id, makeRect(p.left || 0, p.top || 0, p.w, p.h, SAFE_MARGIN));
+    let w = rotated ? size.height : size.width;
+    let h = rotated ? size.width : size.height;
+    // LED 视觉本体只是顶部 ~16px 的圆泡（引脚是细腿），用 20×20 本体做重叠检测，
+    // 避免把 40×50 容器宽当成实体 → 两个 LED 相邻时误报「重叠」
+    if ((p.type || '').includes('led')) { w = 20; h = 20; }
+    p.w = w; p.h = h;
+    partRects.set(p.id, makeRect(p.left || 0, p.top || 0, w, h, SAFE_MARGIN));
   }
 
   // 检测冲突（函数化）
