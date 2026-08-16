@@ -208,17 +208,14 @@ function main() {
         (usedHoles[key] = usedHoles[key] || new Set()).add(letter);
       }
     });
-    const freeCursor = {};
-    const freeHole = (row, half) => {
+    const freeHole = (row, half, dir) => {
       const key = `${row}:${half}`;
       const used = usedHoles[key] || new Set();
-      let idx = freeCursor[key] || 0;
-      for (let i = 0; i < 10; i++) {
-        const letter = 'abcdefghij'[(idx + i) % 10];
-        if (!used.has(letter)) {
-          freeCursor[key] = (idx + i + 1) % 10;
-          return { row, half, letter };
-        }
+      // dir>=0: 选「最上方」空闲字母（跳出元件本体 → 线从上方可见）；dir<0: 最下方
+      const order = dir >= 0 ? [9, 8, 7, 6, 5, 4, 3, 2, 1, 0] : [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+      for (const idx of order) {
+        const letter = 'abcdefghij'[idx];
+        if (!used.has(letter)) return { row, half, letter };
       }
       return null;
     };
@@ -233,13 +230,14 @@ function main() {
     const railPos = (rail, n) => ({ x: rx(n), y: railY[rail] });
     // 识别电源连线（目标 = uno:GND/5V/3V3/VIN）→ 连对应轨
     const railSeen = {};   // 每类轨已用的位置号
-    const railTarget = (toRef) => {
+    const railTarget = (toRef, sourceX) => {
       const m = toRef.match(/^uno:(GND|5V|3V3|VIN)/);
       if (!m) return null;
       const isGND = m[1].startsWith('GND');
       const rail = isGND ? 'bn' : 'tp';
+      // 就近：轨道数字 = 源元件 x 对应的最近列（线最短、不绕圈）
+      const n = Math.max(1, Math.min(30, Math.round((303 - sourceX) / 9.6) + 1));
       railSeen[rail] = (railSeen[rail] || 0) + 1;
-      const n = railSeen[rail] * 5;   // 位置错开：5, 10, 15...
       return { rail, n, ref: `bb1:${rail}.${n}` };
     };
 
@@ -273,20 +271,21 @@ function main() {
       let b = pinPos(c.to.split(':')[0], c.to.split(':')[1]);
 
       // ① 电源连线（目标 = GND/5V/3V3/VIN）→ 连电源轨（就近走轨，不穿板）
-      const rt = railTarget(c.to);
+      const rt = railTarget(c.to, a.x);
       if (rt) {
         toRef = rt.ref;
         b = railPos(rt.rail, rt.n);
       } else {
         // ② 端点若是插面板元件引脚 → 连到同行空闲孔（面包板内部连通）
+        //    freeHole 朝「线的来向」选外侧孔，让线露在元件外侧（不被元件盖住）
         const fHole = pinHole[c.from];
         if (fHole) {
-          const h = freeHole(fHole.row, fHole.half);
+          const h = freeHole(fHole.row, fHole.half, b.y < a.y ? 1 : -1);
           if (h) { fid = 'bb1'; fromRef = `bb1:${h.row}${h.half}.${h.letter}`; a = holePos(h); }
         }
         const tHole = pinHole[c.to];
         if (tHole) {
-          const h = freeHole(tHole.row, tHole.half);
+          const h = freeHole(tHole.row, tHole.half, a.y < b.y ? 1 : -1);
           if (h) { toRef = `bb1:${h.row}${h.half}.${h.letter}`; b = holePos(h); }
         }
       }
