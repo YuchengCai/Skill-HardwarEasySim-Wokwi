@@ -238,18 +238,19 @@ function main() {
     const HALF_RANGE = { t: [0, 4], b: [5, 9] };   // [minIdx, maxIdx] of 'abcdefghij'
     const freeHole = (row, half, pinLetter, dir) => {
       const [lo, hi] = HALF_RANGE[half];
-      const used = usedHoles[`${row}:${half}`] || new Set();
+      const key = `${row}:${half}`;
+      const used = usedHoles[key] || (usedHoles[key] = new Set());
       const pinIdx = LETTER.indexOf(pinLetter);
       const step = dir >= 0 ? 1 : -1;
       // 朝 dir 方向（dir>=0 朝更大 idx，即视觉上方）找离 pin 最近的空闲孔
       for (let i = pinIdx + step; i >= lo && i <= hi; i += step) {
         const L = LETTER[i];
-        if (!used.has(L)) return { row, half, letter: L };
+        if (!used.has(L)) { used.add(L); return { row, half, letter: L }; }
       }
       // 方向到头了 → 反向回退找
       for (let i = pinIdx - step; i >= lo && i <= hi; i -= step) {
         const L = LETTER[i];
-        if (!used.has(L)) return { row, half, letter: L };
+        if (!used.has(L)) { used.add(L); return { row, half, letter: L }; }
       }
       return null;
     };
@@ -303,9 +304,18 @@ function main() {
         const v3 = r1(b.y - (a.y + v1));   // 精确补到目标 y，避免整数舍入造成 0.5px 偏差（误报共线）
         return [`v${v1}`, `h${h1}`, `v${v3}`];
       }
-      // 元件/面包板孔 → 目标：先到目标 y（带错开），再水平，再回到目标 y
+      // 元件/面包板孔 → 目标：非错开时只保留必要段（去掉多余 v0 与 <0.5px 的微小水平段，
+      // 避免末端出现微小折角/绕圈）；错开（多线共点）时保留 Z 形三段
       const dy = b.y - a.y;
-      return [`v${r1(dy + stagger)}`, `h${r1(b.x - a.x)}`, `v${r1(-stagger)}`];
+      const dx = b.x - a.x;
+      if (stagger === 0) {
+        const wp = [];
+        if (Math.abs(dy) > 0.5) wp.push(`v${r1(dy)}`);
+        if (Math.abs(dx) > 0.5) wp.push(`h${r1(dx)}`);
+        if (wp.length === 0) wp.push('v0');
+        return wp;
+      }
+      return [`v${r1(dy + stagger)}`, `h${r1(dx)}`, `v${r1(-stagger)}`];
     };
 
     // 共线错开：
@@ -327,7 +337,14 @@ function main() {
       const rt = railTarget(c.to, a.x);
       if (rt) {
         toRef = rt.ref;
-        b = railPos(rt.rail, rt.n);
+        b = railPos(rt.rail, rt.n);   // 先算轨位置，供下方判断出线方向
+        // 源若是插面板引脚（$bb）→ 从「同行空闲孔」出线再接轨，而非从引脚直接出线
+        // （面包板接线惯例：引脚插孔、相邻孔出线 —— 与 dragramtest 模板一致）
+        const fHole = pinHole[c.from];
+        if (fHole) {
+          const h = freeHole(fHole.row, fHole.half, fHole.letter, b.y < a.y ? 1 : -1);
+          if (h) { fid = 'bb1'; fromRef = `bb1:${h.row}${h.half}.${h.letter}`; a = holePos(h); }
+        }
       } else {
         // ② 端点若是插面板元件引脚 → 连到同行空闲孔（面包板内部连通）
         //    freeHole 朝「线的来向」选外侧孔，让线露在元件外侧（不被元件盖住）
