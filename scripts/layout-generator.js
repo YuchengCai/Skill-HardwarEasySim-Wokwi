@@ -266,7 +266,9 @@ function main() {
     // ============================================================
     const RAIL_MAX = 25;
     const railX = (n) => bb.left + 293.0 - ((n - 1) + Math.floor((n - 1) / 5)) * 9.6;
-    const railY = { bn: bb.top + 4, bp: bb.top + 10, tn: bb.top + 156, tp: bb.top + 162 };
+    // railY 实测校准：bn 视觉顶轨 = top+5.6（按钮线"半孔"折回 → 原 4 偏上 1.6px），
+    // bp = bn+9.6（同主区孔距）；tn/tp 视觉底轨保持 156/162（GND 主线与跳线底端无折回）
+    const railY = { bn: bb.top + 5.6, bp: bb.top + 15.2, tn: bb.top + 156, tp: bb.top + 162 };
     const railPos = (rail, n) => ({ x: railX(n), y: railY[rail] });
     // 识别电源连线（目标 = uno:GND/5V/3V3/VIN）→ 连对应轨
     const railUsed = { bn: new Set(), bp: new Set(), tn: new Set(), tp: new Set() };

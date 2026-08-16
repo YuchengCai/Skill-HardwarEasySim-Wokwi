@@ -154,7 +154,7 @@ function pinPosition(part, pinName) {
         const idx = pos - 1;
         ox = 20.6 + (idx + Math.floor(idx / 5)) * 9.6;
         if (half === 't') oy = (polarity === 'p' ? 4 : 10);
-        else oy = BOARD_H - (polarity === 'p' ? 10 : 4);
+        else oy = BOARD_H - (polarity === 'p' ? 15.2 : 5.6);   // bn=+5.6, bp=+15.2（视觉顶轨实测）
       } else {
         return { x: x + w / 2, y: y + h / 2 };
       }
