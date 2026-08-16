@@ -224,6 +224,25 @@ function main() {
     };
     const holePos = (h) => ({ x: rx(h.row), y: ry(h.letter, h.half) });
 
+    // ============================================================
+    // 电源架构（A2）：GND/5V 走电源轨，而非直连板子引脚（就近走轨不穿板）
+    // 轨坐标 rotate 180（近似，待 Wokwi 实测校准）：
+    //   bn=下负轨(视觉顶部) bp=下正轨 tn=上负轨 tp=上正轨(视觉底部)
+    // ============================================================
+    const railY = { bn: bb.top + 4, bp: bb.top + 10, tn: bb.top + 156, tp: bb.top + 162 };
+    const railPos = (rail, n) => ({ x: rx(n), y: railY[rail] });
+    // 识别电源连线（目标 = uno:GND/5V/3V3/VIN）→ 连对应轨
+    const railSeen = {};   // 每类轨已用的位置号
+    const railTarget = (toRef) => {
+      const m = toRef.match(/^uno:(GND|5V|3V3|VIN)/);
+      if (!m) return null;
+      const isGND = m[1].startsWith('GND');
+      const rail = isGND ? 'bn' : 'tp';
+      railSeen[rail] = (railSeen[rail] || 0) + 1;
+      const n = railSeen[rail] * 5;   // 位置错开：5, 10, 15...
+      return { rail, n, ref: `bb1:${rail}.${n}` };
+    };
+
     // 走线路径（v3）：
     // ① 板子引脚按侧出线到「安全带」（板顶/板底外 15px），避开上方/下方元件（如 LED）
     // ② 水平到目标列 → 垂直到达（L/Z 形）
@@ -253,16 +272,23 @@ function main() {
       let a = pinPos(fid, fpin);
       let b = pinPos(c.to.split(':')[0], c.to.split(':')[1]);
 
-      // 端点若是插面板元件引脚 → 连到同行空闲孔（面包板内部连通）
-      const fHole = pinHole[c.from];
-      if (fHole) {
-        const h = freeHole(fHole.row, fHole.half);
-        if (h) { fid = 'bb1'; fromRef = `bb1:${h.row}${h.half}.${h.letter}`; a = holePos(h); }
-      }
-      const tHole = pinHole[c.to];
-      if (tHole) {
-        const h = freeHole(tHole.row, tHole.half);
-        if (h) { toRef = `bb1:${h.row}${h.half}.${h.letter}`; b = holePos(h); }
+      // ① 电源连线（目标 = GND/5V/3V3/VIN）→ 连电源轨（就近走轨，不穿板）
+      const rt = railTarget(c.to);
+      if (rt) {
+        toRef = rt.ref;
+        b = railPos(rt.rail, rt.n);
+      } else {
+        // ② 端点若是插面板元件引脚 → 连到同行空闲孔（面包板内部连通）
+        const fHole = pinHole[c.from];
+        if (fHole) {
+          const h = freeHole(fHole.row, fHole.half);
+          if (h) { fid = 'bb1'; fromRef = `bb1:${h.row}${h.half}.${h.letter}`; a = holePos(h); }
+        }
+        const tHole = pinHole[c.to];
+        if (tHole) {
+          const h = freeHole(tHole.row, tHole.half);
+          if (h) { toRef = `bb1:${h.row}${h.half}.${h.letter}`; b = holePos(h); }
+        }
       }
 
       if (!a || !b) {
@@ -274,6 +300,14 @@ function main() {
       const stagger = targetCount[c.to] > 1 ? seen * 10 : 0;
       wireConns.push([fromRef, toRef, c.color || 'green', routeWp(fid, fpin, a, b, stagger)]);
     });
+
+    // 电源轨主线：板子 GND/5V → 轨（一条，替代多条直连到板子引脚）
+    if (railSeen['bn']) {
+      wireConns.push(['uno:GND.2', 'bb1:bn.1', 'black', routeWp('uno', 'GND.2', pinPos('uno', 'GND.2'), railPos('bn', 1), 0)]);
+    }
+    if (railSeen['tp']) {
+      wireConns.push(['uno:5V', 'bb1:tp.1', 'red', routeWp('uno', '5V', pinPos('uno', '5V'), railPos('tp', 1), 0)]);
+    }
 
     // 输出
     const outParts = [
