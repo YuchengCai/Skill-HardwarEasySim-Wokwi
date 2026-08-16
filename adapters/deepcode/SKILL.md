@@ -59,6 +59,11 @@ arduino-cli lib install "DHT sensor library" "Adafruit SSD1306"
 2. Open **`references/arduino/components.md`** — look up every component you intend to use
 3. Generate `diagram.json` with correct pin names and wiring
 4. Generate `wokwi.toml` pointing to `build/project.ino.hex`
+5. **Run the wiring checker** to detect conflicts before simulating:
+   ```bash
+   node scripts/optimize-wiring.js <project-dir> --dry-run
+   ```
+   Fix any reported conflicts — 线穿板/线交叉/线重叠/元件重叠（共享同一 GND/5V 的多条线要分路，避免共线）。
 
 ### 2. Compile
 
@@ -67,6 +72,10 @@ arduino-cli lib install "DHT sensor library" "Adafruit SSD1306"
 ```
 
 Auto-installs `arduino-cli` + Uno core if missing. Handles MINGW/Windows path conversion automatically.
+
+**⚠️ HARD RULE: The Wokwi plugin reads the compiled firmware (`build/<project>.ino.hex`, referenced by `wokwi.toml`), NOT the `.ino` source.** Every time you modify the `.ino`, you MUST re-run `compile.sh` (or `arduino-cli compile --fqbn <fqbn> --output-dir build`) AND restart the simulation in VS Code — otherwise the simulation still runs the old firmware (LEDs won't reflect your code changes).
+
+**⚠️ Non-blocking code rule:** when a sketch handles buttons + sensors/display together, NEVER use `delay()` to pace the loop — buttons become unresponsive and presses get missed. Use edge-detection for buttons (`lastState` compare) and `millis()` timing for periodic tasks (e.g. DHT sampling every 2s). See the Uno template in `core/uno/`.
 
 ### 3. Simulate — Auto-select Mode
 
@@ -189,7 +198,7 @@ If any of these files are missing (e.g. skill was installed from a marketplace t
 BASE="https://raw.githubusercontent.com/YuchengCai/Skill-HardwarEasySim-Wokwi/main"
 # Remove stale old-structure dirs (uno renamed to arduino in v0.5)
 if [ -d "references/uno" ]; then rm -rf references/uno; fi
-for F in scripts/compile.sh scripts/wokwi-automate.js references/monaco-steps.md references/common/layout-rules.md references/common/breadboard.md references/common/waypoints.md references/arduino/components.md references/arduino/index.json references/arduino/experience.json; do
+for F in scripts/compile.sh scripts/wokwi-automate.js references/monaco-steps.md references/common/layout-rules.md references/common/breadboard.md references/common/waypoints.md references/common/sizes.json references/common/pins.json references/arduino/components.md references/arduino/index.json references/arduino/experience.json; do
   if [ ! -f "$F" ]; then
     echo "缺失 $F，正在从 GitHub 恢复..."
     mkdir -p "$(dirname "$F")"
@@ -224,8 +233,10 @@ If newer, ask user to update → `git clone + install.sh` (auto).
 
 1. **`references/common/`** — system-level rules (any board/part):
    - `layout-rules.md` — read BEFORE generating diagram.json (style by component count, positioning, waypoint patterns)
-   - `breadboard.md` — read when using a breadboard (pin naming, `$bb`, power rails)
+   - `breadboard.md` — read when using a breadboard (pin naming, `$bb`, power rails, 孔位坐标系统)
    - `waypoints.md` — read when wiring with control points (v/h/* mini-language)
+   - `sizes.json` — component canvas sizes (from wokwi-elements source; used by layout/detection scripts)
+   - `pins.json` — component pin coordinates (from wokwi-elements source; used by wiring/detection scripts)
 2. **`references/arduino/index.json`** — full catalog (52 components) with Chinese names (`zh`) and pins. Match user's Chinese description → `type` → pins. **Arduino series (Uno/Mega/Nano) share this catalog; board-specific pins are listed per board type.**
 3. **`references/arduino/components.md`** — verified detailed manual for high-frequency components (pin tables, attributes, wiring examples).
 4. **`references/arduino/experience.json`** — accumulated wiring patterns & layout tips (agent-learned). Reference it when generating `diagram.json`.
@@ -254,6 +265,16 @@ If a component is missing or pins are incomplete, fetch from the authoritative o
 curl -sL https://raw.githubusercontent.com/wokwi/wokwi-elements/main/src/<file>.ts
 ```
 Extract `pinInfo` from the source. After verification, note it for future reference (add to `experience.json`).
+
+### Library-external parts (not in Wokwi)
+
+For components not in the Wokwi library at all (RC522, MP3 modules, domestic sensors), generate a **placeholder** (pins + rectangle, no simulation behavior):
+
+```bash
+node scripts/generate-part-placeholder.js <name> <pin1> [pin2 ...]
+```
+
+Then add it to `diagram.json` as a `wokwi-custom-board`. Wiring is verifiable visually; behavior is NOT simulated — always pair with a text wiring plan and a physical-verification reminder.
 
 ### Layout & wiring quality
 

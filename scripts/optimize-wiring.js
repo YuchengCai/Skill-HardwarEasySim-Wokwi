@@ -27,6 +27,15 @@ const SAFE_MARGIN = 3;        // 安全边距：检测时元件矩形外扩（�
 const MIN_SPACING = 10;       // 线与元件的最小距离
 const OVERLAP_THRESHOLD = 5;  // 平行线重叠判定阈值
 
+// 引脚坐标（pins.json，wokwi-elements 源码提取的权威数据，含 _rot90 校准偏移）
+let PINS = {};
+function loadPins() {
+  const p = path.join(__dirname, '..', 'references', 'common', 'pins.json');
+  if (fs.existsSync(p)) {
+    PINS = JSON.parse(fs.readFileSync(p, 'utf-8'));
+  }
+}
+
 // ============================================================
 // 工具函数：几何计算
 // ============================================================
@@ -119,10 +128,10 @@ function pinPosition(part, pinName) {
   const type = part.type || '';
   const pin = String(pinName || '');
 
-  // 面包板孔位（实测反推：数字=水平间距9.6, 字母=垂直间距9.6, 半区b偏移19.2）
+  // 面包板孔位（实测校准自 dragramtest：数字=水平间距9.6, 字母=垂直间距9.6, 半区b偏移19.2）
   if (type.includes('breadboard')) {
-    const BOARD_W = 304; // half 面板宽（30数字×9.6+边距）
-    const BOARD_H = 134; // half 面板高（字母9×9.6+19.2+边距）
+    const BOARD_W = 313.6; // half 面板宽（实测校准，与 layout-generator.js 一致）
+    const BOARD_H = 166;   // half 面板高（实测校准）
     const rotated = (part.rotate || 0) === 180;
     let ox = 0, oy = 0;
     // 元件区孔位: <数字><半区>.<字母> 如 30b.h
@@ -131,68 +140,45 @@ function pinPosition(part, pinName) {
       const num = parseInt(holeMatch[1]);
       const half = holeMatch[2];
       const letterIdx = holeMatch[3].charCodeAt(0) - 97;
-      ox = 12.6 + (num - 1) * 9.6;
-      oy = 14 + letterIdx * 9.6 + (half === 'b' ? 19.2 : 0);
+      ox = 10.6 + (num - 1) * 9.6;
+      oy = 9 + letterIdx * 9.6 + (half === 'b' ? 19.2 : 0);
     } else {
-      // 电源轨: <t/b><p/n>.<位置号> 如 bn.25, tp.9
+      // 电源轨: <t/b><p/n>.<位置号> 如 bn.25, tp.9（近似，待实测校准）
       const railMatch = pin.match(/^([tb])([pn])\.(\d+)$/);
       if (railMatch) {
         const half = railMatch[1];
         const polarity = railMatch[2];
         const pos = parseInt(railMatch[3]);
-        ox = 12.6 + (pos - 1) * 9.6;
+        ox = 10.6 + (pos - 1) * 9.6;
         if (half === 't') oy = (polarity === 'p' ? 4 : 10);
         else oy = BOARD_H - (polarity === 'p' ? 10 : 4);
       } else {
         return { x: x + w / 2, y: y + h / 2 };
       }
     }
-    // rotate 180：绕面板中心翻转
+    // rotate 180：绕面板中心翻转，孔位 = 面板左上 + 尺寸 - 偏移
     if (rotated) {
-      const cx = x + BOARD_W / 2, cy = y + BOARD_H / 2;
-      return { x: cx - ox, y: cy - oy };
+      return { x: x + BOARD_W - ox, y: y + BOARD_H - oy };
     }
     return { x: x + ox, y: y + oy };
   }
 
-  // 板子（arduino/esp32）：数字引脚在顶部，电源/模拟在底部
-  if (type.includes('arduino') || type.includes('esp32') || type.includes('board-')) {
-    const isPower = pin.startsWith('GND') || pin.startsWith('5V') || pin.startsWith('3V') ||
-                    pin.startsWith('VIN') || pin.startsWith('VCC') || pin === 'V' ||
-                    pin.startsWith('A');
-    if (isPower) {
-      return { x: x + w / 2, y: y + h - 3 };
+  // 权威引脚坐标：优先查 pins.json（wokwi-elements 源码提取），
+  // rotate 90/270 时用 _rot90 校准偏移（电阻/按钮在面包板上会旋转）
+  const pinsData = PINS[type];
+  if (pinsData) {
+    let offset;
+    if ((part.rotate === 90 || part.rotate === 270) && pinsData._rot90 && pinsData._rot90[pin]) {
+      offset = pinsData._rot90[pin];
+    } else {
+      offset = pinsData[pin];
     }
-    // 数字引脚：按引脚序号分布（pin0 左 → pin13 右）
-    const numMatch = pin.match(/(\d+)/);
-    const num = numMatch ? parseInt(numMatch[1]) : 6;
-    const spread = Math.min(num / 14, 0.9);
-    return { x: x + 5 + spread * (w - 10), y: y + 3 };
-  }
-
-  // LED：A 顶部，C 底部
-  if (type.includes('led')) {
-    if (pin === 'A') return { x: x + w / 2, y: y + 2 };
-    return { x: x + w / 2, y: y + h - 2 };
-  }
-
-  // 电阻：垂直（rotate 270/90）1 上 2 下；水平 1 左 2 右
-  if (type.includes('resistor')) {
-    const vertical = part.rotate === 270 || part.rotate === 90;
-    if (vertical) {
-      return pin === '1' ? { x: x + w / 2, y: y + 2 } : { x: x + w / 2, y: y + h - 2 };
+    if (offset) {
+      return { x: x + offset[0], y: y + offset[1] };
     }
-    return pin === '1' ? { x: x + 2, y: y + h / 2 } : { x: x + w - 2, y: y + h / 2 };
   }
 
-  // 按钮：1.l 左上, 1.r 右上, 2.l 左下, 2.r 右下
-  if (type.includes('pushbutton')) {
-    const isTop = pin.startsWith('1');
-    const isLeft = pin.includes('.l');
-    return { x: isLeft ? x + 2 : x + w - 2, y: isTop ? y + 2 : y + h - 2 };
-  }
-
-  // 默认：中心
+  // 回退：元件中心
   return { x: x + w / 2, y: y + h / 2 };
 }
 
@@ -432,14 +418,18 @@ function main() {
     sizesData = JSON.parse(fs.readFileSync(sizesPath, 'utf-8'));
   }
 
-  // 构建元件矩形（带安全边距）
+  // 加载引脚坐标（pins.json）
+  loadPins();
+
+  // 构建元件矩形（带安全边距；rotate 90/270 时宽高交换）
   const parts = diagram.parts || [];
   const partRects = new Map();
   for (const p of parts) {
     const size = (sizesData.sizes && sizesData.sizes[p.type]) || sizesData.default || { width: 20, height: 20 };
-    p.w = size.width;
-    p.h = size.height;
-    partRects.set(p.id, makeRect(p.left || 0, p.top || 0, size.width, size.height, SAFE_MARGIN));
+    const rotated = p.rotate === 90 || p.rotate === 270;
+    p.w = rotated ? size.height : size.width;
+    p.h = rotated ? size.width : size.height;
+    partRects.set(p.id, makeRect(p.left || 0, p.top || 0, p.w, p.h, SAFE_MARGIN));
   }
 
   // 检测冲突（函数化）
