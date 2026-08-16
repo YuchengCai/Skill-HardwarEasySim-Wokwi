@@ -126,9 +126,16 @@ function main() {
       }
     });
 
+    // 按钮列预分配：与 LED 同序（id 小 → 列号大 → 视觉左侧）。
+    // 倒序消耗游标：btn1 拿到最左、btn2 次之 —— 左右顺序与 LED1/LED2 一致。
+    const btnColumn = {};
+    const btnList = bbParts.filter(p => is(p, 'pushbutton'));
+    let btnCursor = cursors.pushbutton + (btnList.length - 1) * 5;
+    btnList.forEach(p => { btnColumn[p.id] = btnCursor; btnCursor -= 5; });
+
     bbParts.forEach(p => {
       if (is(p, 'pushbutton')) {
-        const n = cursors.pushbutton;
+        const n = btnColumn[p.id];
         bbConns.push([`${p.id}:1.r`, `bb1:${n}t.b`, '', ['$bb']]);
         bbConns.push([`${p.id}:2.r`, `bb1:${n + 2}t.b`, '', ['$bb']]);
         bbConns.push([`${p.id}:1.l`, `bb1:${n}b.g`, '', ['$bb']]);
@@ -136,7 +143,6 @@ function main() {
         p.rotate = 90;
         p.left = Math.round(rx(n) - 44.5);
         p.top = Math.round(ry('g', 'b') + 9.5);
-        cursors.pushbutton += 5;
       } else if (is(p, 'resistor')) {
         const n = resColumn[p.id];
         bbConns.push([`${p.id}:1`, `bb1:${n}b.g`, '', ['$bb']]);
@@ -251,15 +257,17 @@ function main() {
 
     // ============================================================
     // 电源架构（A2）：GND/5V 走电源轨，而非直连板子引脚（就近走轨不穿板）
-    // 轨坐标 rotate 180（y 近似；轨列错位已实测确认：用户悬停孔名 + dragramtest 模板）：
+    // 轨几何（已实测确认：用户悬停孔名 + dragramtest 模板精确对齐）：
     //   bn=下负轨(视觉顶部) bp=下正轨 tn=上负轨 tp=上正轨(视觉底部)
-    // 轨列 ≠ 主区列：bn/bp 位置号 n 对齐主区第 n+5 列，tn/tp 对齐第 n+2 列
-    // 轨位置号有效范围 1..25（>25 的引用 Wokwi 不渲染 → 线消失）
+    //   轨列：25 位置 = 5 组 × 5 孔，组间多 1 个孔距间隙（标准面包板结构）
+    //   x(n) = left + 293.0 - (idx + floor(idx/5)) * 9.6, idx = n-1（rotate 180 基准）
+    //   位置号有效范围 1..25（>25 的引用 Wokwi 不渲染 → 线消失）
+    //   锚点：bn.23 在 LED1 阴极正下方（用户确认）；bn.25/bn.22 与模板 led1/2:C 精确重合
     // ============================================================
     const RAIL_MAX = 25;
+    const railX = (n) => bb.left + 293.0 - ((n - 1) + Math.floor((n - 1) / 5)) * 9.6;
     const railY = { bn: bb.top + 4, bp: bb.top + 10, tn: bb.top + 156, tp: bb.top + 162 };
-    const railOff = (rail) => (rail === 'bn' || rail === 'bp') ? 5 : 2;
-    const railPos = (rail, n) => ({ x: rx(n + railOff(rail)), y: railY[rail] });
+    const railPos = (rail, n) => ({ x: railX(n), y: railY[rail] });
     // 识别电源连线（目标 = uno:GND/5V/3V3/VIN）→ 连对应轨
     const railUsed = { bn: new Set(), bp: new Set(), tn: new Set(), tp: new Set() };
     const railTarget = (toRef, sourceX) => {
@@ -267,19 +275,15 @@ function main() {
       if (!m) return null;
       const isGND = m[1].startsWith('GND');
       const rail = isGND ? 'bn' : 'tp';
-      // 就近：源 x 对应的最近主区列 → 轨位置号（轨列 = 主区列 n+off）
-      const col = Math.round((303 - sourceX) / 9.6) + 1;
-      let n = Math.max(1, Math.min(RAIL_MAX, col - railOff(rail)));
-      // 一孔一接：该位置被占则向两侧找最近空闲位置
+      // 就近：扫描 1..25 找离源 x 最近的空闲位置（一孔一接）
       const used = railUsed[rail];
-      if (used.has(n)) {
-        for (let d = 1; d < RAIL_MAX; d++) {
-          const cands = [n + d, n - d].filter(v => v >= 1 && v <= RAIL_MAX && !used.has(v));
-          if (cands.length) { n = cands[0]; break; }
-        }
+      let best = 1, bestDist = Infinity;
+      for (let n = 1; n <= RAIL_MAX; n++) {
+        const d = Math.abs(railX(n) - sourceX);
+        if (d < bestDist && !used.has(n)) { bestDist = d; best = n; }
       }
-      used.add(n);
-      return { rail, n, ref: `bb1:${rail}.${n}` };
+      used.add(best);
+      return { rail, n: best, ref: `bb1:${rail}.${best}` };
     };
 
     // 走线路径（v3）：
@@ -357,17 +361,17 @@ function main() {
       wireConns.push([fromRef, toRef, c.color || 'green', routeWp(fid, fpin, a, b, stagger)]);
     });
 
-    // 电源轨主线：板子 GND/5V → 就近轨（板子在下 → 上负轨 tn / 上正轨 tp），
+    // 电源轨主线：板子 GND/5V → 就近轨端口（tn.1/tp.1，靠板子最近的右端，直连不绕远），
     // 再跳线 tn→bn、tp→bp 连到元件取电用的轨（上下轨连通）。
-    // 一孔一接：主线接 tn.24/tp.24（主区第 26 列空档），跳线用 tn.21→bn.18 / tp.21→bp.18
-    // （tn.n 与 bn.(n-3) 同 x=第 23 列空档，竖直、零交叉，且不与元件轨孔/主线孔共用）。
+    // 一孔一接：主线接 tn.1/tp.1，跳线从 tn.2→bn.2 / tp.2→bp.2（四条轨同 x 模型，
+    // 同号位置同 x → 跳线纯竖直），不与主线共用孔。
     if (railUsed['bn'].size > 0) {
-      wireConns.push(['uno:GND.2', 'bb1:tn.24', 'black', routeWp('uno', 'GND.2', pinPos('uno', 'GND.2'), railPos('tn', 24), 0)]);
-      wireConns.push(['bb1:tn.21', 'bb1:bn.18', 'black', routeWp('bb1', '', railPos('tn', 21), railPos('bn', 18), 0)]);
+      wireConns.push(['uno:GND.2', 'bb1:tn.1', 'black', routeWp('uno', 'GND.2', pinPos('uno', 'GND.2'), railPos('tn', 1), 0)]);
+      wireConns.push(['bb1:tn.2', 'bb1:bn.2', 'black', routeWp('bb1', '', railPos('tn', 2), railPos('bn', 2), 0)]);
     }
     if (railUsed['tp'].size > 0) {
-      wireConns.push(['uno:5V', 'bb1:tp.24', 'red', routeWp('uno', '5V', pinPos('uno', '5V'), railPos('tp', 24), 0)]);
-      wireConns.push(['bb1:tp.21', 'bb1:bp.18', 'red', routeWp('bb1', '', railPos('tp', 21), railPos('bp', 18), 0)]);
+      wireConns.push(['uno:5V', 'bb1:tp.1', 'red', routeWp('uno', '5V', pinPos('uno', '5V'), railPos('tp', 1), 0)]);
+      wireConns.push(['bb1:tp.2', 'bb1:bp.2', 'red', routeWp('bb1', '', railPos('tp', 2), railPos('bp', 2), 0)]);
     }
 
     // 输出
