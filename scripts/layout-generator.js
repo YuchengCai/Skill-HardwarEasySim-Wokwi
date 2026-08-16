@@ -103,6 +103,7 @@ function main() {
     //   电阻 : 27-30 指示区（左侧 x≈25-53）
     const cursors = { pushbutton: 16, resistor: 27, dht22: 4, led: 8 };
     const is = (p, t) => (p.type || '').includes(t);
+    let ledCount = 0;   // LED 纵向错开计数（避免多个 LED 的 A 脚同高 → 信号线共线）
 
     bbParts.forEach(p => {
       if (is(p, 'pushbutton')) {
@@ -134,10 +135,12 @@ function main() {
         cursors.dht22 += 6;
       } else if (is(p, 'led')) {
         // LED：面包板上方放置（连线由 intent.connections 网表生成，不用 $bb）
+        // 多个 LED 纵向错开 15px，避免 A 脚同高导致信号线水平共线
         const n = cursors.led;
         p.left = Math.round(rx(n) - 25);   // A 引脚 x 对准孔
-        p.top = bb.top - 80;               // 面包板上方
+        p.top = bb.top - 80 + ledCount * 15;
         cursors.led += 5;
+        ledCount++;
       } else {
         // 未知类型：回退为直连（放板子旁）
         boardParts.push(p);
@@ -190,28 +193,86 @@ function main() {
       if (!off) return null;
       return { x: base.left + off[0], y: base.top + off[1] };
     };
-    // 走线路径（v2）：板子引脚按侧出线（数字侧上/电源侧下），
-    // 然后「出线 → 水平到目标列 → 垂直到达」，生成整洁的 L/Z 形路径
-    const routeWp = (fid, fpin, a, b) => {
-      if (fid === 'uno') {
-        const off = (pins[board.type] || {})[fpin];
-        const isTop = off && off[1] < 100;
-        const exit = isTop ? -50 : 50;
-        return [`v${exit}`, `h${Math.round(b.x - a.x)}`, `v${Math.round(b.y - a.y - exit)}`];
+    // ============================================================
+    // 面包板中心走线（A1）：插面板元件（$bb）的信号线连到「同行空闲孔」，
+    // 靠面包板内部连通（同行同半区），而非直连引脚 —— 从结构上消除同 x 重叠
+    // ============================================================
+    const pinHole = {};    // "r1:1" → {row, half, letter}
+    const usedHoles = {};  // "27:b" → Set(letter)
+    bbConns.forEach(c => {
+      const m = c[1].match(/bb1:(\d+)([tb])\.([a-j])/);
+      if (m) {
+        const row = parseInt(m[1]), half = m[2], letter = m[3];
+        pinHole[c[0]] = { row, half, letter };
+        const key = `${row}:${half}`;
+        (usedHoles[key] = usedHoles[key] || new Set()).add(letter);
       }
-      // 元件 → 元件/板子：先垂直后水平
-      return [`v${Math.round(b.y - a.y)}`, `h${Math.round(b.x - a.x)}`];
+    });
+    const freeCursor = {};
+    const freeHole = (row, half) => {
+      const key = `${row}:${half}`;
+      const used = usedHoles[key] || new Set();
+      let idx = freeCursor[key] || 0;
+      for (let i = 0; i < 10; i++) {
+        const letter = 'abcdefghij'[(idx + i) % 10];
+        if (!used.has(letter)) {
+          freeCursor[key] = (idx + i + 1) % 10;
+          return { row, half, letter };
+        }
+      }
+      return null;
     };
+    const holePos = (h) => ({ x: rx(h.row), y: ry(h.letter, h.half) });
+
+    // 走线路径（v3）：
+    // ① 板子引脚按侧出线到「安全带」（板顶/板底外 15px），避开上方/下方元件（如 LED）
+    // ② 水平到目标列 → 垂直到达（L/Z 形）
+    // ③ 多条线汇到同一引脚时错开水平通道（stagger），避免共线
+    const routeWp = (fid, fpin, a, b, stagger) => {
+      if (fid === 'uno') {
+        const p = (pins[board.type] || {})[fpin];
+        const isTop = p && p[1] < 100;
+        const safeY = (isTop ? board.top - 15 : board.top + board.h + 15) + stagger;
+        return [`v${Math.round(safeY - a.y)}`, `h${Math.round(b.x - a.x)}`, `v${Math.round(b.y - safeY)}`];
+      }
+      // 元件/面包板孔 → 目标：先到目标 y（带错开），再水平，再回到目标 y
+      const dy = b.y - a.y;
+      return [`v${Math.round(dy + stagger)}`, `h${Math.round(b.x - a.x)}`, `v${Math.round(-stagger)}`];
+    };
+
+    // 统计同目标引脚的连线数，用于共线错开
+    const targetCount = {};
+    (intent.connections || []).forEach(c => { targetCount[c.to] = (targetCount[c.to] || 0) + 1; });
+    const targetSeen = {};
+
     (intent.connections || []).forEach(c => {
-      const fid = c.from.split(':')[0];
+      let fid = c.from.split(':')[0];
       const fpin = c.from.split(':')[1];
-      const a = pinPos(fid, fpin);
-      const b = pinPos(c.to.split(':')[0], c.to.split(':')[1]);
+      let fromRef = c.from;
+      let toRef = c.to;
+      let a = pinPos(fid, fpin);
+      let b = pinPos(c.to.split(':')[0], c.to.split(':')[1]);
+
+      // 端点若是插面板元件引脚 → 连到同行空闲孔（面包板内部连通）
+      const fHole = pinHole[c.from];
+      if (fHole) {
+        const h = freeHole(fHole.row, fHole.half);
+        if (h) { fid = 'bb1'; fromRef = `bb1:${h.row}${h.half}.${h.letter}`; a = holePos(h); }
+      }
+      const tHole = pinHole[c.to];
+      if (tHole) {
+        const h = freeHole(tHole.row, tHole.half);
+        if (h) { toRef = `bb1:${h.row}${h.half}.${h.letter}`; b = holePos(h); }
+      }
+
       if (!a || !b) {
         console.log(`  [走线跳过] ${c.from}→${c.to}：引脚坐标缺失`);
         return;
       }
-      wireConns.push([c.from, c.to, c.color || 'green', routeWp(fid, fpin, a, b)]);
+      const seen = targetSeen[c.to] || 0;
+      targetSeen[c.to] = seen + 1;
+      const stagger = targetCount[c.to] > 1 ? seen * 10 : 0;
+      wireConns.push([fromRef, toRef, c.color || 'green', routeWp(fid, fpin, a, b, stagger)]);
     });
 
     // 输出
