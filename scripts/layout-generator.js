@@ -48,6 +48,15 @@ function loadGeometry() {
   return {};
 }
 
+// 板型配置（boards.json：id、引脚分侧阈值、电源脚命名 —— 多板型复用的单一事实源）
+function loadBoards() {
+  const p = path.join(__dirname, '..', 'references', 'common', 'boards.json');
+  if (fs.existsSync(p)) {
+    return JSON.parse(fs.readFileSync(p, 'utf-8'));
+  }
+  return { boards: {} };
+}
+
 function main() {
   const args = process.argv.slice(2);
   if (args.length < 1) {
@@ -64,6 +73,19 @@ function main() {
   const boardSize = sizesData.sizes[board.type] || sizesData.default;
   board.w = boardSize.width;
   board.h = boardSize.height;
+  // 板型配置（id、分侧阈值、电源脚）——Uno 假设抽到这里，多板型加配置即可
+  const bp = (loadBoards().boards || {})[board.type] || {};
+  board.id = bp.id || 'uno';
+  board.pinSideThreshold = bp.pinSideThreshold || 100;
+  board.powerPins = bp.powerPins || ['GND', '5V', '3.3V', 'VIN'];
+  board.gndTop = bp.gndTop || 'GND.1';
+  board.gndBottom = bp.gndBottom || 'GND.2';
+  board.railGnd = bp.railGnd || 'GND.2';
+  board.railVcc = bp.railVcc || '5V';
+  // 预编译板子引用正则（id 来自板型配置，避免散落 'uno' 字面量）
+  board.digitPat = new RegExp('^' + board.id + ':(\\d+)$');     // 板子数字脚（uno:13）
+  board.fromPat = new RegExp('^' + board.id + ':(\\S+)$');      // 板子源（uno:A4）
+  board.gndPat = new RegExp('^' + board.id + ':GND\\.\\d+$');   // GND 脚（uno:GND.1）
 
   // 元件清单
   const parts = intent.parts.map(p => {
@@ -88,7 +110,7 @@ function main() {
 
   const pinPos = (id, pinName) => {
     let base, type, rotate;
-    if (id === 'uno') {
+    if (id === board.id) {
       base = { left: board.left, top: board.top };
       type = board.type; rotate = 0;
     } else if (id === 'bb1') {
@@ -108,23 +130,33 @@ function main() {
   };
 
   const boardPinSide = (id, pin) => {
-    if (id !== 'uno' || !pin) return null;
+    if (id !== board.id || !pin) return null;
     const p = (pins[board.type] || {})[pin];
-    return p && p[1] < 100 ? 'top' : 'bottom';
+    return p && p[1] < board.pinSideThreshold ? 'top' : 'bottom';
   };
 
   const routeWp = (fid, fpin, a, b, stagger, toId, toPin) => {
     const r1 = v => Math.round(v * 10) / 10;   // 1 位小数
-    if (fid === 'uno') {
+    if (fid === board.id) {
       // 板源 → 目标：出线到板外安全带（远一点，给别的线留空间），不沿引脚排横穿
       const side = boardPinSide(fid, fpin);
       const safeY = (side === 'top' ? board.top - 15 : board.top + board.h + 15) + stagger;
       const v1 = r1(safeY - a.y);
-      const h1 = r1(b.x - a.x);
+      // 目标若是直连元件，且竖直段会纵穿其包围盒 → 先走到元件外侧，再水平进引脚（先离开区域再走线）
+      const tp = toId ? partById[toId] : null;
+      let outX = null;
+      if (tp && tp.placement && tp.placement !== 'bb' && b.x >= tp.left && b.x <= tp.left + tp.w) {
+        const cx = tp.left + tp.w / 2;
+        const margin = 6;
+        outX = r1(b.x >= cx ? tp.left + tp.w + margin : tp.left - margin);
+      }
+      const h1 = r1((outX != null ? outX : b.x) - a.x);
       const v3 = r1(b.y - (a.y + v1));
-      return [`v${v1}`, `h${h1}`, `v${v3}`];
+      const wp = [`v${v1}`, `h${h1}`, `v${v3}`];
+      if (outX != null && Math.abs(b.x - outX) > 0.5) wp.push(`h${r1(b.x - outX)}`);
+      return wp;
     }
-    if (toId === 'uno') {
+    if (toId === board.id) {
       // 元件源 → 板脚：贴近板子的安全带（短接近，避免横跨别的线）
       const side = boardPinSide(toId, toPin);
       const safeY = (side === 'top' ? board.top - 7 : board.top + board.h + 7) + stagger;
@@ -157,7 +189,7 @@ function main() {
   // 各元件 $bb 配方（引脚→孔位 + 位置锚点，均实测校准）：
   //   按钮(rot90): 1.r→(n,t,b) 2.r→(n+2,t,b) 1.l→(n,b,g) 2.l→(n+2,b,g)；锚点 1.l 偏移 (44.5,-9.5)
   //   电阻(rot90): 1→(n,b,g) 2→(n,t,c)；锚点 1 偏移 (29.35,-24.0)
-  //   DHT  (rot0) : GND→(n,b,i) NC→(n+1,b,i) SDA→(n+2,b,i) VCC→(n+3,b,i)；锚点 GND 偏移 (43.8,114.9)
+  //   DHT  (rot0) : GND→(n,b,i) NC→(n+1,b,i) SDA→(n+2,b,i) VCC→(n+3,b,i)；锚点 GND 偏移从 pins.json 取
   //   LED  (rot0) : 不用 $bb！可见线 A→孔(绿色)
   // ============================================================
   if (useBB) {
@@ -270,10 +302,10 @@ function main() {
     const btnSignalX = {};
     (intent.connections || []).forEach(c => {
       const f = c.from, t = c.to;
-      const m1 = f.match(/^uno:(\d+)$/), m2 = t.match(/^(btn\d+):2\.r$/);
+      const m1 = f.match(board.digitPat), m2 = t.match(/^(btn\d+):2\.r$/);
       if (m1 && m2) { const pd = (pins[board.type] || {})[m1[1]]; if (pd) btnSignalX[m2[1]] = pd[0]; }
       else {
-        const m3 = t.match(/^uno:(\d+)$/), m4 = f.match(/^(btn\d+):2\.r$/);
+        const m3 = t.match(board.digitPat), m4 = f.match(/^(btn\d+):2\.r$/);
         if (m3 && m4) { const pd = (pins[board.type] || {})[m3[1]]; if (pd) btnSignalX[m4[1]] = pd[0]; }
       }
     });
@@ -320,8 +352,9 @@ function main() {
         bbConns.push([`${p.id}:NC`, `bb1:${n + 1}b.i`, '', ['$bb']]);
         bbConns.push([`${p.id}:SDA`, `bb1:${n + 2}b.i`, '', ['$bb']]);
         bbConns.push([`${p.id}:VCC`, `bb1:${n + 3}b.i`, '', ['$bb']]);
-        p.left = r2(rx(n) - 43.8);
-        p.top = r2(ry('i', 'b') - 114.9);
+        const dhtGnd = (pins[p.type] || {}).GND || [39.8, 110.9];   // GND 引脚偏移（pins.json 单一事实源，网页版悬停实测）
+        p.left = r2(rx(n) - dhtGnd[0]);
+        p.top = r2(ry('i', 'b') - dhtGnd[1]);
         bandCursor[bandOf[p.id]].dht = n + TYPE_STEP.dht;
       } else if (is(p, 'led')) {
         // LED：放到配对电阻的正上方同列（不用 $bb，连线由网表生成可见线）
@@ -420,9 +453,11 @@ function main() {
     // 识别电源连线（目标 = uno:GND/5V/3V3/VIN）→ 连对应轨
     const railUsed = { bn: new Set(), bp: new Set(), tn: new Set(), tp: new Set() };
     const railTarget = (toRef, sourceX) => {
-      const m = toRef.match(/^uno:(GND|5V|3V3|VIN)/);
-      if (!m) return null;
-      const isGND = m[1].startsWith('GND');
+      const [rid, rpin] = toRef.split(':');
+      if (rid !== board.id || !rpin) return null;
+      const prefix = board.powerPins.find(p => rpin.startsWith(p));
+      if (!prefix) return null;
+      const isGND = prefix.startsWith('GND');
       const rail = isGND ? 'bn' : 'tp';
       // 就近：扫描 1..25 找离源 x 最近的空闲位置（一孔一接）
       const used = railUsed[rail];
@@ -447,11 +482,11 @@ function main() {
     {
       const usedBySide = { top: [], bottom: [] };
       (intent.connections || []).forEach(c => {
-        const m = c.from.match(/^uno:(\S+)$/);
+        const m = c.from.match(board.fromPat);
         if (!m) return;
         const pd = (pins[board.type] || {})[m[1]];
         if (!pd || !Array.isArray(pd)) return;
-        const side = pd[1] < 100 ? 'top' : 'bottom';
+        const side = pd[1] < board.pinSideThreshold ? 'top' : 'bottom';
         if (!usedBySide[side].includes(m[1])) usedBySide[side].push(m[1]);
       });
       (['top', 'bottom']).forEach(side => {
@@ -467,6 +502,10 @@ function main() {
       let toRef = c.to;
       let a = pinPos(fid, fpin);
       let b = pinPos(c.to.split(':')[0], c.to.split(':')[1]);
+      if (!a || !b) {
+        console.log(`  [走线跳过] ${c.from}→${c.to}：引脚坐标缺失`);
+        return;
+      }
 
       // ① 电源连线（目标 = GND/5V/3V3/VIN）→ 连电源轨（就近走轨，不穿板）
       const rt = railTarget(c.to, a.x);
@@ -495,15 +534,11 @@ function main() {
         }
       }
 
-      if (!a || !b) {
-        console.log(`  [走线跳过] ${c.from}→${c.to}：引脚坐标缺失`);
-        return;
-      }
       let stagger = 0;
-      if (fid === 'uno') {
+      if (fid === board.id) {
         // 板线：按脚位 x 占独立水平车道，避免多线共线/右脚本向左压左脚出线
         const pinInfo = (pins[board.type] || {})[fpin];
-        const side = pinInfo && pinInfo[1] < 100 ? 'top' : 'bottom';
+        const side = pinInfo && pinInfo[1] < board.pinSideThreshold ? 'top' : 'bottom';
         const lane = (boardPinLane[fpin] != null) ? boardPinLane[fpin] : edgeLane[side]++;
         stagger = side === 'top' ? -lane * 8 : lane * 8;
       } else {
@@ -511,27 +546,30 @@ function main() {
         finalTargetSeen[toRef] = seen + 1;
         stagger = seen * 10;
       }
-      wireConns.push([fromRef, toRef, c.color || 'green', routeWp(fid, fpin, a, b, stagger)]);
+      wireConns.push([fromRef, toRef, c.color || 'green', routeWp(fid, fpin, a, b, stagger, toRef.split(':')[0], toRef.split(':')[1])]);
     });
 
-    // 电源轨主线：板子 GND/5V → 就近轨端口（tn.1/tp.1，靠板子最近的右端，直连不绕远），
-    // 再跳线 tn→bn、tp→bp 连到元件取电用的轨（上下轨连通）。
-    // 一孔一接：主线接 tn.1/tp.1，跳线从 tn.2→bn.2 / tp.2→bp.2（四条轨同 x 模型，
-    // 同号位置同 x → 跳线纯竖直），不与主线共用孔。
+    // 电源轨：板子 GND/5V → 主线接 tn/tp（元件从 bn 取 GND、从 tp 取 5V）。
+    // GND 需跳线 tn→bn（主线落 tn、元件用 bn）；5V 主线直接落 tp（= 元件取电轨），
+    // 故无需 tp→bp 跳线（bp 轨当前无元件使用，生成会多余）。
+    // 仅一条轨时主线走最左轨位 25（旧行为，金样不变）；两条轨同时用时：
+    //   GND 主线仍 tn.25，但 stagger+8 下探更深(y=534)；5V 主线改 tp.23(x=43.4) 贴板(y=526)。
+    //   左右脚 ↔ 左右轨交叉配对 + 不同深度 → 两条主线既不共线也不相交（几何消交叉）。
+    const bothRails = railUsed['bn'].size > 0 && railUsed['tp'].size > 0;
     if (railUsed['bn'].size > 0) {
-      // 轨主线走最左侧轨位（x<信号孔位），竖直段不横穿信号线；跳线相邻位 tn→bn
-      wireConns.push(['uno:GND.2', `bb1:tn.${RAIL_MAX}`, 'black', routeWp('uno', 'GND.2', pinPos('uno', 'GND.2'), railPos('tn', RAIL_MAX), 0)]);
+      const stagger = bothRails ? 8 : 0;
+      wireConns.push([`${board.id}:${board.railGnd}`, `bb1:tn.${RAIL_MAX}`, 'black', routeWp(board.id, board.railGnd, pinPos(board.id, board.railGnd), railPos('tn', RAIL_MAX), stagger)]);
       wireConns.push([`bb1:tn.${RAIL_MAX - 1}`, `bb1:bn.${RAIL_MAX - 1}`, 'black', routeWp('bb1', '', railPos('tn', RAIL_MAX - 1), railPos('bn', RAIL_MAX - 1), 0)]);
     }
     if (railUsed['tp'].size > 0) {
-      wireConns.push(['uno:5V', `bb1:tp.${RAIL_MAX}`, 'red', routeWp('uno', '5V', pinPos('uno', '5V'), railPos('tp', RAIL_MAX), 0)]);
-      wireConns.push([`bb1:tp.${RAIL_MAX - 1}`, `bb1:bp.${RAIL_MAX - 1}`, 'red', routeWp('bb1', '', railPos('tp', RAIL_MAX - 1), railPos('bp', RAIL_MAX - 1), 0)]);
+      const n = bothRails ? RAIL_MAX - 2 : RAIL_MAX;
+      wireConns.push([`${board.id}:${board.railVcc}`, `bb1:tp.${n}`, 'red', routeWp(board.id, board.railVcc, pinPos(board.id, board.railVcc), railPos('tp', n), 0)]);
     }
 
     // 输出
     const outParts = [
       { type: bb.type, id: 'bb1', top: bb.top, left: bb.left, rotate: bb.rotate, attrs: {} },
-      { type: board.type, id: 'uno', top: board.top, left: board.left, attrs: {} },
+      { type: board.type, id: board.id, top: board.top, left: board.left, attrs: {} },
       ...parts.map(p => { const o = { type: p.type, id: p.id, top: p.top, left: p.left, attrs: p.attrs || {} }; if (p.rotate) o.rotate = p.rotate; return o; })
     ];
     // 紧凑输出：parts 单行、connections 单行
@@ -709,20 +747,20 @@ function main() {
       return;
     }
     // ② GND 智能选边：目标 = 板子 GND 时，按源元件在板上/下方就近选 GND.1（顶部数字侧）/ GND.2（底部电源侧）
-    if (/^uno:GND\.\d+$/.test(c.to) && fid !== 'uno') {
+    if (board.gndPat.test(c.to) && fid !== board.id) {
       const boardMid = board.top + board.h / 2;
-      toRef = (a.y < boardMid) ? 'uno:GND.1' : 'uno:GND.2';
-      b = pinPos('uno', toRef.split(':')[1]);
+      toRef = (a.y < boardMid) ? `${board.id}:${board.gndTop}` : `${board.id}:${board.gndBottom}`;
+      b = pinPos(board.id, toRef.split(':')[1]);
     }
     const toId = toRef.split(':')[0];
     const toPin = toRef.split(':')[1];
     let stagger = 0;
-    if (fid === 'uno') {
+    if (fid === board.id) {
       // 板源：同一边每条线占一条水平车道
       const side = boardPinSide(fid, fpin);
       const lane = edgeLane[side]++;
       stagger = side === 'top' ? -lane * 8 : lane * 8;
-    } else if (toId === 'uno') {
+    } else if (toId === board.id) {
       // 元件源 → 板脚：贴近板子，小错开（4px）
       const side = boardPinSide(toId, toPin);
       const lane = targetLane[side]++;
@@ -744,7 +782,7 @@ function main() {
     if (p.rotate) out.rotate = p.rotate;
     return out;
   });
-  outputParts.unshift({ type: board.type, id: 'uno', top: board.top, left: board.left, attrs: {} });
+  outputParts.unshift({ type: board.type, id: board.id, top: board.top, left: board.left, attrs: {} });
 
   // 紧凑输出：parts 单行、connections 单行（与面包板分支一致，不刷太多换行）
   const lines = ['{', '  "version": 1,', '  "author": "layout-generator",', '  "editor": "wokwi",', '  "parts": ['];

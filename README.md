@@ -8,6 +8,15 @@
 
 ## 📋 What's New / 本次大版本更新
 
+**v0.5.1 — Board Profile + Measured Geometry + Constraint Grading / 板型配置 + 几何数据实测 + 约束分级**
+
+- 🗺️ **Board Profile** / 板型配置抽象 — Uno 假设（id/分侧阈值/电源脚）抽到 `boards.json`，多板型复用零改算法
+- 📏 **Measured Pin Coords** / 引脚坐标实测 — OLED（board-ssd1306）+ DHT22 悬停实测，修复网页版 $bb 对不齐
+- 📐 **OLED Size Fix** / OLED 尺寸修正 — 27→63（含引脚），修复 OLED/蜂鸣器重叠检测盲区
+- 🔀 **Direct Leave-Element** / 直连走线绕元件 — 板源线先离开元件包围盒再进引脚，不再纵穿
+- 🚄 **Rail Routing Fix** / 电源轨去重叠 — GND/5V 双轨同时用不共线
+- 📋 **Constraint Grading** / 约束分级 — 硬约束（穿元件必须绕）/ 软约束（交叉可妥协）/ 灰度开口（容忍度）
+
 **v0.5.0 — Layout Generator + Wiring Optimization / 布局生成器 + 布线优化**
 
 - 🧠 **Layout Generator** / 布局生成器 — `layout-intent.json`（语义意图，无坐标）→ `layout-generator.js` 自动算坐标 + `$bb` 插接 + 走线（面包板已标定）
@@ -15,23 +24,14 @@
 - 🧩 **Layout Cards** / 元件偏好卡 — 7 张元件卡（LED/电阻/按钮/DHT22/OLED/蜂鸣器），按需查询
 - 🔌 **Generic Wiring Fallback** / 通用接线兜底 — 未收录元件「识引脚 → 分类 → 通用规则」
 - 📐 **Geometry Single Source** / 几何单一事实源 — `geometry.json` 面包板几何，脚本 + 文档统一引用
-- ✅ **Regression Tests** / 回归测试 — `run-tests.js` + 3 金标用例，防改坏
-
-**v0.4.x — Component Catalog + Multi-Board / 元件目录 + 多板型适配**
-
-- 🧩 **Component Catalog (50 parts)** / 元件目录系统 — 50 components with Chinese names + pins, auto-extracted from wokwi-elements, offline-ready / 50 种元件（含中文名 + 引脚），从 wokwi-elements 开源库自动提取，离线可用
-- 🔢 **Multi-Board (Uno/Mega/Nano/ESP32)** / 多板型适配 — auto-inferred FQBN; ESP32 core installs via official CN mirror / compile.sh 自动推断 FQBN；ESP32 核心通过乐鑫国内镜像自动安装
-- ⚠️ **Hardware Check** / 硬件核对 — confirm component model matches simulation before physical wiring (I2C vs SPI) / 接实物前确认元件型号/版本与模拟一致，提示接口差异
-- 📋 **Wiring Text Summary** / 接线文字说明 — readable wiring description at verification, aids physical wiring / 模拟确认时生成可读接线摘要，辅助实物接线
-- 🗄️ **Auto Data-Dir Selection** / 数据目录智能选择 — Windows: auto-migrate to roomiest drive when C: is low / C 盘空间不足时自动迁移到空间最大的盘
-- 🌐 **Mode A Restructure** / Mode A 重构 — Playwright MCP as primary path (non-IDE agents), node script fallback / Playwright MCP 为主路径（适配非 IDE agent），node 脚本降为备用
+- ✅ **Regression Tests** / 回归测试 — `run-tests.js` + 8 用例（4 布局金标 + 4 冲突夹具），防改坏
 
 ---
 
 <a id="english"></a>
 ## 📘 English
 
-**Wokwi Arduino Simulation Skill** — v0.5.0 — A portable skill package for AI coding agents (DeepCode, WorkBuddy, Claude Code, Cursor) that enables automated Arduino hardware prototyping, **auto browser simulation**, circuit compilation, and firmware upload.
+**Wokwi Arduino Simulation Skill** — v0.5.1 — A portable skill package for AI coding agents (DeepCode, WorkBuddy, Claude Code, Cursor) that enables automated Arduino hardware prototyping, **auto browser simulation**, circuit compilation, and firmware upload.
 
 ### Features
 
@@ -153,7 +153,7 @@ The agent reads `components.md` for correct pin names, generates the project, co
 <a id="chinese"></a>
 ## 📘 中文
 
-**Wokwi Arduino 仿真 Skill** — v0.5.0 — 一个可移植的技能包，专为 AI 编程助手（DeepCode、WorkBuddy、Claude Code、Cursor）设计，实现自动化硬件原型设计、**自动浏览器仿真**、代码编译和固件上传。
+**Wokwi Arduino 仿真 Skill** — v0.5.1 — 一个可移植的技能包，专为 AI 编程助手（DeepCode、WorkBuddy、Claude Code、Cursor）设计，实现自动化硬件原型设计、**自动浏览器仿真**、代码编译和固件上传。
 
 ### 功能
 

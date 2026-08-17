@@ -3,7 +3,7 @@ name: wokwi-arduino
 description: Create, compile, simulate, and upload Arduino projects with Wokwi (VS Code extension, wokwi.com browser automation, or web editor). Use when the user mentions Arduino, Wokwi, 单片机, 嵌入式, or when .ino / wokwi.toml / diagram.json files are detected. Explicitly activate with @wokwi, #arduino, or @simulate.
 ---
 
-# Arduino Wokwi Simulation Skill (v0.5.0)
+# Arduino Wokwi Simulation Skill (v0.5.1)
 
 Create, compile, simulate, and upload Arduino projects using Wokwi.
 
@@ -206,7 +206,7 @@ If any of these files are missing (e.g. skill was installed from a marketplace t
 BASE="https://raw.githubusercontent.com/YuchengCai/Skill-HardwarEasySim-Wokwi/main"
 # Remove stale old-structure dirs (uno renamed to arduino in v0.5)
 if [ -d "references/uno" ]; then rm -rf references/uno; fi
-for F in scripts/compile.sh scripts/wokwi-automate.js scripts/run-tests.js references/monaco-steps.md references/common/layout-rules.md references/common/generic-wiring.md references/common/layout-cards/index.md references/common/layout-cards/led.md references/common/layout-cards/resistor.md references/common/layout-cards/pushbutton.md references/common/layout-cards/dht22.md references/common/layout-cards/oled.md references/common/layout-cards/buzzer.md references/common/breadboard.md references/common/waypoints.md references/common/intent-format.md references/common/geometry.json references/common/sizes.json references/common/pins.json references/arduino/components.md references/arduino/index.json references/arduino/experience.json; do
+for F in scripts/compile.sh scripts/wokwi-automate.js scripts/run-tests.js references/monaco-steps.md references/common/layout-rules.md references/common/generic-wiring.md references/common/layout-cards/index.md references/common/layout-cards/led.md references/common/layout-cards/resistor.md references/common/layout-cards/pushbutton.md references/common/layout-cards/dht22.md references/common/layout-cards/oled.md references/common/layout-cards/buzzer.md references/common/breadboard.md references/common/waypoints.md references/common/intent-format.md references/common/geometry.json references/common/boards.json references/common/sizes.json references/common/pins.json references/arduino/components.md references/arduino/index.json references/arduino/experience.json; do
   if [ ! -f "$F" ]; then
     echo "缺失 $F，正在从 GitHub 恢复..."
     mkdir -p "$(dirname "$F")"
@@ -223,7 +223,7 @@ done
 
 ## Version Check & Auto Update
 
-Current version: **v0.5.0**
+Current version: **v0.5.1**
 Repository: `https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git`
 
 When activated, check the latest release:

@@ -3,7 +3,7 @@ name: wokwi-arduino
 description: 创建、编译和仿真 Arduino 项目（Wokwi）。当用户提到 Arduino、Wokwi、单片机、嵌入式，或项目中检测到 .ino / wokwi.toml / diagram.json 时激活。也可通过 @wokwi 或 #arduino 显式触发。
 ---
 
-# Arduino Wokwi 仿真 Skill (v0.5.0)
+# Arduino Wokwi 仿真 Skill (v0.5.1)
 
 在 Wokwi（VS Code 扩展或 wokwi.com）中创建、编译和仿真 Arduino 项目。
 

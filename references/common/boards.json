@@ -1,0 +1,15 @@
+{
+  "version": "0.1",
+  "notes": "板型配置：把走线算法里板子相关的假设（id、引脚分侧阈值、电源脚命名）抽到这里，实现多板型复用。适配新板 = 加一份配置 + 引脚坐标(pins.json) + 尺寸(sizes.json)，算法零改动。",
+  "boards": {
+    "wokwi-arduino-uno": {
+      "id": "uno",
+      "pinSideThreshold": 100,
+      "powerPins": ["GND", "5V", "3.3V", "VIN"],
+      "gndTop": "GND.1",
+      "gndBottom": "GND.2",
+      "railGnd": "GND.2",
+      "railVcc": "5V"
+    }
+  }
+}
