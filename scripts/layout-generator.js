@@ -745,8 +745,13 @@ function main() {
   });
   outputParts.unshift({ type: board.type, id: 'uno', top: board.top, left: board.left, attrs: {} });
 
-  const result = { version: 1, author: 'layout-generator', editor: 'wokwi', parts: outputParts, connections: wireConns };
-  fs.writeFileSync(path.join(OUT_DIR, 'diagram.json'), JSON.stringify(result, null, 2));
+  // 紧凑输出：parts 单行、connections 单行（与面包板分支一致，不刷太多换行）
+  const lines = ['{', '  "version": 1,', '  "author": "layout-generator",', '  "editor": "wokwi",', '  "parts": ['];
+  outputParts.forEach((p, i) => lines.push('    ' + JSON.stringify(p) + (i < outputParts.length - 1 ? ',' : '')));
+  lines.push('  ],', '  "connections": [');
+  wireConns.forEach((c, i) => lines.push('    ' + JSON.stringify(c) + (i < wireConns.length - 1 ? ',' : '')));
+  lines.push('  ]', '}');
+  fs.writeFileSync(path.join(OUT_DIR, 'diagram.json'), lines.join('\n'));
   console.log(`[OK] 直连布局：${parts.length} 元件 + ${wireConns.length} 条可见线`);
   if (issues.length) {
     console.log(`[WARN] 硬约束修复 ${issues.length} 处:`);
