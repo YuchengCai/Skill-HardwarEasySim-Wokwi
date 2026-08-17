@@ -198,7 +198,7 @@ If any of these files are missing (e.g. skill was installed from a marketplace t
 BASE="https://raw.githubusercontent.com/YuchengCai/Skill-HardwarEasySim-Wokwi/main"
 # Remove stale old-structure dirs (uno renamed to arduino in v0.5)
 if [ -d "references/uno" ]; then rm -rf references/uno; fi
-for F in scripts/compile.sh scripts/wokwi-automate.js references/monaco-steps.md references/common/layout-rules.md references/common/breadboard.md references/common/waypoints.md references/common/sizes.json references/common/pins.json references/arduino/components.md references/arduino/index.json references/arduino/experience.json; do
+for F in scripts/compile.sh scripts/wokwi-automate.js scripts/run-tests.js references/monaco-steps.md references/common/layout-rules.md references/common/generic-wiring.md references/common/layout-cards/index.md references/common/layout-cards/led.md references/common/layout-cards/resistor.md references/common/layout-cards/pushbutton.md references/common/layout-cards/dht22.md references/common/layout-cards/oled.md references/common/layout-cards/buzzer.md references/common/breadboard.md references/common/waypoints.md references/common/sizes.json references/common/pins.json references/arduino/components.md references/arduino/index.json references/arduino/experience.json; do
   if [ ! -f "$F" ]; then
     echo "缺失 $F，正在从 GitHub 恢复..."
     mkdir -p "$(dirname "$F")"
@@ -233,7 +233,8 @@ If newer, ask user to update → `git clone + install.sh` (auto).
 
 1. **`references/common/`** — system-level rules (any board/part):
    - `layout-rules.md` — read BEFORE generating diagram.json (style by component count, positioning, waypoint patterns)
-   - `layout-cards.md` — per-component-type layout/wiring preference cards (LED↔resistor pairing, button opposite-side, etc.); read ONLY the cards for the parts actually used
+   - `layout-cards/index.md` — index of per-component preference cards; then read ONLY the card(s) for the parts actually used
+   - `generic-wiring.md` — fallback for components NOT in layout-cards (identify pins → classify → generic rules)
    - `breadboard.md` — read when using a breadboard (pin naming, `$bb`, power rails, 孔位坐标系统, 轨坐标, 接线惯例)
    - `waypoints.md` — read when wiring with control points (v/h/* mini-language)
    - `sizes.json` — component canvas sizes (from wokwi-elements source; used by layout/detection scripts)
