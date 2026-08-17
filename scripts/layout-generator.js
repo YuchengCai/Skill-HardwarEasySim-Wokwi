@@ -76,8 +76,60 @@ function main() {
   // 分组与区域归属（直连分支依赖，之前缺失导致直连模式崩溃）
   const groups = intent.groups || [];
   const groupOf = {};   // part id → 所属 group
-  const regionOf = {};  // part id → 所属 region
-  groups.forEach(g => g.parts.forEach(id => { groupOf[id] = g; regionOf[id] = g.region; }));
+  const regionOf = {};  // part id → 所属 region（直连 region；zone 已映射）
+  const ZONE_DIRECT = { output: 'top', input: 'bottom', sensor: 'right', display: 'right', misc: 'right' };
+  const directRegion = (g) => ['top', 'right', 'bottom', 'left'].includes(g.region) ? g.region
+                      : (ZONE_DIRECT[g.zone] || 'right');
+  groups.forEach(g => g.parts.forEach(id => { groupOf[id] = g; regionOf[id] = directRegion(g); }));
+
+  // 引脚坐标 + 面包板对象 + 走线路由（两个分支共用：面包板 / 直连）
+  const pins = loadPins();
+  let bb = null;   // 面包板对象（面包板分支赋值；直连分支保持 null，pinPos 不引用 bb1）
+
+  const pinPos = (id, pinName) => {
+    let base, type, rotate;
+    if (id === 'uno') {
+      base = { left: board.left, top: board.top };
+      type = board.type; rotate = 0;
+    } else if (id === 'bb1') {
+      base = { left: bb.left, top: bb.top };
+      type = bb.type; rotate = bb.rotate || 0;
+    } else {
+      const p = partById[id];
+      if (!p) return null;
+      base = { left: p.left, top: p.top };
+      type = p.type; rotate = p.rotate || 0;
+    }
+    const pd = pins[type];
+    if (!pd) return null;
+    const off = (rotate === 90 && pd._rot90 && pd._rot90[pinName]) ? pd._rot90[pinName] : pd[pinName];
+    if (!off) return null;
+    return { x: base.left + off[0], y: base.top + off[1] };
+  };
+
+  const routeWp = (fid, fpin, a, b, stagger) => {
+    const r1 = v => Math.round(v * 10) / 10;   // 1 位小数
+    if (fid === 'uno') {
+      const p = (pins[board.type] || {})[fpin];
+      const isTop = p && p[1] < 100;
+      const safeY = (isTop ? board.top - 15 : board.top + board.h + 15) + stagger;
+      const v1 = r1(safeY - a.y);
+      const h1 = r1(b.x - a.x);
+      const v3 = r1(b.y - (a.y + v1));   // 精确补到目标 y，避免整数舍入造成 0.5px 偏差
+      return [`v${v1}`, `h${h1}`, `v${v3}`];
+    }
+    // 元件 → 目标：非错开时只保留必要段（去掉 v0 与 <0.5px 微小段）；错开时保留 Z 形三段
+    const dy = b.y - a.y;
+    const dx = b.x - a.x;
+    if (stagger === 0) {
+      const wp = [];
+      if (Math.abs(dy) > 0.5) wp.push(`v${r1(dy)}`);
+      if (Math.abs(dx) > 0.5) wp.push(`h${r1(dx)}`);
+      if (wp.length === 0) wp.push('v0');
+      return wp;
+    }
+    return [`v${r1(dy + stagger)}`, `h${r1(dx)}`, `v${r1(-stagger)}`];
+  };
 
   // ============================================================
   // 面包板模式（v0.7 重写）
@@ -103,7 +155,7 @@ function main() {
     const OFF_Y = (G.hole && G.hole.offsetY) || 9;
     const OFF_B = (G.hole && G.hole.halfBOffset) || 19.2;
     const RAIL_G = G.rail || {};
-    const bb = { type: intent.breadboard || 'wokwi-breadboard-half', id: 'bb1', top: 100, left: 0, rotate: 180 };
+    bb = { type: intent.breadboard || 'wokwi-breadboard-half', id: 'bb1', top: 100, left: 0, rotate: 180 };
     const LETTER = 'abcdefghij';
     const idx = L => LETTER.indexOf(L);
     const rx = n => bb.left + (BB_W - OFF_X) - (n - 1) * PITCH;
@@ -257,7 +309,6 @@ function main() {
     });
 
     // 直连元件：分区围绕板子（top/right/bottom/left）；region 显式 > zone 映射 > right 兜底
-    const ZONE_DIRECT = { output: 'top', input: 'bottom', sensor: 'right', display: 'right', misc: 'right' };
     const dRegions = {
       top:    { x: board.left, y: board.top - 160 },
       right:  { x: board.left + board.w + 40, y: board.top - 20 },
@@ -284,27 +335,6 @@ function main() {
     // 走线生成（v1）：读取 intent.connections 逻辑网表，生成物理连线
     // 模型给网表（谁连谁），脚本按引脚坐标 + 出线方向生成可见线
     // ============================================================
-    const pins = loadPins();
-    const pinPos = (id, pinName) => {
-      let base, type, rotate;
-      if (id === 'uno') {
-        base = { left: board.left, top: board.top };
-        type = board.type; rotate = 0;
-      } else if (id === 'bb1') {
-        base = { left: bb.left, top: bb.top };
-        type = bb.type; rotate = bb.rotate || 0;
-      } else {
-        const p = partById[id];
-        if (!p) return null;
-        base = { left: p.left, top: p.top };
-        type = p.type; rotate = p.rotate || 0;
-      }
-      const pd = pins[type];
-      if (!pd) return null;
-      const off = (rotate === 90 && pd._rot90 && pd._rot90[pinName]) ? pd._rot90[pinName] : pd[pinName];
-      if (!off) return null;
-      return { x: base.left + off[0], y: base.top + off[1] };
-    };
     // ============================================================
     // 面包板中心走线（A1）：插面板元件（$bb）的信号线连到「同行空闲孔」，
     // 靠面包板内部连通（同行同半区），而非直连引脚 —— 从结构上消除同 x 重叠
@@ -377,35 +407,6 @@ function main() {
       }
       used.add(best);
       return { rail, n: best, ref: `bb1:${rail}.${best}` };
-    };
-
-    // 走线路径（v3）：
-    // ① 板子引脚按侧出线到「安全带」（板顶/板底外 15px），避开上方/下方元件（如 LED）
-    // ② 水平到目标列 → 垂直到达（L/Z 形）
-    // ③ 多条线汇到同一引脚时错开水平通道（stagger），避免共线
-    const routeWp = (fid, fpin, a, b, stagger) => {
-      const r1 = v => Math.round(v * 10) / 10;   // 1 位小数（Wokwi waypoint 支持小数，模板用 1 位）
-      if (fid === 'uno') {
-        const p = (pins[board.type] || {})[fpin];
-        const isTop = p && p[1] < 100;
-        const safeY = (isTop ? board.top - 15 : board.top + board.h + 15) + stagger;
-        const v1 = r1(safeY - a.y);
-        const h1 = r1(b.x - a.x);
-        const v3 = r1(b.y - (a.y + v1));   // 精确补到目标 y，避免整数舍入造成 0.5px 偏差（误报共线）
-        return [`v${v1}`, `h${h1}`, `v${v3}`];
-      }
-      // 元件/面包板孔 → 目标：非错开时只保留必要段（去掉多余 v0 与 <0.5px 的微小水平段，
-      // 避免末端出现微小折角/绕圈）；错开（多线共点）时保留 Z 形三段
-      const dy = b.y - a.y;
-      const dx = b.x - a.x;
-      if (stagger === 0) {
-        const wp = [];
-        if (Math.abs(dy) > 0.5) wp.push(`v${r1(dy)}`);
-        if (Math.abs(dx) > 0.5) wp.push(`h${r1(dx)}`);
-        if (wp.length === 0) wp.push('v0');
-        return wp;
-      }
-      return [`v${r1(dy + stagger)}`, `h${r1(dx)}`, `v${r1(-stagger)}`];
     };
 
     // 共线错开：
@@ -517,9 +518,10 @@ function main() {
 
   // 组内排布：纵向优先（每列 columnMax 个，列横向分开）— 让线从板子出发有纵向空间
   groups.forEach(g => {
-    const reg = regions[g.region];
-    const cur = regionCursor[g.region];
-    const columnMax = (g.region === 'top' || g.region === 'bottom') ? 2 : 1;
+    const regName = directRegion(g);
+    const reg = regions[regName];
+    const cur = regionCursor[regName];
+    const columnMax = (regName === 'top' || regName === 'bottom') ? 2 : 1;
     let colX = cur.x;
     let colY = cur.y;
     let colCount = 0;
@@ -542,9 +544,10 @@ function main() {
       }
       p.left = Math.round(colX);
       p.top = Math.round(colY);
-      // 电阻自动垂直放置（rotate 90）：与 LED 纵向配对更清晰
+      // 电阻自动垂直放置（rotate 90）：与 LED 纵向配对更清晰；旋转后宽高互换
       if (p.type.includes('resistor')) {
         p.rotate = 90;
+        [p.w, p.h] = [p.h, p.w];
       }
       colY += p.h + spacing;       // 纵向推进
       colMaxW = Math.max(colMaxW, p.w);
@@ -556,10 +559,10 @@ function main() {
     // top/bottom → 横向错开（纵向会挤入板子）
     // left/right → 纵向递增（横向会与散件重叠）
     const groupW = colX - cur.x + colMaxW;
-    if (g.region === 'top' || g.region === 'bottom') {
-      regionCursor[g.region] = { x: cur.x + groupW + GROUP_SPACING, y: cur.y };
+    if (regName === 'top' || regName === 'bottom') {
+      regionCursor[regName] = { x: cur.x + groupW + GROUP_SPACING, y: cur.y };
     } else {
-      regionCursor[g.region] = { x: cur.x, y: cur.y + totalH + GROUP_SPACING };
+      regionCursor[regName] = { x: cur.x, y: cur.y + totalH + GROUP_SPACING };
     }
   });
 
@@ -612,7 +615,7 @@ function main() {
       issues.push(`${p.id} 遮挡板子 → 回移区域 ${regionOf[p.id]}`);
       if (regionOf[p.id] === 'top' || regionOf[p.id] === 'left') {
         // 区域上方安全位置：确保元件完全在板子上方（底 < 板子顶）
-        const safeTop = Math.min(reg.baseY - p.h, board.top - p.h - 20);
+        const safeTop = board.top - p.h - 20;
         p.top = safeTop;
       } else {
         p.top = board.top + board.h + 60;
@@ -644,7 +647,39 @@ function main() {
   }
 
   // ============================================================
-  // 输出：diagram.json parts
+  // 走线生成（直连）：板脚 → 元件脚直接连线（无面包板孔/轨）
+  // 复用 routeWp + pinPos + 共线错开（edgeLane / finalTargetSeen）
+  // ============================================================
+  const wireConns = [];
+  const edgeLane = { top: 0, bottom: 0 };
+  const finalTargetSeen = {};
+  (intent.connections || []).forEach(c => {
+    const fid = c.from.split(':')[0];
+    const fpin = c.from.split(':')[1];
+    const a = pinPos(fid, fpin);
+    const b = pinPos(c.to.split(':')[0], c.to.split(':')[1]);
+    if (!a || !b) {
+      console.log(`  [走线跳过] ${c.from}→${c.to}：引脚坐标缺失`);
+      return;
+    }
+    let stagger = 0;
+    if (fid === 'uno') {
+      // 板线：同一边每条线占一条水平车道，避免共线重叠
+      const pinInfo = (pins[board.type] || {})[fpin];
+      const side = pinInfo && pinInfo[1] < 100 ? 'top' : 'bottom';
+      const lane = edgeLane[side]++;
+      stagger = side === 'top' ? -lane * 8 : lane * 8;
+    } else {
+      // 其他线：同一目标引脚的第二条起错开 10px
+      const seen = finalTargetSeen[c.to] || 0;
+      finalTargetSeen[c.to] = seen + 1;
+      stagger = seen * 10;
+    }
+    wireConns.push([c.from, c.to, c.color || 'green', routeWp(fid, fpin, a, b, stagger)]);
+  });
+
+  // ============================================================
+  // 输出：diagram.json parts + connections
   // ============================================================
   const outputParts = parts.map(p => {
     const out = { type: p.type, id: p.id, top: p.top, left: p.left, attrs: p.attrs || {} };
@@ -653,9 +688,9 @@ function main() {
   });
   outputParts.unshift({ type: board.type, id: 'uno', top: board.top, left: board.left, attrs: {} });
 
-  const result = { version: 1, author: 'layout-generator', editor: 'wokwi', parts: outputParts, connections: [] };
+  const result = { version: 1, author: 'layout-generator', editor: 'wokwi', parts: outputParts, connections: wireConns };
   fs.writeFileSync(path.join(OUT_DIR, 'diagram.json'), JSON.stringify(result, null, 2));
-  console.log(`[OK] 布局生成完成：${parts.length} 元件 + 板子`);
+  console.log(`[OK] 直连布局：${parts.length} 元件 + ${wireConns.length} 条可见线`);
   if (issues.length) {
     console.log(`[WARN] 硬约束修复 ${issues.length} 处:`);
     [...new Set(issues)].forEach(i => console.log(`  - ${i}`));
