@@ -1,4 +1,4 @@
-// Arduino Wokwi Simulation (v0.4.6)
+// Arduino Wokwi Simulation (v0.5.0)
 // Repo: https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git
 // Triggers: arduino/wokwi/uno/单片机 keywords, .ino/wokwi.toml/diagram.json files, @wokwi @simulate
 
@@ -13,7 +13,7 @@ Uno/Mega/Nano/ESP32 — compile.sh auto-infers FQBN; ESP32 core auto-installs vi
 
 ## Workflow
 
-1. Generate .ino + match references/arduino/index.json (zh) → components.md → experience.json → diagram.json + wokwi.toml
+1. Generate .ino + match references/arduino/index.json (zh) → components.md → detail/. Write layout-intent.json (no coords; contract references/common/intent-format.md, prefs references/common/layout-cards/) → node scripts/layout-generator.js layout-intent.json <dir> → diagram.json → node scripts/optimize-wiring.js <dir> --dry-run → wokwi.toml
 2. ./scripts/compile.sh <dir>
 3. Simulate: VS Code + Wokwi 插件 → Mode B (F1 手动)。仅用户要求或没插件 → Mode A。**Primary: Playwright MCP** (monaco-steps.md). **Fallback: node scripts/wokwi-automate.js** (commands available, no MCP). **HARD RULE: never install playwright/npm without user approval**
 4. Verify: present wiring text summary (from diagram.json, by component, exact pins, D prefix for ESP32) then confirm with user
@@ -35,14 +35,14 @@ If differs: offer (A) regenerate for physical part (B) use matching part. Warn B
 On activation, restore missing scripts/references from GitHub:
 ```bash
 BASE="https://raw.githubusercontent.com/YuchengCai/Skill-HardwarEasySim-Wokwi/main"
-for F in scripts/compile.sh scripts/wokwi-automate.js references/monaco-steps.md references/arduino/components.md references/arduino/index.json references/arduino/experience.json; do
+for F in scripts/compile.sh scripts/wokwi-automate.js scripts/layout-generator.js scripts/optimize-wiring.js references/monaco-steps.md references/arduino/components.md references/arduino/index.json references/arduino/experience.json references/common/intent-format.md references/common/layout-rules.md references/common/generic-wiring.md references/common/breadboard.md references/common/waypoints.md references/common/geometry.json references/common/pins.json references/common/sizes.json references/common/layout-cards/index.md references/common/layout-cards/led.md references/common/layout-cards/resistor.md references/common/layout-cards/pushbutton.md references/common/layout-cards/dht22.md references/common/layout-cards/oled.md references/common/layout-cards/buzzer.md; do
   [ -f "$F" ] || { mkdir -p "$(dirname "$F")"; curl -fsSL "$BASE/$F" -o "$F"; }
 done
 ```
 
 ## Version Check
 
-v0.4.6 | Repo: https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git
+v0.5.0 | Repo: https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git
 
 On activation:
 ```bash

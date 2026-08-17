@@ -1,4 +1,4 @@
-# Arduino Wokwi 仿真
+# Arduino Wokwi 仿真 (v0.5.0)
 
 当用户提到 Arduino、Wokwi、单片机、嵌入式项目，或检测到 `.ino` / `wokwi.toml` / `diagram.json` 时激活。也可通过 `@wokwi` 或 `#arduino` 显式触发。
 
@@ -34,6 +34,12 @@ project/
 ├── diagram.json       # 电路图
 └── wokwi.toml         # 配置
 ```
+
+## 布局生成（重要，不手写坐标）
+
+1. 写 `layout-intent.json`（语义意图，无坐标）——契约见 `references/common/intent-format.md`，元件偏好见 `references/common/layout-cards/`
+2. `node scripts/layout-generator.js layout-intent.json <项目目录>` → 生成 `diagram.json`
+3. `node scripts/optimize-wiring.js <项目目录> --dry-run` 检测冲突
 
 ## 可用模板
 

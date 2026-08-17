@@ -1,4 +1,4 @@
-// Arduino Wokwi 仿真 — Cursor Rules
+// Arduino Wokwi 仿真 (v0.5.0) — Cursor Rules
 // 激活: 关键词 (arduino/wokwi/uno/单片机)、文件检测 (.ino/wokwi.toml/diagram.json)、@wokwi
 
 ## 项目结构
@@ -25,6 +25,12 @@
 ["uno:13", "r1:1", "green", []]
 // [from, to, wire_color, options]
 ```
+
+## 布局生成（不手写坐标）
+
+1. 写 `layout-intent.json`（语义意图，无坐标）——契约 `references/common/intent-format.md`，偏好 `references/common/layout-cards/`
+2. `node scripts/layout-generator.js layout-intent.json <项目目录>` → 生成 `diagram.json`
+3. `node scripts/optimize-wiring.js <项目目录> --dry-run` 检测冲突
 
 ## 元件类型
 

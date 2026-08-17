@@ -8,6 +8,15 @@
 
 ## 📋 What's New / 本次大版本更新
 
+**v0.5.0 — Layout Generator + Wiring Optimization / 布局生成器 + 布线优化**
+
+- 🧠 **Layout Generator** / 布局生成器 — `layout-intent.json`（语义意图，无坐标）→ `layout-generator.js` 自动算坐标 + `$bb` 插接 + 走线（面包板已标定）
+- 🎯 **Semantic Intent Contract** / 意图契约 — 模型定意图（zone 分区 / hint 左右），脚本定几何；契约见 `references/common/intent-format.md`
+- 🧩 **Layout Cards** / 元件偏好卡 — 7 张元件卡（LED/电阻/按钮/DHT22/OLED/蜂鸣器），按需查询
+- 🔌 **Generic Wiring Fallback** / 通用接线兜底 — 未收录元件「识引脚 → 分类 → 通用规则」
+- 📐 **Geometry Single Source** / 几何单一事实源 — `geometry.json` 面包板几何，脚本 + 文档统一引用
+- ✅ **Regression Tests** / 回归测试 — `run-tests.js` + 3 金标用例，防改坏
+
 **v0.4.x — Component Catalog + Multi-Board / 元件目录 + 多板型适配**
 
 - 🧩 **Component Catalog (50 parts)** / 元件目录系统 — 50 components with Chinese names + pins, auto-extracted from wokwi-elements, offline-ready / 50 种元件（含中文名 + 引脚），从 wokwi-elements 开源库自动提取，离线可用
@@ -22,7 +31,7 @@
 <a id="english"></a>
 ## 📘 English
 
-**Wokwi Arduino Simulation Skill** — v0.4.6 — A portable skill package for AI coding agents (DeepCode, WorkBuddy, Claude Code, Cursor) that enables automated Arduino hardware prototyping, **auto browser simulation**, circuit compilation, and firmware upload.
+**Wokwi Arduino Simulation Skill** — v0.5.0 — A portable skill package for AI coding agents (DeepCode, WorkBuddy, Claude Code, Cursor) that enables automated Arduino hardware prototyping, **auto browser simulation**, circuit compilation, and firmware upload.
 
 ### Features
 
@@ -68,16 +77,27 @@ Skill-HardwarEasySim-Wokwi/
 │   └── cursor/.cursorrules            # Cursor rules file
 ├── scripts/
 │   ├── compile.sh                     # OS-aware compile/upload script
+│   ├── layout-generator.js            # 🧠 intent → diagram.json (coordinates)
+│   ├── optimize-wiring.js             # ✅ wiring conflict detect/fix
+│   ├── generate-part-placeholder.js   # 🧩 library-external part placeholder
 │   ├── wokwi-automate.js              # 🌐 Auto browser simulation script
-│   ├── extract-components.py          # 🔄 Auto-extract 50 parts from wokwi-elements
-│   └── fill-zh.py                     # 🇨🇳 Fill Chinese names/aliases
+│   └── run-tests.js                   # 🧪 regression (dev-only)
 └── references/
-    ├── monaco-steps.md                # Native Monaco fallback steps
-    └── uno/
-        ├── components.md              # 📖 Component reference manual (high-freq)
-        ├── index.json                 # 🗂️ Full catalog: type + pins + zh names
-        ├── experience.json            # 📚 Agent-learned wiring patterns & tips
-        └── detail/*.json              # Per-component details (50 files)
+    ├── common/                        # 🧠 layout system (any board)
+    │   ├── geometry.json              # 📐 breadboard geometry (single source)
+    │   ├── pins.json / sizes.json     # 📏 pin coords / canvas sizes
+    │   ├── intent-format.md           # 📋 layout-intent.json contract
+    │   ├── layout-rules.md            # 📐 layout/wiring rules
+    │   ├── generic-wiring.md          # 🔌 fallback for unknown parts
+    │   ├── breadboard.md / waypoints.md
+    │   └── layout-cards/              # 🧩 per-component preference cards
+    ├── arduino/
+    │   ├── components.md              # 📖 Component reference manual (high-freq)
+    │   ├── index.json                 # 🗂️ Full catalog: type + pins + zh names
+    │   ├── experience.json            # 📚 Agent-learned wiring patterns & tips
+    │   └── detail/*.json              # Per-component details (50 files)
+    ├── esp32/board.md                 # ESP32 board reference
+    └── monaco-steps.md                # Native Monaco fallback steps
 ```
 
 ### Prerequisites
@@ -133,7 +153,7 @@ The agent reads `components.md` for correct pin names, generates the project, co
 <a id="chinese"></a>
 ## 📘 中文
 
-**Wokwi Arduino 仿真 Skill** — v0.4.6 — 一个可移植的技能包，专为 AI 编程助手（DeepCode、WorkBuddy、Claude Code、Cursor）设计，实现自动化硬件原型设计、**自动浏览器仿真**、代码编译和固件上传。
+**Wokwi Arduino 仿真 Skill** — v0.5.0 — 一个可移植的技能包，专为 AI 编程助手（DeepCode、WorkBuddy、Claude Code、Cursor）设计，实现自动化硬件原型设计、**自动浏览器仿真**、代码编译和固件上传。
 
 ### 功能
 
@@ -178,16 +198,27 @@ Skill-HardwarEasySim-Wokwi/
 │   └── cursor/.cursorrules            # Cursor 规则文件
 ├── scripts/
 │   ├── compile.sh                     # 跨平台编译/上传脚本
+│   ├── layout-generator.js            # 🧠 intent → diagram.json（坐标）
+│   ├── optimize-wiring.js             # ✅ 布线冲突检测/修正
+│   ├── generate-part-placeholder.js   # 🧩 库外元件占位符
 │   ├── wokwi-automate.js              # 🌐 自动浏览器仿真脚本
-│   ├── extract-components.py          # 🔄 自动提取 50 种元件（wokwi-elements 源码）
-│   └── fill-zh.py                     # 🇨🇳 填入中文名/别名
+│   └── run-tests.js                   # 🧪 回归测试（开发期）
 └── references/
-    ├── monaco-steps.md                # 原生 Monaco 降级操作步骤
-    └── uno/
-        ├── components.md              # 📖 元件参考手册（高频）
-        ├── index.json                 # 🗂️ 全量目录：type + 引脚 + 中文名
-        ├── experience.json            # 📚 agent 自学习接线模式与布线技巧
-        └── detail/*.json              # 分元件详情（50 个）
+    ├── common/                        # 🧠 布局体系（任何板型）
+    │   ├── geometry.json              # 📐 面包板几何（单一事实源）
+    │   ├── pins.json / sizes.json     # 📏 引脚坐标 / 画布尺寸
+    │   ├── intent-format.md           # 📋 layout-intent.json 契约
+    │   ├── layout-rules.md            # 📐 布局/布线规则
+    │   ├── generic-wiring.md          # 🔌 未收录元件兜底
+    │   ├── breadboard.md / waypoints.md
+    │   └── layout-cards/              # 🧩 元件偏好卡
+    ├── arduino/
+    │   ├── components.md              # 📖 元件参考手册（高频）
+    │   ├── index.json                 # 🗂️ 全量目录：type + 引脚 + 中文名
+    │   ├── experience.json            # 📚 agent 自学习接线模式与布线技巧
+    │   └── detail/*.json              # 分元件详情（50 个）
+    ├── esp32/board.md                 # ESP32 板卡参考
+    └── monaco-steps.md                # 原生 Monaco 降级操作步骤
 ```
 
 ### 前置依赖

@@ -3,7 +3,7 @@ name: wokwi-arduino
 description: 创建、编译和仿真 Arduino 项目（Wokwi）。当用户提到 Arduino、Wokwi、单片机、嵌入式，或项目中检测到 .ino / wokwi.toml / diagram.json 时激活。也可通过 @wokwi 或 #arduino 显式触发。
 ---
 
-# Arduino Wokwi 仿真 Skill
+# Arduino Wokwi 仿真 Skill (v0.5.0)
 
 在 Wokwi（VS Code 扩展或 wokwi.com）中创建、编译和仿真 Arduino 项目。
 
@@ -92,21 +92,21 @@ arduino-cli lib install "DHT sensor library" "Adafruit SSD1306"
 
 或手动创建三个文件。
 
-### 2. 编写 diagram.json
+### 2. 生成 diagram.json（用布局生成器，不手写坐标）
 
-**Parts** 定义元件：
-```json
-{ "type": "wokwi-arduino-uno", "id": "uno", "top": 0, "left": 0, "attrs": {} }
-{ "type": "wokwi-led", "id": "led1", "top": -50, "left": 350, "attrs": { "color": "red" } }
-{ "type": "wokwi-resistor", "id": "r1", "top": -30, "left": 250, "attrs": { "resistance": "220" } }
-{ "type": "wokwi-pushbutton", "id": "btn1", "top": 100, "left": 280, "attrs": {} }
-```
-
-**Connections** 定义连线：
-```json
-["uno:13", "r1:1", "green", []]
-// 格式: [from, to, WireColor, Options]
-```
+1. 写 `layout-intent.json`（语义意图，**不含坐标**）：
+   - 字段契约见 `references/common/intent-format.md`（board / parts / groups / connections / hint）
+   - 元件偏好见 `references/common/layout-cards/index.md`，只读用到的元件卡
+   - `groups[]` 给 `zone`（output/input/sensor/display/misc）；对称元件（按钮/LED）用 `parts[].hint.order` 定左右
+   - `connections[]` 写网表（谁连谁、用哪个引脚）
+2. 跑生成器算坐标：
+   ```bash
+   node scripts/layout-generator.js layout-intent.json <项目目录>
+   ```
+3. 检测冲突：
+   ```bash
+   node scripts/optimize-wiring.js <项目目录> --dry-run
+   ```
 
 ### 3. 配置 wokwi.toml
 
@@ -167,7 +167,10 @@ arduino-cli compile --fqbn arduino:avr:uno --output-dir build/ sketch.ino
 ### 查询顺序（快到准）
 
 1. **`references/common/`** — 系统级通用规则（任何板型/元件）：
+   - `intent-format.md` — layout-intent.json 字段契约（写 intent 前必读）
    - `layout-rules.md` — 生成 diagram.json 前必读（风格选择/摆放/控制点）
+   - `layout-cards/index.md` — 元件偏好卡索引，只读用到的元件卡
+   - `generic-wiring.md` — 未收录元件的通用兜底
    - `breadboard.md` — 使用面包板时读（引脚命名/$bb/电源轨）
    - `waypoints.md` — 连线用控制点时读（v/h/* 迷你语言）
 2. **`references/arduino/index.json`** — 全量目录（52 元件），含中文名（`zh`）和引脚。用中文描述匹配 → `type` → 引脚。**Arduino 系列（Uno/Mega/Nano）共用此目录，各板卡引脚在对应板型条目中。**

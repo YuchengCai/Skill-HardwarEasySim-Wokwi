@@ -95,6 +95,8 @@ rm -rf "$OUT_DIR"
 mkdir -p "$OUT_DIR"
 cp "$SCRIPT_DIR/adapters/workbuddy/SKILL.md" "$OUT_DIR/SKILL.md"
 cp -r "$SCRIPT_DIR/scripts" "$OUT_DIR/scripts"
+# 移除开发期脚本（不进运行时包：回归测试 / 一次性数据提取 / 一次性翻译）
+rm -f "$OUT_DIR/scripts/run-tests.js" "$OUT_DIR/scripts/extract-components.py" "$OUT_DIR/scripts/fill-zh.py"
 cp -r "$SCRIPT_DIR/references" "$OUT_DIR/references"
 info "已提取到: $OUT_DIR"
 find "$OUT_DIR" -type f | sort

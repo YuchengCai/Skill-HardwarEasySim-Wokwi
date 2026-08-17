@@ -3,7 +3,7 @@ name: wokwi-arduino
 description: Create, compile, simulate, and upload Arduino projects with Wokwi (VS Code extension, wokwi.com browser automation, or web editor). Use when the user mentions Arduino, Wokwi, 单片机, 嵌入式, or when .ino / wokwi.toml / diagram.json files are detected. Explicitly activate with @wokwi, #arduino, or @simulate.
 ---
 
-# Arduino Wokwi Simulation Skill (v0.4.6)
+# Arduino Wokwi Simulation Skill (v0.5.0)
 
 Create, compile, simulate, and upload Arduino projects using Wokwi.
 
@@ -56,10 +56,18 @@ arduino-cli lib install "DHT sensor library" "Adafruit SSD1306"
 ### 1. Generate Code & Circuit
 
 1. Write the `.ino` sketch code (include a 3x blink in setup() as upload success indicator)
-2. Open **`references/arduino/components.md`** — look up every component you intend to use
-3. Generate `diagram.json` with correct pin names and wiring
-4. Generate `wokwi.toml` pointing to `build/project.ino.hex`
-5. **Run the wiring checker** to detect conflicts before simulating:
+2. Look up every component you intend to use: **`references/arduino/index.json`** (Chinese-name match) → **`references/arduino/components.md`** → `detail/<type>.json`
+3. Write **`layout-intent.json`** — semantic layout intent, **NO coordinates**:
+   - Read **`references/common/intent-format.md`** for the field contract (board / parts / groups / connections / hint)
+   - Read **`references/common/layout-cards/index.md`**, then ONLY the card(s) for the parts actually used
+   - `groups[]`: assign `zone` (output/input/sensor/display/misc); `parts[].hint.order` for symmetric parts (buttons/LEDs left-right)
+   - `connections[]`: the netlist (who connects to whom, which pin)
+4. Generate `diagram.json` from intent (the script computes coordinates/geometry):
+   ```bash
+   node scripts/layout-generator.js layout-intent.json <project-dir>
+   ```
+5. Generate `wokwi.toml` pointing to `build/project.ino.hex`
+6. **Run the wiring checker** to detect conflicts before simulating:
    ```bash
    node scripts/optimize-wiring.js <project-dir> --dry-run
    ```
@@ -215,7 +223,7 @@ done
 
 ## Version Check & Auto Update
 
-Current version: **v0.4.6**
+Current version: **v0.5.0**
 Repository: `https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git`
 
 When activated, check the latest release:

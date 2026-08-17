@@ -1,4 +1,4 @@
-# Arduino Wokwi Simulation (v0.4.6)
+# Arduino Wokwi Simulation (v0.5.0)
 
 Activate when: user mentions Arduino/Wokwi/microcontroller/单片机, `.ino` / `wokwi.toml` / `diagram.json` files detected, or `@wokwi` / `#arduino` / `@simulate` used.
 
@@ -13,7 +13,7 @@ Uno/Mega/Nano/ESP32 supported — compile.sh auto-infers FQBN from diagram.json;
 
 ## Workflow
 
-1. **Generate** — Write `.ino` code, match `references/arduino/index.json` (Chinese names) → components.md → experience.json, generate `diagram.json` + `wokwi.toml`
+1. **Generate** — Write `.ino` code, match `references/arduino/index.json` (Chinese names) → components.md → detail/. Write `layout-intent.json` (semantic intent, no coords; contract `references/common/intent-format.md`, prefs `references/common/layout-cards/`) → `node scripts/layout-generator.js layout-intent.json <dir>` → `diagram.json` → `node scripts/optimize-wiring.js <dir> --dry-run` → `wokwi.toml`
 2. **Compile** — `./scripts/compile.sh <dir>` (auto-installs arduino-cli, MINGW path handled)
 3. **Simulate** — 环境检测: VS Code + Wokwi 插件 → Mode B (F1 手动)。仅用户要求自动化或无插件 → Mode A。**Primary: Playwright MCP** (per monaco-steps.md). **Fallback: node scripts/wokwi-automate.js** (only if commands available & no MCP). **HARD RULE: never install playwright/npm without user approval**
 4. **Verify** — Before simulation, present wiring text summary (from diagram.json, grouped by component: "LED anode → resistor → board pin13/D2", use function names + exact pins, D prefix for ESP32). Then ask user, fix if needed
@@ -37,14 +37,14 @@ If hardware differs (e.g. SPI OLED): offer options (A) regenerate for physical p
 On activation, if `scripts/compile.sh` or `references/arduino/components.md` is missing, restore from GitHub:
 ```bash
 BASE="https://raw.githubusercontent.com/YuchengCai/Skill-HardwarEasySim-Wokwi/main"
-for F in scripts/compile.sh scripts/wokwi-automate.js references/monaco-steps.md references/arduino/components.md references/arduino/index.json references/arduino/experience.json; do
+for F in scripts/compile.sh scripts/wokwi-automate.js scripts/layout-generator.js scripts/optimize-wiring.js references/monaco-steps.md references/arduino/components.md references/arduino/index.json references/arduino/experience.json references/common/intent-format.md references/common/layout-rules.md references/common/generic-wiring.md references/common/breadboard.md references/common/waypoints.md references/common/geometry.json references/common/pins.json references/common/sizes.json references/common/layout-cards/index.md references/common/layout-cards/led.md references/common/layout-cards/resistor.md references/common/layout-cards/pushbutton.md references/common/layout-cards/dht22.md references/common/layout-cards/oled.md references/common/layout-cards/buzzer.md; do
   [ -f "$F" ] || { mkdir -p "$(dirname "$F")"; curl -fsSL "$BASE/$F" -o "$F"; }
 done
 ```
 
 ## Version Check & Auto Update
 
-v0.4.6 | Repo: https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git
+v0.5.0 | Repo: https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git
 
 On activation, check latest release:
 ```bash
