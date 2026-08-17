@@ -358,6 +358,21 @@ function detectConflicts(diagram, partRects) {
     }
   }
 
+  // ⑦ $bb 插接对齐：插面板元件引脚坐标必须精确对齐孔位（>0.5px = 引脚没插上，Wokwi 不显示插接绿点）
+  for (const c of conns) {
+    const wp = c.length > 3 ? c[3] : [];
+    if (!wp.includes('$bb')) continue;
+    const [from, to] = c;
+    const fp = parts.find(p => p.id === from.split(':')[0]);
+    const tp = parts.find(p => p.id === to.split(':')[0]);
+    if (!fp || !tp) continue;
+    const a = pinPosition(fp, from.split(':')[1]);
+    const b = pinPosition(tp, to.split(':')[1]);
+    if (a && b && Math.hypot(a.x - b.x, a.y - b.y) > 0.5) {
+      conflicts.push({ type: 'bb-misaligned', part: from, connStr: JSON.stringify(c) });
+    }
+  }
+
   for (let i = 0; i < conns.length; i++) {
     const conn = conns[i];
     const wp = conn.length > 3 ? conn[3] : [];
@@ -514,7 +529,8 @@ function main() {
     'part-on-breadboard': '元件遮挡面包板',
     'parts-overlap': '元件重叠',
     'wire-through-board': '线穿板子',
-    'overlap': '线重叠'
+    'overlap': '线重叠',
+    'bb-misaligned': '引脚未对齐孔位'
   };
   // Phase 3：suggest 层 —— 冲突类型 → 「根因 + 建议动作 + 对应规则卡」
   // 模型读建议后按泛化闸门 record-back（见 generic-wiring.md），而非照抄实例
@@ -525,7 +541,8 @@ function main() {
     'wire-through-board': { 根因: '线从板子中间穿过', 建议: '分侧出线 v±N', 规则: 'layout-rules.md 走线规则' },
     'part-on-board':      { 根因: '元件压在板子上', 建议: '移回目标 zone（output→top / input→bottom…）', 规则: 'intent-format.md zone 映射' },
     'part-on-breadboard': { 根因: '元件压面包板且未插接', 建议: '改 placement=bb 或移开', 规则: 'intent-format.md placement' },
-    'parts-overlap':      { 根因: '元件互相重叠', 建议: '错开间距 ≥30', 规则: 'layout-rules.md 间距规则' }
+    'parts-overlap':      { 根因: '元件互相重叠', 建议: '错开间距 ≥30', 规则: 'layout-rules.md 间距规则' },
+    'bb-misaligned':      { 根因: '元件引脚坐标与孔位偏差 >0.5px（取整导致亚像素偏差）', 建议: '用 2 位小数精确对齐（r2），勿 Math.round 取整', 规则: 'breadboard.md $bb 对齐' }
   };
   for (const c of conflicts.slice(0, 15)) {
     const label = TYPE_LABEL[c.type] || c.type;
