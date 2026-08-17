@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "author": "layout-generator",
+  "editor": "wokwi",
+  "parts": [
+    {"type":"wokwi-breadboard-half","id":"bb1","top":100,"left":0,"rotate":180,"attrs":{}},
+    {"type":"wokwi-arduino-uno","id":"uno","top":310,"left":400,"attrs":{}},
+    {"type":"wokwi-led","id":"led1","top":20,"left":28,"attrs":{"color":"red"}},
+    {"type":"wokwi-resistor","id":"r1","top":204,"left":24,"attrs":{"value":"220"},"rotate":90},
+    {"type":"wokwi-pushbutton","id":"btn1","top":190,"left":124,"attrs":{},"rotate":90},
+    {"type":"wokwi-pushbutton","id":"btn2","top":190,"left":191,"attrs":{},"rotate":90}
+  ],
+  "connections": [
+    ["r1:1","bb1:27b.g","",["$bb"]],
+    ["r1:2","bb1:27t.c","",["$bb"]],
+    ["btn1:1.r","bb1:15t.b","",["$bb"]],
+    ["btn1:2.r","bb1:17t.b","",["$bb"]],
+    ["btn1:1.l","bb1:15b.g","",["$bb"]],
+    ["btn1:2.l","bb1:17b.g","",["$bb"]],
+    ["btn2:1.r","bb1:8t.b","",["$bb"]],
+    ["btn2:2.r","bb1:10t.b","",["$bb"]],
+    ["btn2:1.l","bb1:8b.g","",["$bb"]],
+    ["btn2:2.l","bb1:10b.g","",["$bb"]],
+    ["uno:13","bb1:27t.b","green",["v-24","h-471.6","v-47.6"]],
+    ["bb1:27b.h","led1:A","green",["v-108.6"]],
+    ["led1:C","bb1:bn.23","black",["v43.6"]],
+    ["uno:2","bb1:17t.a","yellow",["v-32","h-487.1","v-30"]],
+    ["bb1:15b.h","bb1:bn.12","black",["v-65"]],
+    ["uno:3","bb1:10t.a","yellow",["v-40","h-410.4","v-22"]],
+    ["bb1:8b.h","bb1:bn.6","black",["v-65"]],
+    ["uno:GND.2","bb1:tn.1","black",["v24.5","h-276.5","v-270"]],
+    ["bb1:tn.2","bb1:bn.2","black",["v-150.4"]]
+  ]
+}

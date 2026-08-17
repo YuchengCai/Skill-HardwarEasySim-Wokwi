@@ -18,3 +18,6 @@ ms-playwright/
 # OS files
 .DS_Store
 Thumbs.db
+
+# test generated output
+tests/cases/**/out/

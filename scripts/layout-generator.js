@@ -114,13 +114,56 @@ function main() {
 
     const bbConns = [];   // $bb 插接连接
     const wireConns = []; // 可见线连接（LED 等）
-    // 每类元件的起始列游标（行=水平方向，rotate180 后行号越大越靠左）
-    // 类型分带（与 dragramtest 模板一致）：
-    //   dht22: 4-9    传感区（右侧）
-    //   按钮 : 15-23  输入区（中间，步进 4）
-    //   电阻 : 24-27  指示区（左侧；LED 与配对电阻同列，且 LED 阴极可达 bn 轨 → 列 ≤ 27）
-    const cursors = { pushbutton: 15, resistor: 27, dht22: 4, led: 26 };
     const is = (p, t) => (p.type || '').includes(t);
+
+    // ============================================================
+    // Phase 2：zone/region/hint 灰度开口（intent-format.md 契约）
+    // 列带（rotate180 后列号大 = 视觉靠左）：
+    //   left   左列带（output）: 电阻 27 / LED 26，步进 3
+    //   middle 中列带（input） : 按钮 15，步进 5
+    //   right  右列带（sensor/misc/display）: dht 4，步进 6
+    // 兜底 = type→zone 推断（= 现行硬编码行为）；显式 zone/region 优先于推断。
+    // 跨带游标值（如 left 带放按钮）为「可接受 + 适配」的兜底猜测，非最优，Wokwi 确认后回填。
+    // ============================================================
+    const ZONE_BAND = { output: 'left', input: 'middle', sensor: 'right', display: 'right', misc: 'right' };
+    const REGION_BAND = { left: 'left', middle: 'middle', right: 'right' };
+    const TYPE_ZONE = {
+      led: 'output', resistor: 'output',
+      pushbutton: 'input', switch: 'input',
+      dht: 'sensor',
+      oled: 'display', ssd1306: 'display',
+      buzzer: 'misc', speaker: 'misc'
+    };
+    const BAND_START = {
+      left:   { pushbutton: 27, resistor: 27, led: 26, dht: 20 },
+      middle: { pushbutton: 15, resistor: 15, led: 15, dht: 12 },
+      right:  { pushbutton: 8,  resistor: 8,  led: 8,  dht: 4  }
+    };
+    const TYPE_STEP = { pushbutton: 5, resistor: 3, led: 3, dht: 6 };
+
+    // part → 有效列带：region 显式 > zone 显式 > type 推断（非法值回退 + 日志）
+    const bandOf = {};
+    const groupById = {};
+    groups.forEach(g => g.parts.forEach(id => { groupById[id] = g; }));
+    const bandCursor = {};   // band → { type: cursor }
+    ['left', 'middle', 'right'].forEach(b => { bandCursor[b] = Object.assign({}, BAND_START[b]); });
+    bbParts.forEach(p => {
+      const g = groupById[p.id];
+      let band = null;
+      if (g) {
+        const reg = g.region;
+        if (reg && REGION_BAND[reg]) band = REGION_BAND[reg];
+        else if (reg && reg !== 'bb') console.error(`[WARN] 非法 region '${reg}'（组 ${g.name}），回退 zone/type`);
+        if (!band && g.zone) {
+          if (ZONE_BAND[g.zone]) band = ZONE_BAND[g.zone];
+          else console.error(`[WARN] 非法 zone '${g.zone}'（组 ${g.name}），回退 type 推断`);
+        }
+      }
+      if (!band) {
+        for (const t in TYPE_ZONE) { if (is(p, t)) { band = ZONE_BAND[TYPE_ZONE[t]]; break; } }
+      }
+      bandOf[p.id] = band || 'right';
+    });
 
     // 从网表推导 LED↔电阻配对（如 r1:2 → led1:A），让 LED 放到其电阻正上方同列，
     // 避免「电阻在左、LED 在右」造成的长水平拖线 + 多段转弯
@@ -132,24 +175,49 @@ function main() {
     });
     // 预分配列：电阻先占列；LED 复用其配对电阻的列（无配对电阻的 LED 用独立游标）
     const resColumn = {};   // resId -> column
-    let resCursor = cursors.resistor;
-    bbParts.forEach(p => { if (is(p, 'resistor')) { resColumn[p.id] = resCursor; resCursor -= 3; } });
+    bbParts.forEach(p => {
+      if (is(p, 'resistor')) {
+        const cur = bandCursor[bandOf[p.id]].resistor;
+        resColumn[p.id] = cur;
+        bandCursor[bandOf[p.id]].resistor = cur - TYPE_STEP.resistor;
+      }
+    });
     const ledColumn = {};   // ledId -> column
-    let ledCursor = cursors.led;
     bbParts.forEach(p => {
       if (is(p, 'led')) {
         const resId = resOfLed[p.id];
         if (resId && resColumn[resId] != null) ledColumn[p.id] = resColumn[resId];
-        else { ledColumn[p.id] = ledCursor; ledCursor -= 3; }
+        else {
+          const cur = bandCursor[bandOf[p.id]].led;
+          ledColumn[p.id] = cur;
+          bandCursor[bandOf[p.id]].led = cur - TYPE_STEP.led;
+        }
       }
     });
 
-    // 按钮列预分配：与 LED 同序（id 小 → 列号大 → 视觉左侧）。
-    // 倒序消耗游标：btn1 拿到最左、btn2 次之 —— 左右顺序与 LED1/LED2 一致。
+    // 按钮列预分配：默认按 parts 序（btn1 左）；hint.order 覆盖左右顺序
+    //   'left' → 最左，'right' → 最右，序号 → 从左数第几个（1-based）
     const btnColumn = {};
+    const btnRank = {};
     const btnList = bbParts.filter(p => is(p, 'pushbutton'));
-    let btnCursor = cursors.pushbutton + (btnList.length - 1) * 5;
-    btnList.forEach(p => { btnColumn[p.id] = btnCursor; btnCursor -= 5; });
+    btnList.forEach((p, i) => {
+      const h = p.hint && p.hint.order;
+      let rank;
+      if (h == null) rank = i;
+      else if (h === 'left') rank = -1;
+      else if (h === 'right') rank = btnList.length;
+      else if (typeof h === 'number' && isFinite(h)) rank = h - 1;
+      else { console.error(`[WARN] 非法 hint.order '${h}'（${p.id}），回退默认顺序`); rank = i; }
+      btnRank[p.id] = rank;
+    });
+    const btnByBand = {};
+    btnList.forEach(p => { (btnByBand[bandOf[p.id]] = btnByBand[bandOf[p.id]] || []).push(p); });
+    Object.keys(btnByBand).forEach(band => {
+      const list = btnByBand[band].sort((a, b) =>
+        (btnRank[a.id] - btnRank[b.id]) || (btnList.indexOf(a) - btnList.indexOf(b)));
+      let cur = bandCursor[band].pushbutton + (list.length - 1) * TYPE_STEP.pushbutton;
+      list.forEach(p => { btnColumn[p.id] = cur; cur -= TYPE_STEP.pushbutton; });
+    });
 
     bbParts.forEach(p => {
       if (is(p, 'pushbutton')) {
@@ -169,14 +237,14 @@ function main() {
         p.left = Math.round(rx(n) - 29.35);
         p.top = Math.round(ry('g', 'b') + 24.0);
       } else if (is(p, 'dht')) {
-        const n = cursors.dht22;
+        const n = bandCursor[bandOf[p.id]].dht;
         bbConns.push([`${p.id}:GND`, `bb1:${n}b.i`, '', ['$bb']]);
         bbConns.push([`${p.id}:NC`, `bb1:${n + 1}b.i`, '', ['$bb']]);
         bbConns.push([`${p.id}:SDA`, `bb1:${n + 2}b.i`, '', ['$bb']]);
         bbConns.push([`${p.id}:VCC`, `bb1:${n + 3}b.i`, '', ['$bb']]);
         p.left = Math.round(rx(n) - 43.8);
         p.top = Math.round(ry('i', 'b') - 114.9);
-        cursors.dht22 += 6;
+        bandCursor[bandOf[p.id]].dht = n + TYPE_STEP.dht;
       } else if (is(p, 'led')) {
         // LED：放到配对电阻的正上方同列（不用 $bb，连线由网表生成可见线）
         const n = ledColumn[p.id];
@@ -188,15 +256,18 @@ function main() {
       }
     });
 
-    // 直连元件：分区围绕板子（top/right/bottom）
+    // 直连元件：分区围绕板子（top/right/bottom/left）；region 显式 > zone 映射 > right 兜底
+    const ZONE_DIRECT = { output: 'top', input: 'bottom', sensor: 'right', display: 'right', misc: 'right' };
     const dRegions = {
       top:    { x: board.left, y: board.top - 160 },
       right:  { x: board.left + board.w + 40, y: board.top - 20 },
-      bottom: { x: board.left, y: board.top + board.h + 80 }
+      bottom: { x: board.left, y: board.top + board.h + 80 },
+      left:   { x: board.left - 160, y: board.top }
     };
-    const dCursor = { top: 0, right: 0, bottom: 0 };
+    const dCursor = { top: 0, right: 0, bottom: 0, left: 0 };
     (intent.groups || []).forEach(g => {
-      const reg = (g.region === 'top' || g.region === 'right' || g.region === 'bottom') ? g.region : 'right';
+      const reg = ['top', 'right', 'bottom', 'left'].includes(g.region) ? g.region
+                : (ZONE_DIRECT[g.zone] || 'right');
       const base = dRegions[reg];
       let x = base.x + dCursor[reg];
       g.parts.forEach(id => {

@@ -1,0 +1,25 @@
+{
+  "board": "wokwi-arduino-uno",
+  "breadboard": "wokwi-breadboard-half",
+  "parts": [
+    { "id": "led1", "type": "wokwi-led", "placement": "bb", "attrs": { "color": "red" } },
+    { "id": "r1", "type": "wokwi-resistor", "placement": "bb", "attrs": { "value": "220" } },
+    { "id": "btn1", "type": "wokwi-pushbutton", "placement": "bb" },
+    { "id": "btn2", "type": "wokwi-pushbutton", "placement": "bb" }
+  ],
+  "groups": [
+    { "name": "指示区", "zone": "output", "parts": ["led1", "r1"] },
+    { "name": "输入区", "zone": "input", "parts": ["btn1"] },
+    { "name": "传感区", "zone": "sensor", "parts": ["btn2"] }
+  ],
+  "connections": [
+    { "from": "uno:13", "to": "r1:2", "color": "green" },
+    { "from": "r1:1", "to": "led1:A", "color": "green" },
+    { "from": "led1:C", "to": "uno:GND.1", "color": "black" },
+    { "from": "uno:2", "to": "btn1:2.r", "color": "yellow" },
+    { "from": "btn1:1.l", "to": "uno:GND.1", "color": "black" },
+    { "from": "uno:3", "to": "btn2:2.r", "color": "yellow" },
+    { "from": "btn2:1.l", "to": "uno:GND.1", "color": "black" }
+  ],
+  "constraints": []
+}
