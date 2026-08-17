@@ -5,10 +5,10 @@
   "parts": [
     {"type":"wokwi-breadboard-half","id":"bb1","top":100,"left":0,"rotate":180,"attrs":{}},
     {"type":"wokwi-arduino-uno","id":"uno","top":310,"left":400,"attrs":{}},
-    {"type":"wokwi-led","id":"led1","top":20,"left":28,"attrs":{"color":"red"}},
-    {"type":"wokwi-resistor","id":"r1","top":204,"left":24,"attrs":{"value":"220"},"rotate":90},
-    {"type":"wokwi-pushbutton","id":"btn1","top":190,"left":124,"attrs":{},"rotate":90},
-    {"type":"wokwi-pushbutton","id":"btn2","top":190,"left":191,"attrs":{},"rotate":90}
+    {"type":"wokwi-led","id":"led1","top":20,"left":28.4,"attrs":{"color":"red"}},
+    {"type":"wokwi-resistor","id":"r1","top":204.2,"left":24.05,"attrs":{"value":"220"},"rotate":90},
+    {"type":"wokwi-pushbutton","id":"btn1","top":189.7,"left":124.1,"attrs":{},"rotate":90},
+    {"type":"wokwi-pushbutton","id":"btn2","top":189.7,"left":191.3,"attrs":{},"rotate":90}
   ],
   "connections": [
     ["r1:1","bb1:27b.g","",["$bb"]],

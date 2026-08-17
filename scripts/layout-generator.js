@@ -175,6 +175,7 @@ function main() {
     const idx = L => LETTER.indexOf(L);
     const rx = n => bb.left + (BB_W - OFF_X) - (n - 1) * PITCH;
     const ry = (L, h) => bb.top + (BB_H - OFF_Y) - idx(L) * PITCH - (h === 'b' ? OFF_B : 0);
+    const r2 = v => Math.round(v * 100) / 100;   // 保留 2 位小数，$bb 引脚精确对齐孔位（Wokwi 需精确位置才显示插接绿点）
 
     const bbParts = parts.filter(p => (p.placement || 'bb') === 'bb');
     const boardParts = parts.filter(p => (p.placement || 'bb') !== 'bb');
@@ -304,28 +305,28 @@ function main() {
         bbConns.push([`${p.id}:1.l`, `bb1:${n}b.g`, '', ['$bb']]);
         bbConns.push([`${p.id}:2.l`, `bb1:${n + 2}b.g`, '', ['$bb']]);
         p.rotate = 90;
-        p.left = Math.round(rx(n) - 44.5);
-        p.top = Math.round(ry('g', 'b') + 9.5);
+        p.left = r2(rx(n) - 44.5);
+        p.top = r2(ry('g', 'b') + 9.5);
       } else if (is(p, 'resistor')) {
         const n = resColumn[p.id];
         bbConns.push([`${p.id}:1`, `bb1:${n}b.g`, '', ['$bb']]);
         bbConns.push([`${p.id}:2`, `bb1:${n}t.c`, '', ['$bb']]);
         p.rotate = 90;
-        p.left = Math.round(rx(n) - 29.35);
-        p.top = Math.round(ry('g', 'b') + 24.0);
+        p.left = r2(rx(n) - 29.35);
+        p.top = r2(ry('g', 'b') + 24.0);
       } else if (is(p, 'dht')) {
         const n = bandCursor[bandOf[p.id]].dht;
         bbConns.push([`${p.id}:GND`, `bb1:${n}b.i`, '', ['$bb']]);
         bbConns.push([`${p.id}:NC`, `bb1:${n + 1}b.i`, '', ['$bb']]);
         bbConns.push([`${p.id}:SDA`, `bb1:${n + 2}b.i`, '', ['$bb']]);
         bbConns.push([`${p.id}:VCC`, `bb1:${n + 3}b.i`, '', ['$bb']]);
-        p.left = Math.round(rx(n) - 43.8);
-        p.top = Math.round(ry('i', 'b') - 114.9);
+        p.left = r2(rx(n) - 43.8);
+        p.top = r2(ry('i', 'b') - 114.9);
         bandCursor[bandOf[p.id]].dht = n + TYPE_STEP.dht;
       } else if (is(p, 'led')) {
         // LED：放到配对电阻的正上方同列（不用 $bb，连线由网表生成可见线）
         const n = ledColumn[p.id];
-        p.left = Math.round(rx(n) - 25);   // A 引脚 x 对准孔
+        p.left = r2(rx(n) - 25);   // A 引脚 x 对准孔
         p.top = bb.top - 80;
       } else {
         // 未知类型：回退为直连（放板子旁）
