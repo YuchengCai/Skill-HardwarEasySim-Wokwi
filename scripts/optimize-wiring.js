@@ -6,8 +6,9 @@
  *       并按通道规则动态修正控制点，输出优化后的 diagram.json。
  *
  * 用法：
- *   node optimize-wiring.js <project-dir> [--dry-run]
- *   --dry-run: 只检测报告，不写入
+ *   node optimize-wiring.js <project-dir> [--fix]
+ *   默认：检测 + 报告 + 建议（根因/建议/规则卡），不写入
+ *   --fix：检测 + 自动修正 + 写入 diagram.json（脚本兜底，显式触发）
  *
  * 原理：
  *   几何检测（确定性）+ 通道决策（动态计算绕行路径）
@@ -415,11 +416,12 @@ function detectConflicts(diagram, partRects) {
 function main() {
   const args = process.argv.slice(2);
   if (args.length < 1) {
-    console.error('用法: node optimize-wiring.js <project-dir> [--dry-run]');
+    console.error('用法: node optimize-wiring.js <project-dir> [--fix]');
+    console.error('  默认：检测 + 报告 + 建议，不写入；--fix：自动修正 + 写入');
     process.exit(1);
   }
   const PROJECT_DIR = path.resolve(args[0]);
-  const DRY_RUN = args.includes('--dry-run');
+  const FIX = args.includes('--fix');
 
   const diagramPath = path.join(PROJECT_DIR, 'diagram.json');
   if (!fs.existsSync(diagramPath)) {
@@ -472,17 +474,32 @@ function main() {
     'wire-through-board': '线穿板子',
     'overlap': '线重叠'
   };
+  // Phase 3：suggest 层 —— 冲突类型 → 「根因 + 建议动作 + 对应规则卡」
+  // 模型读建议后按泛化闸门 record-back（见 generic-wiring.md），而非照抄实例
+  const TYPE_SUGGEST = {
+    'hits-part':          { 根因: '线从元件本体中间穿过', 建议: '移元件到通道 / 加 waypoint 绕行', 规则: 'layout-rules.md 车道规则' },
+    'cross':              { 根因: '两条线交叉', 建议: '车道错开（stagger）', 规则: 'waypoints.md' },
+    'overlap':            { 根因: '多线共线重叠', 建议: '车道错开（stagger）', 规则: 'waypoints.md' },
+    'wire-through-board': { 根因: '线从板子中间穿过', 建议: '分侧出线 v±N', 规则: 'layout-rules.md 走线规则' },
+    'part-on-board':      { 根因: '元件压在板子上', 建议: '移回目标 zone（output→top / input→bottom…）', 规则: 'intent-format.md zone 映射' },
+    'part-on-breadboard': { 根因: '元件压面包板且未插接', 建议: '改 placement=bb 或移开', 规则: 'intent-format.md placement' },
+    'parts-overlap':      { 根因: '元件互相重叠', 建议: '错开间距 ≥30', 规则: 'layout-rules.md 间距规则' }
+  };
   for (const c of conflicts.slice(0, 15)) {
     const label = TYPE_LABEL[c.type] || c.type;
+    const s = TYPE_SUGGEST[c.type];
     const detail = c.type === 'part-on-board' ? `(${c.part}: ${c.connStr})`
       : c.type === 'parts-overlap' ? `(${c.connStr})`
       : `(连接 #${c.conn}${c.part ? ' 穿 ' + c.part : ''}): ${c.connStr}`;
     console.log(`  - ${label} ${detail}`);
+    if (s) console.log(`      建议：${s.建议} ｜ 根因：${s.根因} ｜ 规则卡：${s.规则}`);
   }
   if (conflicts.length > 15) console.log(`  ... 等 ${conflicts.length} 处`);
 
-  if (DRY_RUN) {
-    console.log('[DRY-RUN] 仅检测，未写入');
+  // Phase 3：默认只检测 + 报告 + 建议，不写图；--fix 才自动修正（脚本兜底不越权）
+  if (!FIX) {
+    if (conflicts.length === 0) console.log('[OK] 无冲突');
+    else console.log(`[SUGGEST] ${conflicts.length} 处冲突（建议见上）。自动修正：node optimize-wiring.js <dir> --fix`);
     process.exit(conflicts.length > 0 ? 2 : 0);
   }
 

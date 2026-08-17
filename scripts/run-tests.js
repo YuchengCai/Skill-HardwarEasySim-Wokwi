@@ -14,7 +14,7 @@
  * 用途：每次改动脚本/规则后，一键确认「没把之前对的东西改坏」（防回归）。
  * 用法：node scripts/run-tests.js
  */
-const { execFileSync } = require('child_process');
+const { execFileSync, spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
@@ -62,6 +62,26 @@ for (const name of names) {
 
   if (ok) { pass++; console.log(`[PASS] ${name}`); }
   else { fail++; console.log(`[FAIL] ${name}`); }
+}
+
+// ============================================================
+// 冲突固定件（fp- = false-positive 应 0 冲突 / fn- = false-negative 应 ≥1 冲突）
+// 锁住检测器不误报（fp）也不漏报（fn）
+// ============================================================
+const CONFLICTS_DIR = path.join(ROOT, 'tests', 'conflicts');
+if (fs.existsSync(CONFLICTS_DIR)) {
+  for (const name of fs.readdirSync(CONFLICTS_DIR).sort()) {
+    const dir = path.join(CONFLICTS_DIR, name);
+    if (!fs.existsSync(path.join(dir, 'diagram.json'))) continue;
+    const expectClean = name.startsWith('fp-');
+    const r = spawnSync('node', [OPT, dir, '--dry-run'], { stdio: 'inherit' });
+    const hasConflict = r.status === 2;
+    if (expectClean ? !hasConflict : hasConflict) {
+      pass++; console.log(`[PASS] ${name} (${expectClean ? '0 冲突' : '检测到冲突'})`);
+    } else {
+      fail++; console.log(`[FAIL] ${name} 期望 ${expectClean ? '0 冲突' : '≥1 冲突'}，实际 exit ${r.status}`);
+    }
+  }
 }
 
 console.log(`\n结果：${pass} passed, ${fail} failed`);
