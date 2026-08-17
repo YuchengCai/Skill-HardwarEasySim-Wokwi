@@ -198,7 +198,7 @@ If any of these files are missing (e.g. skill was installed from a marketplace t
 BASE="https://raw.githubusercontent.com/YuchengCai/Skill-HardwarEasySim-Wokwi/main"
 # Remove stale old-structure dirs (uno renamed to arduino in v0.5)
 if [ -d "references/uno" ]; then rm -rf references/uno; fi
-for F in scripts/compile.sh scripts/wokwi-automate.js scripts/run-tests.js references/monaco-steps.md references/common/layout-rules.md references/common/generic-wiring.md references/common/layout-cards/index.md references/common/layout-cards/led.md references/common/layout-cards/resistor.md references/common/layout-cards/pushbutton.md references/common/layout-cards/dht22.md references/common/layout-cards/oled.md references/common/layout-cards/buzzer.md references/common/breadboard.md references/common/waypoints.md references/common/geometry.json references/common/sizes.json references/common/pins.json references/arduino/components.md references/arduino/index.json references/arduino/experience.json; do
+for F in scripts/compile.sh scripts/wokwi-automate.js scripts/run-tests.js references/monaco-steps.md references/common/layout-rules.md references/common/generic-wiring.md references/common/layout-cards/index.md references/common/layout-cards/led.md references/common/layout-cards/resistor.md references/common/layout-cards/pushbutton.md references/common/layout-cards/dht22.md references/common/layout-cards/oled.md references/common/layout-cards/buzzer.md references/common/breadboard.md references/common/waypoints.md references/common/intent-format.md references/common/geometry.json references/common/sizes.json references/common/pins.json references/arduino/components.md references/arduino/index.json references/arduino/experience.json; do
   if [ ! -f "$F" ]; then
     echo "缺失 $F，正在从 GitHub 恢复..."
     mkdir -p "$(dirname "$F")"
@@ -232,6 +232,7 @@ If newer, ask user to update → `git clone + install.sh` (auto).
 ### Lookup order (fast → accurate)
 
 1. **`references/common/`** — system-level rules (any board/part):
+   - `intent-format.md` — the layout-intent.json field contract (read BEFORE writing intent; 分区/zone/region/hint 语义)
    - `layout-rules.md` — read BEFORE generating diagram.json (style by component count, positioning, waypoint patterns)
    - `layout-cards/index.md` — index of per-component preference cards; then read ONLY the card(s) for the parts actually used
    - `generic-wiring.md` — fallback for components NOT in layout-cards (identify pins → classify → generic rules)
