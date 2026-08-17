@@ -89,3 +89,11 @@ Pattern: exit on own side → move horizontally to target column → vertical to
 2. Keep waypoints simple: 1-3 instructions per side
 3. Complex multi-segment paths look messy — prefer clean exit + approach
 4. Empty color `""` hides the wire (used with `$bb`)
+
+## Minimal waypoints（避免末端微小折角）
+
+实测教训：末尾多余的 `"v0"` 或 <0.5px 的微小 `"h"` 会让 Wokwi 在端点渲染出「折回/绕圈」小钩子（放大可见）。
+
+- 非错开线只写必要段：`["v<dy>"]`，或 dx 明显时才 `["v<dy>","h<dx>"]`
+- **不要尾随 `"v0"`**；`|dx|<0.5` 的水平段省略，让 Wokwi 的自动收尾吸收亚像素偏差
+- 只有多线共点需要错开时，才保留 Z 形三段 `["v..","h..","v.."]`

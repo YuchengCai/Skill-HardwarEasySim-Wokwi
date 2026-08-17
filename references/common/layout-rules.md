@@ -102,6 +102,15 @@ Rationale: breadboard rails provide a "bus" for shared GND/power — cleaner tha
 - Same-target wires separated by different paths
 - Don't scatter related parts far apart (unclear function grouping)
 
+## Rule 6: 确定性走线惯例（脚本已实现，模型知悉即可）
+
+这些是从「几何 + 网表」唯一推得的最优做法，`layout-generator.js` 已硬编码；模型不必重复判断，只用在特殊场景改意图（intent）覆盖：
+
+- **板线分车道**：同一边（上/下）的每条板线错开一条水平车道（8px），避免共线重叠
+- **错开按最终目标**：多线错开按「重映射后的最终目标孔」统计，**不按逻辑网表目标**（否则轨线会被无谓绕路）
+- **LED 重叠检测足迹**：LED 视觉本体只有 ~16px 圆泡，重叠检测用 20×20，而非 40×50 容器
+- **元件级偏好**（LED↔电阻同列、按钮对侧接线等）见 `layout-cards.md`，按项目实际用到的元件查阅
+
 ## Wiring colors (convention)
 
 Common wire colors: `green`, `red`, `black`, `yellow`, `blue`, `orange`, `purple`, `white`.

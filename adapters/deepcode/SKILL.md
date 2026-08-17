@@ -233,7 +233,8 @@ If newer, ask user to update → `git clone + install.sh` (auto).
 
 1. **`references/common/`** — system-level rules (any board/part):
    - `layout-rules.md` — read BEFORE generating diagram.json (style by component count, positioning, waypoint patterns)
-   - `breadboard.md` — read when using a breadboard (pin naming, `$bb`, power rails, 孔位坐标系统)
+   - `layout-cards.md` — per-component-type layout/wiring preference cards (LED↔resistor pairing, button opposite-side, etc.); read ONLY the cards for the parts actually used
+   - `breadboard.md` — read when using a breadboard (pin naming, `$bb`, power rails, 孔位坐标系统, 轨坐标, 接线惯例)
    - `waypoints.md` — read when wiring with control points (v/h/* mini-language)
    - `sizes.json` — component canvas sizes (from wokwi-elements source; used by layout/detection scripts)
    - `pins.json` — component pin coordinates (from wokwi-elements source; used by wiring/detection scripts)
