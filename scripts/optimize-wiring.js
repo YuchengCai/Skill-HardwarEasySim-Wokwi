@@ -129,6 +129,25 @@ function segsMinDist(a1, a2, b1, b2) {
   );
 }
 
+/** 线段在矩形内的长度（Liang-Barsky 裁剪后长度），0 = 无重叠 */
+function segmentInRectLen(x1, y1, x2, y2, rect) {
+  const dx = x2 - x1, dy = y2 - y1;
+  if (dx === 0 && dy === 0) return 0;
+  let t0 = 0, t1 = 1;
+  const p = [-dx, dx, -dy, dy];
+  const q = [x1 - rect.x, rect.x + rect.w - x1, y1 - rect.y, rect.y + rect.h - y1];
+  for (let i = 0; i < 4; i++) {
+    if (p[i] === 0) {
+      if (q[i] < 0) return 0;   // 平行且在矩形外
+    } else {
+      const r = q[i] / p[i];
+      if (p[i] < 0) { if (r > t1) return 0; if (r > t0) t0 = r; }
+      else { if (r < t0) return 0; if (r < t1) t1 = r; }
+    }
+  }
+  return Math.hypot(dx, dy) * (t1 - t0);
+}
+
 /** 计算元件引脚位置（按类型 + 引脚名，比元件中心准确） */
 function pinPosition(part, pinName) {
   const x = part.left || 0;
@@ -201,6 +220,39 @@ function pinPosition(part, pinName) {
   return { x: x + w / 2, y: y + h / 2 };
 }
 
+/** 计算元件的检测矩形（旋转元件用 _rot90 引脚包围盒，LED 用 20×20 本体） */
+function computeRect(p, sizesData) {
+  const type = p.type || '';
+  const rotated = p.rotate === 90 || p.rotate === 270;
+  let w, h, bx = p.left || 0, by = p.top || 0;
+  // 旋转元件：简单宽高互换不含旋转枢轴 → 用 _rot90 校准引脚包围盒作为本体
+  if (rotated && PINS[type] && PINS[type]._rot90) {
+    const offs = PINS[type]._rot90;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity, n = 0;
+    for (const k in offs) {
+      if (k.startsWith('_')) continue;
+      const v = offs[k];
+      if (!Array.isArray(v)) continue;
+      minX = Math.min(minX, v[0]); maxX = Math.max(maxX, v[0]);
+      minY = Math.min(minY, v[1]); maxY = Math.max(maxY, v[1]);
+      n++;
+    }
+    if (n > 0) {
+      if (maxX - minX < 6) { const c = (minX + maxX) / 2; minX = c - 5; maxX = c + 5; }
+      if (maxY - minY < 6) { const c = (minY + maxY) / 2; minY = c - 5; maxY = c + 5; }
+      bx += minX; by += minY; w = maxX - minX; h = maxY - minY;
+    }
+  }
+  if (w == null) {
+    let s = (sizesData.sizes && sizesData.sizes[type]) || sizesData.default || { width: 20, height: 20 };
+    if (type.includes('led')) s = { width: 20, height: 20 };   // LED 视觉本体 ~16px 圆泡
+    w = rotated ? s.height : s.width;
+    h = rotated ? s.width : s.height;
+  }
+  p.w = w; p.h = h;
+  return makeRect(bx, by, w, h, SAFE_MARGIN);
+}
+
 /** 解析连接路径（waypoints → 折线段集合） */
 function connectionPath(conn, parts) {
   // conn: [from, to, color, waypoints?]
@@ -209,44 +261,39 @@ function connectionPath(conn, parts) {
   const [toPart, toPin] = to.split(':');
   const wp = conn.length > 3 ? conn[3] : [];
 
-  // 找元件位置（近似：用元件中心作为引脚位置）
   const fp = parts.find(p => p.id === fromPart);
   const tp = parts.find(p => p.id === toPart);
   if (!fp || !tp) return null;
 
-  // 引脚位置（按元件类型 + 引脚名计算，替代元件中心）
+  // 引脚位置（按元件类型 + 引脚名计算）
   const f = pinPosition(fp, fromPin);
   const t = pinPosition(tp, toPin);
 
-  // 构建折线点集
-  const points = [{ x: f.x, y: f.y }];
-  let current = { x: f.x, y: f.y };
-
-  const applyInstr = (instr, sign = 1) => {
+  const step = (cur, instr, sign) => {
     const type = instr[0];
     const val = parseFloat(instr.slice(1)) * sign;
-    if (type === 'v') current = { ...current, y: current.y + val };
-    else if (type === 'h') current = { ...current, x: current.x + val };
+    if (type === 'v') return { x: cur.x, y: cur.y + val };
+    if (type === 'h') return { x: cur.x + val, y: cur.y };
+    return cur;
   };
 
-  // * 前：从源执行；* 后：从目标反向执行
+  // * 前：从源执行，每个 waypoint 一个点；* 后：从目标反向执行
   const starIdx = wp.indexOf('*');
   const pre = starIdx >= 0 ? wp.slice(0, starIdx) : wp;
   const post = starIdx >= 0 ? wp.slice(starIdx + 1) : [];
 
-  for (const instr of pre) applyInstr(instr, 1);
-  points.push({ ...current });
+  // 源端折线：每个 pre 指令 → 一个点（不把多段塌成一条直线）
+  const points = [{ x: f.x, y: f.y }];
+  let cur = f;
+  for (const instr of pre) { cur = step(cur, instr, 1); points.push(cur); }
 
-  // 目标端反向：从目标点出发，反向应用 post 指令
+  // 目标端折线：每个 post 指令反向 → 一个点（从目标往回走）
   const tPoints = [{ x: t.x, y: t.y }];
-  let tCurrent = { x: t.x, y: t.y };
-  for (let i = post.length - 1; i >= 0; i--) {
-    applyInstr(post[i], -1);
-    tPoints.push({ ...current });
-  }
-  // 合并：源端路径 + 目标端路径
-  const allPoints = [...points, ...tPoints.reverse()];
-  return allPoints;
+  cur = t;
+  for (let i = post.length - 1; i >= 0; i--) { cur = step(cur, post[i], -1); tPoints.push(cur); }
+
+  // 合并：源端（f → pre 末端）+ 目标端（反向 post → t）
+  return [...points, ...tPoints.reverse()];
 }
 
 /** 折线 → 线段数组 */
@@ -320,12 +367,12 @@ function detectConflicts(diagram, partRects) {
     if (!points) continue;
     const segs = polylineToSegments(points);
 
-    // ③ 线 vs 板子（中间段）
+    // ③ 线 vs 板子（所有段；只豁免「≤20px 的引脚短 stub」，长段穿板/沿板顶跑都算）
     for (const bp of boardParts) {
       const br = partRects.get(bp.id);
-      for (let s = 1; s < segs.length - 1; s++) {
+      for (let s = 0; s < segs.length; s++) {
         const [a, b] = segs[s];
-        if (br && lineHitsRect(a.x, a.y, b.x, b.y, br)) {
+        if (br && segmentInRectLen(a.x, a.y, b.x, b.y, br) > 20) {
           conflicts.push({ conn: i, type: 'wire-through-board', connStr: JSON.stringify(conn) });
           break;
         }
@@ -333,10 +380,12 @@ function detectConflicts(diagram, partRects) {
       if (conflicts.some(c => c.conn === i && c.type === 'wire-through-board')) break;
     }
 
-    // ④ 线 vs 元件（中间段穿任何元件，含两端）
+    // ④ 线 vs 元件（所有段；跳过本线自己的源/目标元件，避免「线出自己引脚」误报）
+    const ownParts = new Set([conn[0].split(':')[0], conn[1].split(':')[0]]);
     for (const [pid, rect] of partRects) {
+      if (ownParts.has(pid)) continue;
       let hit = false;
-      for (let s = 1; s < segs.length - 1; s++) {
+      for (let s = 0; s < segs.length; s++) {
         const [a, b] = segs[s];
         if (lineHitsRect(a.x, a.y, b.x, b.y, rect)) {
           conflicts.push({ conn: i, type: 'hits-part', part: pid, connStr: JSON.stringify(conn) });
@@ -347,15 +396,16 @@ function detectConflicts(diagram, partRects) {
       if (hit) break;
     }
 
-    // ⑤ 线交叉（不同元件之间的线）
-    const c1From = conn[0].split(':')[0];
-    const c1To = conn[1].split(':')[0];
+    // ⑤ 线交叉（不同端点之间的线；共享端点的线在引脚处自然汇合，不算交叉）
+    // ⚠️ 比较「完整引脚引用」（uno:13 vs uno:2），不是「元件 id」（uno）——否则同板不同脚的线被整条跳过，漏报交叉
+    const c1From = conn[0];
+    const c1To = conn[1];
     for (let j = i + 1; j < conns.length; j++) {
       const conn2 = conns[j];
       const wp2 = conn2.length > 3 ? conn2[3] : [];
       if (wp2.includes('$bb')) continue;
-      const c2From = conn2[0].split(':')[0];
-      const c2To = conn2[1].split(':')[0];
+      const c2From = conn2[0];
+      const c2To = conn2[1];
       if (c1From === c2From || c1From === c2To || c1To === c2From || c1To === c2To) continue;
       const points2 = connectionPath(conn2, parts);
       if (!points2) continue;
@@ -442,19 +492,11 @@ function main() {
   loadPins();
   loadGeometry();
 
-  // 构建元件矩形（带安全边距；rotate 90/270 时宽高交换）
+  // 构建元件矩形（带安全边距；旋转元件用 _rot90 引脚包围盒，LED 用 20×20 本体）
   const parts = diagram.parts || [];
   const partRects = new Map();
   for (const p of parts) {
-    let size = (sizesData.sizes && sizesData.sizes[p.type]) || sizesData.default || { width: 20, height: 20 };
-    const rotated = p.rotate === 90 || p.rotate === 270;
-    let w = rotated ? size.height : size.width;
-    let h = rotated ? size.width : size.height;
-    // LED 视觉本体只是顶部 ~16px 的圆泡（引脚是细腿），用 20×20 本体做重叠检测，
-    // 避免把 40×50 容器宽当成实体 → 两个 LED 相邻时误报「重叠」
-    if ((p.type || '').includes('led')) { w = 20; h = 20; }
-    p.w = w; p.h = h;
-    partRects.set(p.id, makeRect(p.left || 0, p.top || 0, w, h, SAFE_MARGIN));
+    partRects.set(p.id, computeRect(p, sizesData));
   }
 
   // 检测冲突（函数化）

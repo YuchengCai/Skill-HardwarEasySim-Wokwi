@@ -16,9 +16,9 @@
     { "from": "uno:13", "to": "r1:2", "color": "green" },
     { "from": "r1:1", "to": "led1:A", "color": "green" },
     { "from": "led1:C", "to": "uno:GND.1", "color": "black" },
-    { "from": "uno:2", "to": "btn1:2.r", "color": "yellow" },
+    { "from": "uno:3", "to": "btn1:2.r", "color": "yellow" },
     { "from": "btn1:1.l", "to": "uno:GND.1", "color": "black" },
-    { "from": "uno:3", "to": "btn2:2.r", "color": "yellow" },
+    { "from": "uno:2", "to": "btn2:2.r", "color": "yellow" },
     { "from": "btn2:1.l", "to": "uno:GND.1", "color": "black" }
   ],
   "constraints": []
