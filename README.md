@@ -158,7 +158,7 @@ The agent reads `components.md` for correct pin names, generates the project, co
 ### 功能
 
 - 🤖 **AI 驱动** — 直接跟助手描述你的硬件想法，无需手动查引脚
-- 🌐 **自动浏览器仿真** — `wokwi-automate.js` 自动打开 wokwi.com、填入代码和电路图、启动仿真（浏览器回退链：Chrome → Edge → Chromium）
+- 🌐 **自动浏览器仿真** — `wokwi-automate.js` 自动打开 wokwi.com、填入代码和电路图，交给用户点击启动仿真（浏览器回退链：Chrome → Edge → Chromium）
 - 🔢 **多板型（Uno/Mega/Nano/ESP32）** — compile.sh 自动从 diagram.json 推断 FQBN，无需配置
 - ⚡ **一键编译** — 自动安装 `arduino-cli` + Uno 核心，编译 `.ino` 到 `.hex`，处理 MINGW 路径转换
 - 🔌 **跨 Agent** — 支持 DeepCode、WorkBuddy（`SKILL.md`）、Claude Code（`CLAUDE.md`）和 Cursor（`.cursorrules`）

@@ -104,7 +104,7 @@ Only used when the user asks for auto browser simulation, or when no VS Code Wok
 **Path 1 (PRIMARY): Playwright MCP** — the standard way for non-IDE agents (WorkBuddy, Kimi, Cline, etc.).
 - Works on any agent that supports MCP — no node/npm needed.
 - Follow the step-by-step operations in **`references/monaco-steps.md`**:
-  `browser_navigate` → wait Monaco → `browser_evaluate` (setValue) → switch diagram.json → click Start.
+  `browser_navigate` → wait Monaco → `browser_evaluate` (setValue) → switch diagram.json → **交给用户点击 Start（不自动点，未登录无资源）**.
 - If Playwright MCP is not configured, see the adapter's MCP setup section (e.g. WorkBuddy: `~/.workbuddy/mcp.json`).
 
 **Path 2 (FALLBACK only): `wokwi-automate.js`** — a pre-built node script, **NOT the default**.
@@ -112,7 +112,7 @@ Only used when the user asks for auto browser simulation, or when no VS Code Wok
 - `node scripts/wokwi-automate.js <project-dir>`
 - ⚠️ Requires `playwright` npm package — **NEVER install without explicit user approval** (HARD RULE).
 - ⚠️ **Use REAL browser (non-headless)** — wokwi.com downgrades to read-only preview in headless mode. Do NOT pass `--headless`.
-- The script does 5 steps (open → fill .ino → fill diagram.json → start simulation), then **waits for the user to manually close the browser window** (no auto-exit).
+- The script does 5 steps (open → fill .ino → fill diagram.json → **提醒用户自己点击 Start**), then **waits for the user to manually close the browser window** (no auto-exit).
 - **After the script returns** (user closed browser), ask the user to confirm the simulation result.
 - **If simulation shows no behavior** (likely wokwi online-compile limits for unregistered users): suggest (a) manually clicking Start/Run to retry, (b) re-running, or (c) **skip simulation and verify on the physical board** (upload + wire test).
 - **If the script fails (non-zero exit): DO NOT retry — switch to Path 1 (MCP operations in monaco-steps.md).**

@@ -3,7 +3,7 @@
  * wokwi-automate.js — Wokwi 网页自动化仿真脚本 (v0.5.0)
  *
  * 功能：用 Playwright 驱动真实浏览器，自动完成
- *   打开 Wokwi 新项目页 → 填 .ino 代码 → 切 diagram.json 填电路图 → 启动仿真
+ *   打开 Wokwi 新项目页 → 填 .ino 代码 → 切 diagram.json 填电路图 → 交给用户点击启动仿真
  *
  * 用法：
  *   node wokwi-automate.js <项目目录>
@@ -229,17 +229,10 @@ async function main() {
     process.exit(5);
   }
 
-  // --- 步骤 5: 启动仿真 ---
-  console.log(`[5/5] 启动仿真...`);
-  try {
-    await page.getByRole('button', { name: 'Start the simulation' }).click();
-    console.log(`[OK]   已点击启动仿真`);
-    console.log(`[INFO] 观察浏览器窗口中的电路行为和串口输出面板`);
-    console.log(`[WARN] 如果电路无反应（编译未完成/受限），可稍后手动点击页面上的 Run/Start 按钮重试`);
-  } catch (e) {
-    console.error(`[ERR]  启动仿真失败: ${e.message}`);
-    console.log(`[HINT] 可手动点击浏览器中的 Start the simulation 按钮，或关闭窗口后继续下一步`);
-  }
+  // --- 步骤 5: 交给用户启动仿真（不自动点击） ---
+  console.log(`[5/5] 项目已填入，请用户自行点击 Start the simulation`);
+  console.log(`[INFO] ⚠️ 不自动点击模拟按钮：MCP 打开的浏览器未登录 Wokwi，无服务器资源，自动点击极慢甚至不跑`);
+  console.log(`[INFO] 请提醒用户：自己点击网页上的 Start the simulation 按钮查看结果；登录 Wokwi 后模拟更快更稳`);
 
   // 等待用户手动关闭浏览器（不超时自动退出）
   console.log(`[DONE] 仿真已启动。请观察电路行为，观察完成后【手动关闭浏览器窗口】。`);

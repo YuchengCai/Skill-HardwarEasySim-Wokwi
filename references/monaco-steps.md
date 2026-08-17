@@ -113,15 +113,15 @@ visibleEditor.setValue(JSON.stringify(diagramJson, null, 2));
 
 ---
 
-## 步骤 5：启动仿真
+## 步骤 5：交给用户启动仿真（不自动点击）
 
-```
-工具: browser_snapshot（拿 "Start the simulation" 按钮的 ref，区分大小写）
-工具: browser_click（点击该按钮）
-工具: browser_wait_for（time = 3 秒，等 LED 闪几个周期）
-```
+⚠️ **不自动点击 Start the simulation**：MCP 打开的浏览器实例**未登录 Wokwi**，没有服务器资源分配，自动点击后模拟极慢甚至不跑。
 
-点击后按钮变为停止/重启状态，顶部出现仿真计时器。**不要截图验证**——把浏览器窗口交给用户观察。
+填入代码 + 电路图后，agent 应：
+
+1. 告知用户：「项目代码和电路图已填入浏览器，请**自己点击网页上的 Start the simulation 按钮**查看结果」
+2. 建议用户**登录 Wokwi**（登录后获得服务器资源，模拟快且稳定）
+3. **不要截图验证**——把浏览器窗口交给用户观察 LED 行为
 
 ---
 
