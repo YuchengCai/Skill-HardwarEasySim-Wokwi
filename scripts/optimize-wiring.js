@@ -36,6 +36,15 @@ function loadPins() {
   }
 }
 
+// 面包板几何（单一事实源 geometry.json，与 layout-generator.js / breadboard.md 共用）
+let GEO = {};
+function loadGeometry() {
+  const p = path.join(__dirname, '..', 'references', 'common', 'geometry.json');
+  if (fs.existsSync(p)) {
+    GEO = JSON.parse(fs.readFileSync(p, 'utf-8'));
+  }
+}
+
 // ============================================================
 // 工具函数：几何计算
 // ============================================================
@@ -128,10 +137,17 @@ function pinPosition(part, pinName) {
   const type = part.type || '';
   const pin = String(pinName || '');
 
-  // 面包板孔位（实测校准自 dragramtest：数字=水平间距9.6, 字母=垂直间距9.6, 半区b偏移19.2）
+  // 面包板孔位（几何单一事实源 geometry.json，与 layout-generator.js 一致）
   if (type.includes('breadboard')) {
-    const BOARD_W = 313.6; // half 面板宽（实测校准，与 layout-generator.js 一致）
-    const BOARD_H = 166;   // half 面板高（实测校准）
+    const G = GEO.breadboard || {};
+    const BOARD_W = G.width || 313.6;
+    const BOARD_H = G.height || 166;
+    const PITCH = G.pitch || 9.6;
+    const OFF_X = (G.hole && G.hole.offsetX) || 10.6;
+    const OFF_Y = (G.hole && G.hole.offsetY) || 9;
+    const OFF_B = (G.hole && G.hole.halfBOffset) || 19.2;
+    const RAIL = G.rail || {};
+    const Y = RAIL.yRot180 || { bn: 5.6, bp: 15.2, tn: 156, tp: 162 };
     const rotated = (part.rotate || 0) === 180;
     let ox = 0, oy = 0;
     // 元件区孔位: <数字><半区>.<字母> 如 30b.h
@@ -140,21 +156,20 @@ function pinPosition(part, pinName) {
       const num = parseInt(holeMatch[1]);
       const half = holeMatch[2];
       const letterIdx = holeMatch[3].charCodeAt(0) - 97;
-      ox = 10.6 + (num - 1) * 9.6;
-      oy = 9 + letterIdx * 9.6 + (half === 'b' ? 19.2 : 0);
+      ox = OFF_X + (num - 1) * PITCH;
+      oy = OFF_Y + letterIdx * PITCH + (half === 'b' ? OFF_B : 0);
     } else {
       // 电源轨: <t/b><p/n>.<位置号> 如 bn.25, tp.9
-      // 轨列 = 5 组 × 5 孔，组间多 1 孔距间隙（实测确认：用户悬停 + dragramtest 模板）
-      // rotate 0 基准：ox = 20.6 + (idx + floor(idx/5)) * 9.6, idx = pos-1
+      // rotate 0 基准：ox = xLeftRot0 + (idx + floor(idx/groupSize)) * pitch
       const railMatch = pin.match(/^([tb])([pn])\.(\d+)$/);
       if (railMatch) {
         const half = railMatch[1];
         const polarity = railMatch[2];
         const pos = parseInt(railMatch[3]);
         const idx = pos - 1;
-        ox = 20.6 + (idx + Math.floor(idx / 5)) * 9.6;
-        if (half === 't') oy = (polarity === 'p' ? 4 : 10);
-        else oy = BOARD_H - (polarity === 'p' ? 15.2 : 5.6);   // bn=+5.6, bp=+15.2（视觉顶轨实测）
+        ox = (RAIL.xLeftRot0 || 20.6) + (idx + Math.floor(idx / (RAIL.groupSize || 5))) * PITCH;
+        if (half === 't') oy = BOARD_H - (polarity === 'p' ? Y.tp : Y.tn);
+        else oy = BOARD_H - (polarity === 'p' ? Y.bp : Y.bn);
       } else {
         return { x: x + w / 2, y: y + h / 2 };
       }
@@ -421,8 +436,9 @@ function main() {
     sizesData = JSON.parse(fs.readFileSync(sizesPath, 'utf-8'));
   }
 
-  // 加载引脚坐标（pins.json）
+  // 加载引脚坐标（pins.json） + 面包板几何（geometry.json）
   loadPins();
+  loadGeometry();
 
   // 构建元件矩形（带安全边距；rotate 90/270 时宽高交换）
   const parts = diagram.parts || [];

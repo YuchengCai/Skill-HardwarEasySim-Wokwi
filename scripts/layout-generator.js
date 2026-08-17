@@ -39,6 +39,15 @@ function loadPins() {
   return {};
 }
 
+// 面包板几何（单一事实源 geometry.json，与 optimize-wiring.js / breadboard.md 共用）
+function loadGeometry() {
+  const p = path.join(__dirname, '..', 'references', 'common', 'geometry.json');
+  if (fs.existsSync(p)) {
+    return JSON.parse(fs.readFileSync(p, 'utf-8'));
+  }
+  return {};
+}
+
 function main() {
   const args = process.argv.slice(2);
   if (args.length < 1) {
@@ -85,11 +94,20 @@ function main() {
   //   LED  (rot0) : 不用 $bb！可见线 A→孔(绿色)
   // ============================================================
   if (useBB) {
+    // 几何单一事实源 geometry.json（数值与 optimize-wiring.js / breadboard.md 一致）
+    const G = (loadGeometry() || {}).breadboard || {};
+    const PITCH = G.pitch || 9.6;
+    const BB_W = G.width || 313.6;
+    const BB_H = G.height || 166;
+    const OFF_X = (G.hole && G.hole.offsetX) || 10.6;
+    const OFF_Y = (G.hole && G.hole.offsetY) || 9;
+    const OFF_B = (G.hole && G.hole.halfBOffset) || 19.2;
+    const RAIL_G = G.rail || {};
     const bb = { type: intent.breadboard || 'wokwi-breadboard-half', id: 'bb1', top: 100, left: 0, rotate: 180 };
     const LETTER = 'abcdefghij';
     const idx = L => LETTER.indexOf(L);
-    const rx = n => bb.left + 303 - (n - 1) * 9.6;
-    const ry = (L, h) => bb.top + 157 - idx(L) * 9.6 - (h === 'b' ? 19.2 : 0);
+    const rx = n => bb.left + (BB_W - OFF_X) - (n - 1) * PITCH;
+    const ry = (L, h) => bb.top + (BB_H - OFF_Y) - idx(L) * PITCH - (h === 'b' ? OFF_B : 0);
 
     const bbParts = parts.filter(p => (p.placement || 'bb') === 'bb');
     const boardParts = parts.filter(p => (p.placement || 'bb') !== 'bb');
@@ -235,7 +253,7 @@ function main() {
     // 内部连通 = 同行 + 同半区 + 同 5 孔组；跨半区（t↔b）或跨组（a-e↔f-j）都必须跳线。
     // 因此 freeHole 只能在所属半区的 5 个字母里选，且优先选「离元件引脚最近的空闲孔」，
     // 让可见线落在元件脚旁边（内部 hop 最短），而不是跳到最外侧的 a/j 多绕路。
-    const HALF_RANGE = { t: [0, 4], b: [5, 9] };   // [minIdx, maxIdx] of 'abcdefghij'
+    const HALF_RANGE = G.halfRange || { t: [0, 4], b: [5, 9] };   // [minIdx, maxIdx] of 'abcdefghij'
     const freeHole = (row, half, pinLetter, dir) => {
       const [lo, hi] = HALF_RANGE[half];
       const key = `${row}:${half}`;
@@ -265,11 +283,12 @@ function main() {
     //   位置号有效范围 1..25（>25 的引用 Wokwi 不渲染 → 线消失）
     //   锚点：bn.23 在 LED1 阴极正下方（用户确认）；bn.25/bn.22 与模板 led1/2:C 精确重合
     // ============================================================
-    const RAIL_MAX = 25;
-    const railX = (n) => bb.left + 293.0 - ((n - 1) + Math.floor((n - 1) / 5)) * 9.6;
-    // railY 实测校准：bn 视觉顶轨 = top+5.6（按钮线"半孔"折回 → 原 4 偏上 1.6px），
-    // bp = bn+9.6（同主区孔距）；tn/tp 视觉底轨保持 156/162（GND 主线与跳线底端无折回）
-    const railY = { bn: bb.top + 5.6, bp: bb.top + 15.2, tn: bb.top + 156, tp: bb.top + 162 };
+    const RAIL_MAX = RAIL_G.maxPosition || 25;
+    const RAIL_GRP = RAIL_G.groupSize || 5;
+    const railX = (n) => bb.left + (BB_W - (RAIL_G.xLeftRot0 || 20.6)) - ((n - 1) + Math.floor((n - 1) / RAIL_GRP)) * PITCH;
+    // railY 实测校准：bn 视觉顶轨 = top+5.6（按钮线"半孔"折回 → 原 4 偏上 1.6px）
+    const RY = RAIL_G.yRot180 || { bn: 5.6, bp: 15.2, tn: 156, tp: 162 };
+    const railY = { bn: bb.top + RY.bn, bp: bb.top + RY.bp, tn: bb.top + RY.tn, tp: bb.top + RY.tp };
     const railPos = (rail, n) => ({ x: railX(n), y: railY[rail] });
     // 识别电源连线（目标 = uno:GND/5V/3V3/VIN）→ 连对应轨
     const railUsed = { bn: new Set(), bp: new Set(), tn: new Set(), tp: new Set() };

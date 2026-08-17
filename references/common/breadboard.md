@@ -55,6 +55,8 @@ b 半区 = 字母 f-j   （5 孔，内部连通）
 宽 313.6 × 高 166（画布 px，实测校准，与 layout-generator.js / optimize-wiring.js 一致）
 ```
 
+> ⚠️ **数值单一事实源**：孔位/轨/尺寸的所有数值都集中在 `references/common/geometry.json`，两个脚本与本文档都引用它。改数值只改 `geometry.json` 这一处；本文档里的公式是「推导值」的可读写法。
+
 ### 孔位 → 画布坐标公式
 
 **未旋转（rotate 0）**，面包板左上角 (left, top)：
