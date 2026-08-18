@@ -63,8 +63,7 @@ ELEMENT_FILES = [
 # 提取 type 名：@customElement('wokwi-xxx')
 TYPE_RE = re.compile(r"@customElement\('([^']+)'\)")
 
-# 提取 pinInfo 的 name/x/y（x/y 为 px，直接可用）
-PIN_RE = re.compile(r"\{\s*name:\s*'([^']+)',\s*x:\s*(-?[\d.]+),\s*y:\s*(-?[\d.]+)")
+# 提取 pinInfo 的 name/x/y 由 extract_pins() 完成（顺序无关，见下方实现）
 
 class _TsExprEval:
     """解析 wokwi-elements 源码里 svg width/height 的简单 TS 表达式。
@@ -100,6 +99,8 @@ class _TsExprEval:
             r"\bconst\s+([A-Za-z_$][\w$]*)\s*=\s*(.+?)\s*;", source, re.DOTALL
         ):
             self.table[m.group(1)] = ("raw", m.group(2))
+        # 注入 import 常量：mmToPix = 96/25.4（来自 ./utils/units，本地无该文件）
+        self.table.setdefault("mmToPix", str(MM2PX))
 
     def eval(self, expr, _depth=0):
         """表达式 → 数值(float)；解析不了返回 None。"""
@@ -257,12 +258,88 @@ def extract_type(source: str):
     return m.group(1) if m else None
 
 
+def _skip_js_string(s: str, i: int) -> int:
+    """从 i(指向引号) 跳到字符串结束后的下标。支持 ' " ` 三种引号。"""
+    q = s[i]
+    i += 1
+    n = len(s)
+    while i < n:
+        if s[i] == "\\":
+            i += 2
+            continue
+        if s[i] == q:
+            return i + 1
+        i += 1
+    return n
+
+
+def _iter_js_objects(text: str):
+    """全局扫描所有 { ... } 对象(任意深度),跳过字符串/注释。
+
+    每遇到一个配对的 { ... } 就 yield 其文本(含两端)。
+    深度无关:无论 pin 对象嵌在数组、getter、switch 里都能抓到。
+    """
+    stack = []
+    i = 0
+    n = len(text)
+    while i < n:
+        c = text[i]
+        if c in "'\"`":
+            i = _skip_js_string(text, i)
+            continue
+        if c == "/" and i + 1 < n and text[i + 1] == "/":
+            j = text.find("\n", i)
+            i = n if j < 0 else j + 1
+            continue
+        if c == "/" and i + 1 < n and text[i + 1] == "*":
+            j = text.find("*/", i + 2)
+            i = n if j < 0 else j + 2
+            continue
+        if c == "{":
+            stack.append(i)
+        elif c == "}":
+            if stack:
+                start = stack.pop()
+                yield text[start : i + 1]
+        i += 1
+
+
+def _field_value(obj: str, field: str):
+    """提取对象里 field 字段的值文本(到 , 或 } 前)。无该字段返回 None。"""
+    m = re.search(r"\b" + field + r"\s*:\s*([^,}]+)", obj)
+    return m.group(1).strip() if m else None
+
+
+def _to_float(val: str, ev) -> float:
+    """字段值文本 → float；纯数字直接转，否则用 _TsExprEval 求值(round 2)。"""
+    if re.fullmatch(r"-?[\d.]+", val):
+        return float(val)
+    n = ev.eval(val)
+    return round(n, 2) if n is not None else None
+
+
 def extract_pins(source: str) -> dict:
-    """从源码提取 { pinName: [x, y] }（x/y 为 px float）"""
+    """从源码提取 { pinName: [x, y] }（x/y 为 px float）。
+
+    顺序无关 + 深度无关：全局扫描每个 { ... } 对象，只要同时含
+    name(单引号字符串) + x + y 就提取。
+    x/y 为纯数字直接转；否则用 _TsExprEval 求值（常量/算术/三元/this.x/mmToPix）。
+    程序化坐标(spread/循环/函数调用/查表)求值失败则跳过，留给更高层。
+    """
+    ev = _TsExprEval(source)
     pins = {}
-    for m in PIN_RE.finditer(source):
-        name, x, y = m.group(1), float(m.group(2)), float(m.group(3))
-        pins[name] = [x, y]
+    for obj in _iter_js_objects(source):
+        nm = re.search(r"\bname\s*:\s*'([^']+)'", obj)
+        if not nm:
+            continue
+        xv = _field_value(obj, "x")
+        yv = _field_value(obj, "y")
+        if xv is None or yv is None:
+            continue
+        x = _to_float(xv, ev)
+        y = _to_float(yv, ev)
+        if x is not None and y is not None:
+            pins[nm.group(1)] = [x, y]
     return pins
 
 
