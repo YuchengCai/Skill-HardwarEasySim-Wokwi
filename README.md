@@ -15,11 +15,16 @@
 
 - 🧠 **Intent → Circuit** / 意图即电路 — describe parts & connections, auto-compute positions, breadboard wiring & routing (no manual drawing) / 只描述元件和连接，自动计算位置、插接和走线，不用手动画图
 - 📐 **Wiring Self-Check** / 布线自检 — auto-detect crossings / overlaps / through-part, with iterative re-layout & reroute / 自动检测交叉、重叠、穿线，支持迭代重排与绕行修正
-- 🧩 **Auto Component Data** / 元件数据自动入库 — 27+ parts' pins & sizes extracted from official sources (no manual measuring) / 27+ 常用元件的引脚与尺寸自动从官方源码提取，终结手动测量
+- 🧩 **Auto Component Data** / 元件数据自动入库 — 48+ parts' pins & sizes extracted from official sources (no manual measuring) / 48+ 常用元件的引脚与尺寸自动从官方源码提取，终结手动测量
 - 🔁 **Model-Script Split** / 人机分工 — model makes design decisions (gray), scripts handle geometry & fallback / 模型做设计决策（灰度），脚本做几何执行与兜底
 
 **小版本更新历程**
 
+- **v0.5.3** — Geometry Data Full Coverage / 几何数据全量覆盖：
+  - 引脚提取覆盖 27 → 48 元件：顺序无关全局扫描 + 常量/三元表达式求值 + Node vm 程序化求值（helper/spread/查表）
+  - footprint 补齐 55 个：SVG 插值解析、多配置元件按默认值、chip 类 DIP 近似值
+  - 提取器一条龙：`--download` / `--dir`，Python（字面量/常量）+ Node（程序化）双引擎
+  - 端到端验证：布局生成 → 冲突检测 → 编译全流程走通
 - **v0.5.1** — Wiring Experience Upgrade / 布线体验升级：
   - 布局迭代骨架：生成→检测→硬伤/软伤/豁免分级→扩容重排→建议改组，自动尝试修到达标
   - I2C 反序豁免：OLED 的 SDA/SCL 必然交叉不再误报，单独列出不计入软伤
@@ -37,7 +42,7 @@
 <a id="english"></a>
 ## 📘 English
 
-**Wokwi Arduino Simulation Skill** — v0.5.1 — A portable skill package for AI coding agents (DeepCode, WorkBuddy, Claude Code, Cursor) that enables automated Arduino hardware prototyping, **auto browser simulation**, circuit compilation, and firmware upload.
+**Wokwi Arduino Simulation Skill** — v0.5.3 — A portable skill package for AI coding agents (DeepCode, WorkBuddy, Claude Code, Cursor) that enables automated Arduino hardware prototyping, **auto browser simulation**, circuit compilation, and firmware upload.
 
 ### Features
 
@@ -159,7 +164,7 @@ The agent reads `components.md` for correct pin names, generates the project, co
 <a id="chinese"></a>
 ## 📘 中文
 
-**Wokwi Arduino 仿真 Skill** — v0.5.1 — 一个可移植的技能包，专为 AI 编程助手（DeepCode、WorkBuddy、Claude Code、Cursor）设计，实现自动化硬件原型设计、**自动浏览器仿真**、代码编译和固件上传。
+**Wokwi Arduino 仿真 Skill** — v0.5.3 — 一个可移植的技能包，专为 AI 编程助手（DeepCode、WorkBuddy、Claude Code、Cursor）设计，实现自动化硬件原型设计、**自动浏览器仿真**、代码编译和固件上传。
 
 ### 功能
 

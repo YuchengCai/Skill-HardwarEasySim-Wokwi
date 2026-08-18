@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * wokwi-automate.js — Wokwi 网页自动化仿真脚本 (v0.5.1)
+ * wokwi-automate.js — Wokwi 网页自动化仿真脚本 (v0.5.3)
  *
  * 功能：用 Playwright 驱动真实浏览器，自动完成
  *   打开 Wokwi 新项目页 → 填 .ino 代码 → 切 diagram.json 填电路图 → 交给用户点击启动仿真

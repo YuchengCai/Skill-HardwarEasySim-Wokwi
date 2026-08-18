@@ -1,4 +1,4 @@
-# Arduino Wokwi Simulation (v0.5.1)
+# Arduino Wokwi Simulation (v0.5.3)
 
 Activate when: user mentions Arduino/Wokwi/microcontroller/单片机, `.ino` / `wokwi.toml` / `diagram.json` files detected, or `@wokwi` / `#arduino` / `@simulate` used.
 
@@ -44,7 +44,7 @@ done
 
 ## Version Check & Auto Update
 
-v0.5.1 | Repo: https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git
+v0.5.3 | Repo: https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git
 
 On activation, check latest release:
 ```bash
