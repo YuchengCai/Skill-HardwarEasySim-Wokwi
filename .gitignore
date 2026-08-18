@@ -21,3 +21,5 @@ Thumbs.db
 
 # test generated output
 tests/cases/**/out/
+
+__pycache__/

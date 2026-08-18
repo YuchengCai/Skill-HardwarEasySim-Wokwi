@@ -64,9 +64,124 @@ TYPE_RE = re.compile(r"@customElement\('([^']+)'\)")
 # 提取 pinInfo 的 name/x/y（x/y 为 px，直接可用）
 PIN_RE = re.compile(r"\{\s*name:\s*'([^']+)',\s*x:\s*(-?[\d.]+),\s*y:\s*(-?[\d.]+)")
 
-# 提取 SVG 的 width/height（mm）。注意：有些元件 SVG 无 mm 单位或属性顺序不同，
-# 抓不到时 footprint 退化为「引脚范围」。
-SVG_RE = re.compile(r"<svg[^>]*\swidth=\"([\d.]+)mm\"[^>]*\sheight=\"([\d.]+)mm\"")
+class _TsExprEval:
+    """解析 wokwi-elements 源码里 svg width/height 的简单 TS 表达式。
+
+    wokwi-elements 的 <svg width> 有时是模板插值，例如：
+      ssd1306:   <svg width="${width}">              + readonly width = 150;
+      slide-pot: <svg width="${travelLength + 25}mm"> + travelLength = 30;
+      lcd1602:   <svg width="${width}mm">             + const width = this.screenOnly
+                                                        ? panelWidth : panelWidth + 23.8;
+    支持：类字段/局部 const/getter 查表、this.x、三元、+ - * / ( )。
+    解析不了返回 None（footprint 退化为引脚范围并告警）。
+    """
+
+    def __init__(self, source):
+        self.table = {}
+        # 类字段：readonly width = 150; / @property() screenOnly = false;
+        for m in re.finditer(
+            r"(?:(?:readonly|protected|private|public|static)\s+)*"
+            r"([A-Za-z_$][\w$]*)\s*=\s*(true|false|-?[\d.]+)\s*;",
+            source,
+        ):
+            self.table[m.group(1)] = m.group(2)
+        # getter：get panelHeight() { return this.rows * 5.75; }
+        for m in re.finditer(
+            r"get\s+([A-Za-z_$][\w$]*)\s*\(\s*\)\s*\{\s*return\s+(.+?)\s*;\s*\}",
+            source,
+            re.DOTALL,
+        ):
+            self.table[m.group(1)] = ("raw", m.group(2))
+        # 局部 const：const width = this.screenOnly ? panelWidth : panelWidth + 23.8;
+        # （解构 const { a } = ... 以 { 开头，不会误匹配）
+        for m in re.finditer(
+            r"\bconst\s+([A-Za-z_$][\w$]*)\s*=\s*(.+?)\s*;", source, re.DOTALL
+        ):
+            self.table[m.group(1)] = ("raw", m.group(2))
+
+    def eval(self, expr, _depth=0):
+        """表达式 → 数值(float)；解析不了返回 None。"""
+        if _depth > 20 or not expr:
+            return None
+        raw = self._resolve_expr(expr.strip(), _depth)
+        if raw is None:
+            return None
+        if raw in ("true", "false"):
+            return 1.0 if raw == "true" else 0.0
+        if not re.fullmatch(r"[0-9.\s+\-*/()]+", raw):
+            return None
+        try:
+            return float(eval(raw, {"__builtins__": {}}, {}))
+        except Exception:
+            return None
+
+    def _resolve_expr(self, raw, _depth):
+        """把表达式里的 this.x / 标识符 / 三元 替换成算术串；失败返回 None。"""
+        if _depth > 20:
+            return None
+        raw = re.sub(
+            r"\bthis\.([A-Za-z_$][\w$]*)",
+            lambda m: self._resolve_name(m.group(1), _depth),
+            raw,
+        )
+        if raw is None:
+            return None
+        m = re.fullmatch(r"(.+?)\s*\?\s*(.+?)\s*:\s*(.+?)", raw)
+        if m:
+            cond = self.eval(m.group(1), _depth + 1)
+            if cond is None:
+                return None
+            return self._resolve_expr(m.group(2) if cond else m.group(3), _depth + 1)
+        return re.sub(
+            r"\b([A-Za-z_$][\w$]*)\b",
+            lambda m: self._resolve_name(m.group(1), _depth),
+            raw,
+        )
+
+    def _resolve_name(self, name, _depth):
+        if name in ("true", "false"):
+            return "1" if name == "true" else "0"  # 布尔 → 数值，避免被标识符替换误伤
+        if name not in self.table:
+            return "NaN"  # 未知名 → 后续校验失败 → eval 返回 None
+        v = self.table[name]
+        if isinstance(v, str):
+            return v
+        return self._resolve_expr(v[1], _depth + 1)
+
+
+def extract_svg_size(source):
+    """提取 <svg> 的 width/height → (px, px) 或 (None, None)。
+
+    兼容：属性顺序任意、单双引号、字面量（45mm / 150 / 150px）、
+    模板插值（${travelLength + 25}mm，用 _TsExprEval 解析）。
+    抓不到时 footprint 退化为「引脚范围」。
+    """
+    m = re.search(r"<svg\b([^>]*)>", source, re.DOTALL)
+    if not m:
+        return None, None
+    attrs = m.group(1)
+    ev = _TsExprEval(source)
+
+    def attr(name):
+        m2 = re.search(r"\b" + name + r'\s*=\s*["\']([^"\']+)["\']', attrs)
+        if not m2:
+            return None
+        val = m2.group(1).strip()
+        # 模板插值：${expr} / ${expr}mm / ${expr}px
+        m3 = re.fullmatch(r"\$\{([^}]+)\}(mm|px)?", val)
+        if m3:
+            n = ev.eval(m3.group(1))
+            if n is None:
+                return None
+            return n * MM2PX if m3.group(2) == "mm" else n
+        # 字面量：45mm / 150 / 150px
+        m4 = re.fullmatch(r"([\d.]+)(mm|px)?", val)
+        if not m4:
+            return None
+        v = float(m4.group(1))
+        return v * MM2PX if m4.group(2) == "mm" else v
+
+    return attr("width"), attr("height")
 
 # board.json 的 mm→px 换算（96dpi：1 英寸 = 25.4mm = 96px）
 MM2PX = 96 / 25.4  # = 3.779527559055118
@@ -77,17 +192,17 @@ def mm2px(v: float) -> float:
     return round(v * MM2PX, 2)
 
 
-def footprint(svg_w_mm, svg_h_mm, pins: dict) -> list:
+def footprint(svg_w_px, svg_h_px, pins: dict) -> list:
     """footprint = max(SVG 尺寸(px), 引脚范围)，round 1 位。
 
-    SVG 尺寸缺失（svg_w_mm/svg_h_mm 为 None）时退化为「引脚范围」。
+    SVG 尺寸缺失（svg_w_px/svg_h_px 为 None）时退化为「引脚范围」。
     """
     max_x = max((p[0] for p in pins.values()), default=0)
     max_y = max((p[1] for p in pins.values()), default=0)
-    if svg_w_mm is None or svg_h_mm is None:
+    if svg_w_px is None or svg_h_px is None:
         return [round(max_x, 1), round(max_y, 1)]
-    w = max(round(svg_w_mm * MM2PX, 1), round(max_x, 1))
-    h = max(round(svg_h_mm * MM2PX, 1), round(max_y, 1))
+    w = max(round(svg_w_px, 1), round(max_x, 1))
+    h = max(round(svg_h_px, 1), round(max_y, 1))
     return [w, h]
 
 
@@ -159,9 +274,8 @@ def main():
         source = open(fname, encoding="utf-8").read()
         ptype = extract_type(source)
         pins = extract_pins(source)
-        # footprint：SVG 尺寸(mm→px) 与引脚范围取大者（round 1 位）
-        sm = SVG_RE.search(source)
-        svg_w, svg_h = (float(sm.group(1)), float(sm.group(2))) if sm else (None, None)
+        # footprint：SVG 尺寸(px) 与引脚范围取大者（round 1 位）
+        svg_w, svg_h = extract_svg_size(source)
         result = {ptype: pins}
         result["footprint"] = footprint(svg_w, svg_h, pins)
         print(json.dumps(result, ensure_ascii=False, indent=2))
@@ -198,8 +312,7 @@ def main():
             pins = extract_pins(source)
             if ptype and pins:
                 result[ptype] = pins
-                sm = SVG_RE.search(source)
-                svg_w, svg_h = (float(sm.group(1)), float(sm.group(2))) if sm else (None, None)
+                svg_w, svg_h = extract_svg_size(source)
                 sizes[ptype] = footprint(svg_w, svg_h, pins)
         except Exception as e:
             print(f"  ⚠️ {fname} 失败: {e}")
