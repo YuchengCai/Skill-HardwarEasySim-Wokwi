@@ -1,6 +1,6 @@
 {
   "version": "0.2",
-  "notes": "元件画布尺寸（单位=canvas px），从 wokwi-elements 源码 pinInfo/viewBox 反推（2026-08）。未知元件默认 20x20。",
+  "notes": "元件画布尺寸（单位=canvas px），从 wokwi-elements 源码 pinInfo/viewBox 反推（2026-08）。未知元件默认 20x20。多配置元件（7segment/hx711/lcd1602/membrane-keypad/stepper-motor/led-ring 等）按默认属性值取值；chip 类（如 74hc595）为 DIP 封装近似值。",
   "sizes": {
     "wokwi-arduino-uno": {
       "width": 273.0,
@@ -75,12 +75,12 @@
       "height": 109.6
     },
     "wokwi-7segment": {
-      "width": 20.0,
-      "height": 32.0
+      "width": 47.4,
+      "height": 83.1
     },
     "wokwi-74hc595": {
-      "width": 20.0,
-      "height": 10.0
+      "width": 71.8,
+      "height": 24.9
     },
     "wokwi-servo": {
       "width": 170.08,

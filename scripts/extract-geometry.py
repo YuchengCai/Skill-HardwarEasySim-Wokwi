@@ -351,13 +351,18 @@ def _extract_batch(sources):
     for fname, source in sources:
         try:
             ptype = extract_type(source)
+            if not ptype:
+                continue
             pins = extract_pins(source)
-            if ptype and pins:
+            svg_w, svg_h = extract_svg_size(source)
+            if svg_w is None or svg_h is None:
+                print(f"  ⚠️ {ptype}: SVG 尺寸未解析，footprint 退化为引脚范围（疑似插值解析失败）", file=sys.stderr)
+            fp = footprint(svg_w, svg_h, pins)
+            # 即使 pins=0 也记录 footprint（如 ir-remote 无引脚但有 SVG）；跳过 [0,0] 空值
+            if fp[0] > 0 and fp[1] > 0:
+                sizes[ptype] = fp
+            if pins:
                 result[ptype] = pins
-                svg_w, svg_h = extract_svg_size(source)
-                if svg_w is None or svg_h is None:
-                    print(f"  ⚠️ {ptype}: SVG 尺寸未解析，footprint 退化为引脚范围（疑似插值解析失败）", file=sys.stderr)
-                sizes[ptype] = footprint(svg_w, svg_h, pins)
         except Exception as e:
             print(f"  ⚠️ {fname} 失败: {e}")
     return result, sizes
