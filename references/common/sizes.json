@@ -2,28 +2,141 @@
   "version": "0.2",
   "notes": "元件画布尺寸（单位=canvas px），从 wokwi-elements 源码 pinInfo/viewBox 反推（2026-08）。未知元件默认 20x20。",
   "sizes": {
-    "wokwi-arduino-uno": { "width": 273.0, "height": 201.0 },
-    "wokwi-arduino-mega": { "width": 388.0, "height": 192.0 },
-    "wokwi-arduino-nano": { "width": 169.7, "height": 67.3 },
-    "wokwi-esp32-devkit-v1": { "width": 106.6, "height": 204.3 },
-    "board-esp32-devkit-c-v4": { "width": 55.0, "height": 28.0 },
-    "wokwi-led": { "width": 40.0, "height": 50.0 },
-    "wokwi-resistor": { "width": 59.0, "height": 11.0 },
-    "wokwi-pushbutton": { "width": 67.0, "height": 32.0 },
-    "wokwi-buzzer": { "width": 64.0, "height": 84.0 },
-    "wokwi-dht22": { "width": 57.1, "height": 116.7 },
-    "wokwi-breadboard": { "width": 313.6, "height": 166.0 },
-    "wokwi-breadboard-half": { "width": 313.6, "height": 166.0 },
-    "wokwi-lcd1602": { "width": 302.4, "height": 136.1 },
-    "wokwi-ssd1306": { "width": 150.0, "height": 116.0 },
-    "board-ssd1306": { "width": 104.7, "height": 85.4 },
-    "wokwi-pir-motion-sensor": { "width": 90.7, "height": 92.4 },
-    "wokwi-hc-sr04": { "width": 170.1, "height": 94.5 },
-    "wokwi-slide-potentiometer": { "width": 207.9, "height": 109.6 },
-    "wokwi-7segment": { "width": 20.0, "height": 32.0 },
-    "wokwi-74hc595": { "width": 20.0, "height": 10.0 },
-    "wokwi-servo": { "width": 170.08, "height": 119.55 },
-    "wokwi-membrane-keypad": { "width": 11.2, "height": 11.0 }
+    "wokwi-arduino-uno": {
+      "width": 273.0,
+      "height": 201.0
+    },
+    "wokwi-arduino-mega": {
+      "width": 388.0,
+      "height": 192.0
+    },
+    "wokwi-arduino-nano": {
+      "width": 169.7,
+      "height": 67.3
+    },
+    "wokwi-esp32-devkit-v1": {
+      "width": 106.6,
+      "height": 204.3
+    },
+    "board-esp32-devkit-c-v4": {
+      "width": 55.0,
+      "height": 28.0
+    },
+    "wokwi-led": {
+      "width": 40.0,
+      "height": 50.0
+    },
+    "wokwi-resistor": {
+      "width": 59.0,
+      "height": 11.0
+    },
+    "wokwi-pushbutton": {
+      "width": 67.0,
+      "height": 32.0
+    },
+    "wokwi-buzzer": {
+      "width": 64.0,
+      "height": 84.0
+    },
+    "wokwi-dht22": {
+      "width": 57.1,
+      "height": 116.7
+    },
+    "wokwi-breadboard": {
+      "width": 313.6,
+      "height": 166.0
+    },
+    "wokwi-breadboard-half": {
+      "width": 313.6,
+      "height": 166.0
+    },
+    "wokwi-lcd1602": {
+      "width": 302.4,
+      "height": 136.1
+    },
+    "wokwi-ssd1306": {
+      "width": 150.0,
+      "height": 116.0
+    },
+    "board-ssd1306": {
+      "width": 104.7,
+      "height": 85.4
+    },
+    "wokwi-pir-motion-sensor": {
+      "width": 90.7,
+      "height": 92.4
+    },
+    "wokwi-hc-sr04": {
+      "width": 170.1,
+      "height": 94.5
+    },
+    "wokwi-slide-potentiometer": {
+      "width": 207.9,
+      "height": 109.6
+    },
+    "wokwi-7segment": {
+      "width": 20.0,
+      "height": 32.0
+    },
+    "wokwi-74hc595": {
+      "width": 20.0,
+      "height": 10.0
+    },
+    "wokwi-servo": {
+      "width": 170.08,
+      "height": 119.55
+    },
+    "wokwi-membrane-keypad": {
+      "width": 11.2,
+      "height": 11.0
+    },
+    "wokwi-analog-joystick": {
+      "width": 102.8,
+      "height": 120.2
+    },
+    "wokwi-franzininho": {
+      "width": 241.9,
+      "height": 113.4
+    },
+    "wokwi-ili9341": {
+      "width": 175.7,
+      "height": 293.3
+    },
+    "wokwi-microsd-card": {
+      "width": 81.6,
+      "height": 77.1
+    },
+    "wokwi-mpu6050": {
+      "width": 81.6,
+      "height": 61.2
+    },
+    "wokwi-nano-rp2040-connect": {
+      "width": 168.5,
+      "height": 67.9
+    },
+    "wokwi-photoresistor-sensor": {
+      "width": 173.7,
+      "height": 61.5
+    },
+    "wokwi-potentiometer": {
+      "width": 75.6,
+      "height": 75.6
+    },
+    "wokwi-pushbutton-6mm": {
+      "width": 28.0,
+      "height": 22.7
+    },
+    "wokwi-rgb-led": {
+      "width": 42.1,
+      "height": 72.6
+    },
+    "wokwi-rotary-dialer": {
+      "width": 266.0,
+      "height": 286.0
+    }
   },
-  "default": { "width": 20.0, "height": 20.0 }
+  "default": {
+    "width": 20.0,
+    "height": 20.0
+  }
 }
