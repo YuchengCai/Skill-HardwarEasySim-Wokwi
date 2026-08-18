@@ -1,19 +1,7 @@
 {
-  "wokwi-analog-joystick": [
-    102.8,
-    120.2
-  ],
-  "wokwi-arduino-mega": [
-    388.0,
-    192.0
-  ],
-  "wokwi-arduino-nano": [
-    169.7,
-    67.3
-  ],
-  "wokwi-arduino-uno": [
-    274.3,
-    201.6
+  "wokwi-big-sound-sensor": [
+    140.1,
+    50.4
   ],
   "wokwi-buzzer": [
     64.3,
@@ -23,80 +11,88 @@
     57.1,
     116.7
   ],
-  "wokwi-esp32-devkit-v1": [
-    106.6,
-    204.3
+  "wokwi-dip-switch-8": [
+    82.9,
+    55.4
   ],
-  "wokwi-franzininho": [
-    241.9,
-    113.4
+  "wokwi-ds1307": [
+    97.5,
+    84.0
+  ],
+  "wokwi-flame-sensor": [
+    200.0,
+    61.5
+  ],
+  "wokwi-gas-sensor": [
+    137.0,
+    62.8
   ],
   "wokwi-hc-sr04": [
     170.1,
     94.5
   ],
-  "wokwi-ili9341": [
-    175.7,
-    293.3
+  "wokwi-heart-beat-sensor": [
+    88.4,
+    79.2
+  ],
+  "wokwi-hx711": [
+    7.0,
+    55.0
+  ],
+  "wokwi-ir-receiver": [
+    61.1,
+    88.8
+  ],
+  "wokwi-ks2e-m-dc5": [
+    79.4,
+    37.8
+  ],
+  "wokwi-ky-040": [
+    116.5,
+    70.4
   ],
   "wokwi-lcd1602": [
     302.4,
     136.1
   ],
-  "wokwi-membrane-keypad": [
-    167.5,
-    338.0
+  "wokwi-led-bar-graph": [
+    38.2,
+    96.4
   ],
-  "wokwi-microsd-card": [
-    81.6,
-    77.1
+  "wokwi-led": [
+    40.0,
+    50.0
   ],
-  "wokwi-mpu6050": [
-    81.6,
-    61.2
+  "wokwi-neopixel": [
+    21.4,
+    18.9
   ],
-  "wokwi-nano-rp2040-connect": [
-    168.5,
-    67.9
+  "wokwi-ntc-temperature-sensor": [
+    135.4,
+    71.8
   ],
-  "wokwi-photoresistor-sensor": [
-    173.7,
-    61.5
-  ],
-  "wokwi-potentiometer": [
-    75.6,
-    75.6
-  ],
-  "wokwi-pushbutton-6mm": [
-    28.0,
-    22.7
-  ],
-  "wokwi-pushbutton": [
-    67.3,
-    45.4
-  ],
-  "wokwi-resistor": [
-    59.1,
-    11.3
-  ],
-  "wokwi-rgb-led": [
-    42.1,
-    72.6
-  ],
-  "wokwi-rotary-dialer": [
-    266.0,
-    286.0
-  ],
-  "wokwi-servo": [
-    170.1,
-    119.5
+  "wokwi-pir-motion-sensor": [
+    90.7,
+    92.4
   ],
   "wokwi-slide-potentiometer": [
     207.9,
     109.6
   ],
+  "wokwi-slide-switch": [
+    32.1,
+    34.9
+  ],
+  "wokwi-small-sound-sensor": [
+    133.1,
+    50.4
+  ],
   "wokwi-ssd1306": [
     150.0,
     116.0
+  ],
+  "wokwi-tilt-switch": [
+    88.4,
+    55.6
   ]
 }

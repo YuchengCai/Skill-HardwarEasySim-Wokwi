@@ -19,6 +19,7 @@ import json
 import os
 import re
 import sys
+import glob
 import urllib.request
 
 # 修复 Windows 中文输出（GBK 编码崩溃）
@@ -343,6 +344,44 @@ def extract_pins(source: str) -> dict:
     return pins
 
 
+def _extract_batch(sources):
+    """sources: (fname, source) 迭代器 → (result, sizes) 两个字典。"""
+    result = {}
+    sizes = {}
+    for fname, source in sources:
+        try:
+            ptype = extract_type(source)
+            pins = extract_pins(source)
+            if ptype and pins:
+                result[ptype] = pins
+                svg_w, svg_h = extract_svg_size(source)
+                if svg_w is None or svg_h is None:
+                    print(f"  ⚠️ {ptype}: SVG 尺寸未解析，footprint 退化为引脚范围（疑似插值解析失败）", file=sys.stderr)
+                sizes[ptype] = footprint(svg_w, svg_h, pins)
+        except Exception as e:
+            print(f"  ⚠️ {fname} 失败: {e}")
+    return result, sizes
+
+
+def _write_outputs(result, sizes):
+    """写 pins-auto.json + sizes-auto.json 到 references/common/。"""
+    out_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "..", "references", "common", "pins-auto.json",
+    )
+    with open(out_path, "w", encoding="utf-8") as fh:
+        json.dump(result, fh, ensure_ascii=False, indent=2)
+    print(f"完成！输出 {len(result)} 个元件的引脚坐标到 {out_path}")
+
+    sizes_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "..", "references", "common", "sizes-auto.json",
+    )
+    with open(sizes_path, "w", encoding="utf-8") as fh:
+        json.dump(sizes, fh, ensure_ascii=False, indent=2)
+    print(f"输出 {len(sizes)} 个元件的 footprint 到 {sizes_path}")
+
+
 def main():
     args = sys.argv[1:]
 
@@ -374,44 +413,41 @@ def main():
         print(json.dumps({"pins": pins, "size": size}, ensure_ascii=False, indent=2))
         return
 
-    # 全量下载
-    out_path = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        "..", "references", "common", "pins-auto.json",
+    # --download <目录>：下载全部 ELEMENT_FILES 到本地目录（已存在则跳过）
+    if "--download" in args:
+        d = args[args.index("--download") + 1]
+        os.makedirs(d, exist_ok=True)
+        for f in ELEMENT_FILES:
+            fname = f.split("/")[-1]
+            dest = os.path.join(d, fname)
+            if os.path.exists(dest):
+                print(f"  已存在 {fname}")
+                continue
+            try:
+                content = fetch(RAW_BASE + fname)
+                with open(dest, "w", encoding="utf-8") as fh:
+                    fh.write(content)
+                print(f"  OK {fname}")
+            except Exception as e:
+                print(f"  ⚠️ {fname} 下载失败: {e}")
+        print(f"下载完成到 {d}")
+        return
+
+    # --dir <目录>：从本地目录读所有 *element.ts（不下载）
+    if "--dir" in args:
+        d = args[args.index("--dir") + 1]
+        files = sorted(glob.glob(os.path.join(d, "*element.ts")))
+        result, sizes = _extract_batch(
+            (os.path.basename(f), open(f, encoding="utf-8").read()) for f in files
+        )
+        _write_outputs(result, sizes)
+        return
+
+    # 全量下载（fetch，不落盘）
+    result, sizes = _extract_batch(
+        (fname, fetch(RAW_BASE + fname)) for fname in ELEMENT_FILES
     )
-    if "--out" in args:
-        out_path = args[args.index("--out") + 1]
-
-    result = {}
-    sizes = {}
-    for f in ELEMENT_FILES:
-        fname = f.split("/")[-1]
-        print(f"  处理 {fname} ...")
-        try:
-            source = fetch(RAW_BASE + fname)
-            ptype = extract_type(source)
-            pins = extract_pins(source)
-            if ptype and pins:
-                result[ptype] = pins
-                svg_w, svg_h = extract_svg_size(source)
-                if svg_w is None or svg_h is None:
-                    print(f"  ⚠️ {ptype}: SVG 尺寸未解析，footprint 退化为引脚范围（疑似插值解析失败）", file=sys.stderr)
-                sizes[ptype] = footprint(svg_w, svg_h, pins)
-        except Exception as e:
-            print(f"  ⚠️ {fname} 失败: {e}")
-
-    with open(out_path, "w", encoding="utf-8") as fh:
-        json.dump(result, fh, ensure_ascii=False, indent=2)
-    print(f"\n完成！输出 {len(result)} 个元件的引脚坐标到 {out_path}")
-
-    # 同时输出 footprint → sizes-auto.json（尺寸自动提取，后续由 pro 合并进 sizes.json）
-    sizes_path = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        "..", "references", "common", "sizes-auto.json",
-    )
-    with open(sizes_path, "w", encoding="utf-8") as fh:
-        json.dump(sizes, fh, ensure_ascii=False, indent=2)
-    print(f"输出 {len(sizes)} 个元件的 footprint 到 {sizes_path}")
+    _write_outputs(result, sizes)
 
 
 if __name__ == "__main__":
