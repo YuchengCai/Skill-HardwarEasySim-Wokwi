@@ -87,8 +87,8 @@
       "height": 119.55
     },
     "wokwi-membrane-keypad": {
-      "width": 11.2,
-      "height": 11.0
+      "width": 265.8,
+      "height": 338.0
     },
     "wokwi-analog-joystick": {
       "width": 102.8,
@@ -133,6 +133,94 @@
     "wokwi-rotary-dialer": {
       "width": 266.0,
       "height": 286.0
+    },
+    "wokwi-big-sound-sensor": {
+      "width": 140.1,
+      "height": 50.4
+    },
+    "wokwi-dip-switch-8": {
+      "width": 82.9,
+      "height": 55.4
+    },
+    "wokwi-ds1307": {
+      "width": 97.5,
+      "height": 84.0
+    },
+    "wokwi-flame-sensor": {
+      "width": 200.0,
+      "height": 61.5
+    },
+    "wokwi-gas-sensor": {
+      "width": 137.0,
+      "height": 62.8
+    },
+    "wokwi-heart-beat-sensor": {
+      "width": 88.4,
+      "height": 79.2
+    },
+    "wokwi-hx711": {
+      "width": 219.2,
+      "height": 162.5
+    },
+    "wokwi-ir-receiver": {
+      "width": 61.1,
+      "height": 88.8
+    },
+    "wokwi-ks2e-m-dc5": {
+      "width": 79.4,
+      "height": 37.8
+    },
+    "wokwi-ky-040": {
+      "width": 116.5,
+      "height": 70.4
+    },
+    "wokwi-led-bar-graph": {
+      "width": 38.2,
+      "height": 96.4
+    },
+    "wokwi-neopixel": {
+      "width": 21.4,
+      "height": 18.9
+    },
+    "wokwi-ntc-temperature-sensor": {
+      "width": 135.4,
+      "height": 71.8
+    },
+    "wokwi-slide-switch": {
+      "width": 32.1,
+      "height": 34.9
+    },
+    "wokwi-small-sound-sensor": {
+      "width": 133.1,
+      "height": 50.4
+    },
+    "wokwi-tilt-switch": {
+      "width": 88.4,
+      "height": 55.6
+    },
+    "wokwi-ir-remote": {
+      "width": 151.2,
+      "height": 316.2
+    },
+    "wokwi-biaxial-stepper": {
+      "width": 211.7,
+      "height": 255.1
+    },
+    "wokwi-neopixel-matrix": {
+      "width": 197.6,
+      "height": 181.4
+    },
+    "wokwi-led-ring": {
+      "width": 141.6,
+      "height": 152.9
+    },
+    "wokwi-stepper-motor": {
+      "width": 220.3,
+      "height": 235.5
+    },
+    "wokwi-lcd2004": {
+      "width": 355.5,
+      "height": 179.5
     }
   },
   "default": {

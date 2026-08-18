@@ -1,4 +1,20 @@
 {
+  "wokwi-analog-joystick": [
+    102.8,
+    120.2
+  ],
+  "wokwi-arduino-mega": [
+    388.0,
+    192.0
+  ],
+  "wokwi-arduino-nano": [
+    169.7,
+    67.3
+  ],
+  "wokwi-arduino-uno": [
+    274.3,
+    201.6
+  ],
   "wokwi-big-sound-sensor": [
     140.1,
     50.4
@@ -19,9 +35,17 @@
     97.5,
     84.0
   ],
+  "wokwi-esp32-devkit-v1": [
+    106.6,
+    204.3
+  ],
   "wokwi-flame-sensor": [
     200.0,
     61.5
+  ],
+  "wokwi-franzininho": [
+    241.9,
+    113.4
   ],
   "wokwi-gas-sensor": [
     137.0,
@@ -38,6 +62,10 @@
   "wokwi-hx711": [
     7.0,
     55.0
+  ],
+  "wokwi-ili9341": [
+    175.7,
+    293.3
   ],
   "wokwi-ir-receiver": [
     61.1,
@@ -63,6 +91,22 @@
     40.0,
     50.0
   ],
+  "wokwi-membrane-keypad": [
+    167.5,
+    338.0
+  ],
+  "wokwi-microsd-card": [
+    81.6,
+    77.1
+  ],
+  "wokwi-mpu6050": [
+    81.6,
+    61.2
+  ],
+  "wokwi-nano-rp2040-connect": [
+    168.5,
+    67.9
+  ],
   "wokwi-neopixel": [
     21.4,
     18.9
@@ -71,9 +115,41 @@
     135.4,
     71.8
   ],
+  "wokwi-photoresistor-sensor": [
+    173.7,
+    61.5
+  ],
   "wokwi-pir-motion-sensor": [
     90.7,
     92.4
+  ],
+  "wokwi-potentiometer": [
+    75.6,
+    75.6
+  ],
+  "wokwi-pushbutton-6mm": [
+    28.0,
+    22.7
+  ],
+  "wokwi-pushbutton": [
+    67.3,
+    45.4
+  ],
+  "wokwi-resistor": [
+    59.1,
+    11.3
+  ],
+  "wokwi-rgb-led": [
+    42.1,
+    72.6
+  ],
+  "wokwi-rotary-dialer": [
+    266.0,
+    286.0
+  ],
+  "wokwi-servo": [
+    170.1,
+    119.5
   ],
   "wokwi-slide-potentiometer": [
     207.9,
