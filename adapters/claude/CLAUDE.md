@@ -13,7 +13,7 @@ Uno/Mega/Nano/ESP32 supported — compile.sh auto-infers FQBN from diagram.json;
 
 ## Workflow
 
-1. **Generate** — Write `.ino` code, match `references/arduino/index.json` (Chinese names) → components.md → detail/. Write `layout-intent.json` (semantic intent, no coords; contract `references/common/intent-format.md`, prefs `references/common/layout-cards/`) → `node scripts/layout-generator.js layout-intent.json <dir>` → `diagram.json` → `node scripts/optimize-wiring.js <dir> --dry-run` → `wokwi.toml`
+1. **Generate** — Write `.ino` code, match `references/arduino/index.json` (Chinese names) → components.md → detail/. Write `layout-intent.json` (semantic intent, no coords; contract `references/common/intent-format.md`, prefs `references/common/layout-cards/`; `breadboard` may be left empty — script auto-falls-back on bus scenes) → `node scripts/layout-generator.js layout-intent.json <dir>` → `diagram.json` → `node scripts/optimize-wiring.js <dir> --dry-run` → `wokwi.toml`
 2. **Compile** — `./scripts/compile.sh <dir>` (auto-installs arduino-cli, MINGW path handled)
 3. **Simulate** — 环境检测: VS Code + Wokwi 插件 → Mode B (F1 手动)。仅用户要求自动化或无插件 → Mode A。**Primary: Playwright MCP** (per monaco-steps.md). **Fallback: node scripts/wokwi-automate.js** (only if commands available & no MCP). **HARD RULE: never install playwright/npm without user approval**
 4. **Verify** — Before simulation, present wiring text summary (from diagram.json, grouped by component: "LED anode → resistor → board pin13/D2", use function names + exact pins, D prefix for ESP32). Then ask user, fix if needed

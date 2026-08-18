@@ -62,6 +62,7 @@ arduino-cli lib install "DHT sensor library" "Adafruit SSD1306"
    - Read **`references/common/layout-cards/index.md`**, then ONLY the card(s) for the parts actually used
    - `groups[]`: assign `zone` (output/input/sensor/display/misc); `parts[].hint.order` for symmetric parts (buttons/LEDs left-right)
    - `connections[]`: the netlist (who connects to whom, which pin)
+   - `breadboard`: 通常留空即可——脚本会自动兜底 bus 场景（>8 parts 或多元件共用 VCC/GND 时自动配面包板）；只有当你明确要面包板/直连时才显式设置（判据见 `references/common/layout-rules.md` Rule 1）
 4. Generate `diagram.json` from intent (the script computes coordinates/geometry):
    ```bash
    node scripts/layout-generator.js layout-intent.json <project-dir>
@@ -180,6 +181,7 @@ This compiles (if needed), uploads, auto-captures serial output, and prints the 
 2. **Script failure → force fallback to native operations** (monaco-steps.md), never retry the script
 3. **Content generation stays with the agent** — scripts only "fill and click", never "think"
 4. **HARD RULE: Simulation → Physical wiring requires hardware check.** Before guiding physical wiring, confirm the user's component model/version matches the simulation. Warn about interface differences (e.g. I2C vs SPI OLED).
+5. **Derivable rules belong in scripts, not SKILL.md.** 凡脚本能确定性推导的（B 值：part 数、bus 场景、坐标、孔位、走线），脚本兜底，不前置进 SKILL.md、也不让模型逐条记。SKILL.md 只放「原则 + 指向」和「真选择（C 值）的指引」——防止 SKILL.md 退化成规则清单。
 
 ---
 

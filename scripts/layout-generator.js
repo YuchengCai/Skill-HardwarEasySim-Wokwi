@@ -82,7 +82,7 @@ function main() {
   const sizesData = loadSizes();
 
   // 板子位置（面包板模式：板子右侧；直连：下方居中）
-  const useBB = !!intent.breadboard;
+  let useBB = !!intent.breadboard;
   const board = { type: intent.board || 'wokwi-arduino-uno', left: useBB ? 400 : 40, top: useBB ? 310 : 200 };
   const boardSize = sizesData.sizes[board.type] || sizesData.default;
   board.w = boardSize.width;
@@ -96,6 +96,32 @@ function main() {
   board.gndBottom = bp.gndBottom || 'GND.2';
   board.railGnd = bp.railGnd || 'GND.2';
   board.railVcc = bp.railVcc || '5V';
+  // ============================================================
+  // bus 场景兜底：模型没配面包板，但多元件共用电源/GND（轨分发的典型场景）
+  // 判据：某个电源脚被 ≥3 条连接引用（多线汇聚一个板脚 → 串接/混乱）
+  // ============================================================
+  if (!useBB) {
+    const fanout = {};   // 电源脚 → 被引用的连接数
+    const isPowerPin = (pin) => board.powerPins.some(p => pin === p || pin.startsWith(p + '.'));
+    const boardRef = new RegExp('^' + board.id + ':(.+)$');
+    (intent.connections || []).forEach(c => {
+      [c.from, c.to].forEach(ref => {
+        const m = ref.match(boardRef);
+        if (m && isPowerPin(m[1])) {
+          fanout[m[1]] = (fanout[m[1]] || 0) + 1;
+        }
+      });
+    });
+    const busPins = Object.keys(fanout).filter(p => fanout[p] >= 3);
+    if (busPins.length > 0) {
+      useBB = true;
+      intent.breadboard = 'wokwi-breadboard-half';
+      board.left = 400;
+      board.top = 310;
+      const maxFan = Math.max(...busPins.map(p => fanout[p]));
+      console.log(`[INFO] 检测到 bus 场景（${busPins.join('/')} 各被 ${maxFan} 条连接共用），自动配面包板 ${intent.breadboard}`);
+    }
+  }
   // 预编译板子引用正则（id 来自板型配置，避免散落 'uno' 字面量）
   board.digitPat = new RegExp('^' + board.id + ':(\\d+)$');     // 板子数字脚（uno:13）
   board.fromPat = new RegExp('^' + board.id + ':(\\S+)$');      // 板子源（uno:A4）
