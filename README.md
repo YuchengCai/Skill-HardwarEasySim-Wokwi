@@ -8,26 +8,27 @@
 
 ## 📋 What's New / 本次大版本更新
 
-**v0.5.1 — Layout Iteration + Measured Geometry + Board Profile / 迭代骨架 + 几何实测 + 板型配置**
-
-- 🔁 **Iteration Skeleton** / 迭代骨架 — `iterate-layout.js`：生成→检测→硬伤/软伤/豁免分级→扩容重排→建议改组（`--rounds/--tolerance/--step`）
-- 🛡️ **I2C Reverse-Order Exemption** / I2C 反序豁免 — `boards.json` 记 i2c 脚；检测器识别 `cross-i2c`（SDA/SCL 反序，拓扑必然，单独豁免不计软伤）
-- 📏 **Directional Expansion** / 定向扩容 — `--expand <region>:<px>` 朝远离板子方向扩容 + `--spacing <px>` 覆盖元件间距
-- 🗺️ **Board Profile** / 板型配置抽象 — Uno 假设（id/分侧阈值/电源脚）抽到 `boards.json`，多板型复用零改算法
-- 📏 **Measured Pin Coords** / 引脚坐标实测 — OLED（board-ssd1306）+ DHT22 悬停实测，修复网页版 $bb 对不齐
-- 📐 **OLED Size Fix** / OLED 尺寸修正 — 27→63（含引脚），修复 OLED/蜂鸣器重叠检测盲区
-- 🔀 **Direct Leave-Element** / 直连走线绕元件 — 板源线先离开元件包围盒再进引脚，不再纵穿
-- 🚄 **Rail Routing Fix** / 电源轨去重叠 — GND/5V 双轨同时用不共线
-- 📋 **Constraint Grading** / 约束分级 — 硬约束（穿元件必须绕）/ 软约束（交叉可妥协）/ 灰度开口（容忍度）
-
-**v0.5.0 — Layout Generator + Wiring Optimization / 布局生成器 + 布线优化**
+**v0.5.X — Layout Generation + Wiring Optimization + Geometry Extraction（0.5.0→0.5.1 汇总）/ 布局生成 + 布线优化 + 几何提取**
 
 - 🧠 **Layout Generator** / 布局生成器 — `layout-intent.json`（语义意图，无坐标）→ `layout-generator.js` 自动算坐标 + `$bb` 插接 + 走线（面包板已标定）
 - 🎯 **Semantic Intent Contract** / 意图契约 — 模型定意图（zone 分区 / hint 左右），脚本定几何；契约见 `references/common/intent-format.md`
+- 🔀 **Direct Leave-Element** / 直连走线绕元件 — 板源线先离开元件包围盒再进引脚，不再纵穿
+- 🚄 **Rail Routing Fix** / 电源轨去重叠 — GND/5V 双轨同时用不共线
+- 📋 **Constraint Grading** / 约束分级 — 硬约束（穿元件必须绕）/ 软约束（交叉可妥协）/ 灰度开口（容忍度）
+- 🔁 **Iteration Skeleton** / 迭代骨架 — `iterate-layout.js`：生成→检测→硬伤/软伤/豁免分级→扩容重排→建议改组（`--rounds/--tolerance/--step`）
+- 🛡️ **I2C Reverse-Order Exemption** / I2C 反序豁免 — 检测器识别 `cross-i2c`（SDA/SCL 反序，拓扑必然，单独豁免不计软伤）
+- 📏 **Directional Expansion** / 定向扩容 — `--expand <region>:<px>` 朝远离板子方向扩容 + `--spacing <px>` 覆盖元件间距
+- 🗺️ **Board Profile** / 板型配置抽象 — Uno 假设（id/分侧阈值/电源脚）抽到 `boards.json`，多板型复用零改算法
+- 📏 **Geometry Extractor** / 几何提取器 — `extract-geometry.py` 自动提取引脚坐标（wokwi-* pinInfo px 直接 / board-* mm×3.7795 换算），27 个元件坐标入库
 - 🧩 **Layout Cards** / 元件偏好卡 — 7 张元件卡（LED/电阻/按钮/DHT22/OLED/蜂鸣器），按需查询
 - 🔌 **Generic Wiring Fallback** / 通用接线兜底 — 未收录元件「识引脚 → 分类 → 通用规则」
 - 📐 **Geometry Single Source** / 几何单一事实源 — `geometry.json` 面包板几何，脚本 + 文档统一引用
 - ✅ **Regression Tests** / 回归测试 — `run-tests.js` + 8 用例（4 布局金标 + 4 冲突夹具），防改坏
+
+**小版本更新历程**
+
+- **v0.5.1**：迭代骨架 + I2C 反序豁免 + 定向扩容 + 板型配置 + 引脚坐标实测（OLED/DHT22）+ OLED 尺寸修正 + 直连绕元件 + 电源轨去重叠 + 约束分级 + 几何提取器
+- **v0.5.0**：布局生成器 + 布线优化 + 意图契约 + 元件卡 + 通用兜底 + 几何单一事实源 + 回归测试
 
 ---
 
