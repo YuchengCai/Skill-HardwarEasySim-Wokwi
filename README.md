@@ -8,27 +8,29 @@
 
 ## 📋 What's New / 本次大版本更新
 
-**v0.5.X — Layout Generation + Wiring Optimization + Geometry Extraction（0.5.0→0.5.1 汇总）/ 布局生成 + 布线优化 + 几何提取**
+**v0.5.X — Automatic Circuit Layout & Wiring / 电路图自动生成与布线优化**
 
-- 🧠 **Layout Generator** / 布局生成器 — `layout-intent.json`（语义意图，无坐标）→ `layout-generator.js` 自动算坐标 + `$bb` 插接 + 走线（面包板已标定）
-- 🎯 **Semantic Intent Contract** / 意图契约 — 模型定意图（zone 分区 / hint 左右），脚本定几何；契约见 `references/common/intent-format.md`
-- 🔀 **Direct Leave-Element** / 直连走线绕元件 — 板源线先离开元件包围盒再进引脚，不再纵穿
-- 🚄 **Rail Routing Fix** / 电源轨去重叠 — GND/5V 双轨同时用不共线
-- 📋 **Constraint Grading** / 约束分级 — 硬约束（穿元件必须绕）/ 软约束（交叉可妥协）/ 灰度开口（容忍度）
-- 🔁 **Iteration Skeleton** / 迭代骨架 — `iterate-layout.js`：生成→检测→硬伤/软伤/豁免分级→扩容重排→建议改组（`--rounds/--tolerance/--step`）
-- 🛡️ **I2C Reverse-Order Exemption** / I2C 反序豁免 — 检测器识别 `cross-i2c`（SDA/SCL 反序，拓扑必然，单独豁免不计软伤）
-- 📏 **Directional Expansion** / 定向扩容 — `--expand <region>:<px>` 朝远离板子方向扩容 + `--spacing <px>` 覆盖元件间距
-- 🗺️ **Board Profile** / 板型配置抽象 — Uno 假设（id/分侧阈值/电源脚）抽到 `boards.json`，多板型复用零改算法
-- 📏 **Geometry Extractor** / 几何提取器 — `extract-geometry.py` 自动提取引脚坐标（wokwi-* pinInfo px 直接 / board-* mm×3.7795 换算），27 个元件坐标入库
-- 🧩 **Layout Cards** / 元件偏好卡 — 7 张元件卡（LED/电阻/按钮/DHT22/OLED/蜂鸣器），按需查询
-- 🔌 **Generic Wiring Fallback** / 通用接线兜底 — 未收录元件「识引脚 → 分类 → 通用规则」
-- 📐 **Geometry Single Source** / 几何单一事实源 — `geometry.json` 面包板几何，脚本 + 文档统一引用
-- ✅ **Regression Tests** / 回归测试 — `run-tests.js` + 8 用例（4 布局金标 + 4 冲突夹具），防改坏
+> Describe your circuit in plain words → get a ready-to-simulate Wokwi diagram, with wiring auto-optimized.
+> 用自然语言描述电路 → 自动生成可仿真的 Wokwi 电路图，布线自动优化。
+
+- 🧠 **Intent → Circuit** / 意图即电路 — describe parts & connections, auto-compute positions, breadboard wiring & routing (no manual drawing) / 只描述元件和连接，自动计算位置、插接和走线，不用手动画图
+- 📐 **Wiring Self-Check** / 布线自检 — auto-detect crossings / overlaps / through-part, with iterative re-layout & reroute / 自动检测交叉、重叠、穿线，支持迭代重排与绕行修正
+- 🧩 **Auto Component Data** / 元件数据自动入库 — 27+ parts' pins & sizes extracted from official sources (no manual measuring) / 27+ 常用元件的引脚与尺寸自动从官方源码提取，终结手动测量
+- 🔁 **Model-Script Split** / 人机分工 — model makes design decisions (gray), scripts handle geometry & fallback / 模型做设计决策（灰度），脚本做几何执行与兜底
 
 **小版本更新历程**
 
-- **v0.5.1**：迭代骨架 + I2C 反序豁免 + 定向扩容 + 板型配置 + 引脚坐标实测（OLED/DHT22）+ OLED 尺寸修正 + 直连绕元件 + 电源轨去重叠 + 约束分级 + 几何提取器
-- **v0.5.0**：布局生成器 + 布线优化 + 意图契约 + 元件卡 + 通用兜底 + 几何单一事实源 + 回归测试
+- **v0.5.1** — Wiring Experience Upgrade / 布线体验升级：
+  - 布局迭代骨架：生成→检测→硬伤/软伤/豁免分级→扩容重排→建议改组，自动尝试修到达标
+  - I2C 反序豁免：OLED 的 SDA/SCL 必然交叉不再误报，单独列出不计入软伤
+  - 板型配置抽象：Uno 假设（引脚分侧/电源脚）抽到 `boards.json`，多板型复用零改算法
+  - 几何提取器：`extract-geometry.py` 自动提取引脚坐标（wokwi-* px / board-* mm 换算）与 footprint 尺寸
+  - 几何数据实测修正：OLED/DHT22 引脚坐标、OLED 与板子真实尺寸，网页版插接对齐
+- **v0.5.0** — Layout System Launch / 布局系统诞生：
+  - 布局生成器：`layout-intent.json`（语义意图）→ 自动算坐标 + 面包板插接 + 走线
+  - 布线优化：冲突检测（交叉/重叠/穿线）+ 修正 + 建议（`optimize-wiring.js`）
+  - 元件偏好卡（LED/电阻/按钮/DHT22/OLED/蜂鸣器）+ 未收录元件通用接线兜底
+  - 几何单一事实源（`geometry.json`）+ 回归测试（8 用例）
 
 ---
 

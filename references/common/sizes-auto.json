@@ -1,0 +1,102 @@
+{
+  "wokwi-analog-joystick": [
+    102.8,
+    120.2
+  ],
+  "wokwi-arduino-mega": [
+    388.0,
+    192.0
+  ],
+  "wokwi-arduino-nano": [
+    169.7,
+    67.3
+  ],
+  "wokwi-arduino-uno": [
+    274.3,
+    201.6
+  ],
+  "wokwi-buzzer": [
+    64.3,
+    84.0
+  ],
+  "wokwi-dht22": [
+    57.1,
+    116.7
+  ],
+  "wokwi-esp32-devkit-v1": [
+    106.6,
+    204.3
+  ],
+  "wokwi-franzininho": [
+    241.9,
+    113.4
+  ],
+  "wokwi-hc-sr04": [
+    101.3,
+    94.5
+  ],
+  "wokwi-ili9341": [
+    175.7,
+    293.3
+  ],
+  "wokwi-lcd1602": [
+    4.0,
+    60.5
+  ],
+  "wokwi-membrane-keypad": [
+    167.5,
+    338.0
+  ],
+  "wokwi-microsd-card": [
+    81.6,
+    77.1
+  ],
+  "wokwi-mpu6050": [
+    81.6,
+    61.2
+  ],
+  "wokwi-nano-rp2040-connect": [
+    168.5,
+    67.9
+  ],
+  "wokwi-photoresistor-sensor": [
+    173.7,
+    61.5
+  ],
+  "wokwi-potentiometer": [
+    75.6,
+    75.6
+  ],
+  "wokwi-pushbutton-6mm": [
+    28.0,
+    22.7
+  ],
+  "wokwi-pushbutton": [
+    67.3,
+    45.4
+  ],
+  "wokwi-resistor": [
+    59.1,
+    11.3
+  ],
+  "wokwi-rgb-led": [
+    35.7,
+    54.0
+  ],
+  "wokwi-rotary-dialer": [
+    141.2,
+    286.0
+  ],
+  "wokwi-servo": [
+    170.1,
+    119.5
+  ],
+  "wokwi-slide-potentiometer": [
+    1.0,
+    63.0
+  ],
+  "wokwi-ssd1306": [
+    103.5,
+    12.5
+  ]
+}
