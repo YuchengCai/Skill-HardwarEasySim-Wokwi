@@ -20,6 +20,9 @@
 
 **小版本更新历程**
 
+- **v0.5.4** — Bus Scene Hotfix / 总线场景热修复：
+  - 脚本兜底：检测到多元件共用电源脚（VCC/GND）自动配面包板走轨分发，修复 5 舵机直连串接问题
+  - SKILL.md 设计判据：可推导的 B 值脚本化、不进 SKILL.md，防止退化成规则清单
 - **v0.5.3** — Geometry Data Full Coverage / 几何数据全量覆盖：
   - 引脚提取覆盖 27 → 48 元件：顺序无关全局扫描 + 常量/三元表达式求值 + Node vm 程序化求值（helper/spread/查表）
   - footprint 补齐 55 个：SVG 插值解析、多配置元件按默认值、chip 类 DIP 近似值
@@ -42,7 +45,7 @@
 <a id="english"></a>
 ## 📘 English
 
-**Wokwi Arduino Simulation Skill** — v0.5.3 — A portable skill package for AI coding agents (DeepCode, WorkBuddy, Claude Code, Cursor) that enables automated Arduino hardware prototyping, **auto browser simulation**, circuit compilation, and firmware upload.
+**Wokwi Arduino Simulation Skill** — v0.5.4 — A portable skill package for AI coding agents (DeepCode, WorkBuddy, Claude Code, Cursor) that enables automated Arduino hardware prototyping, **auto browser simulation**, circuit compilation, and firmware upload.
 
 ### Features
 
@@ -164,7 +167,7 @@ The agent reads `components.md` for correct pin names, generates the project, co
 <a id="chinese"></a>
 ## 📘 中文
 
-**Wokwi Arduino 仿真 Skill** — v0.5.3 — 一个可移植的技能包，专为 AI 编程助手（DeepCode、WorkBuddy、Claude Code、Cursor）设计，实现自动化硬件原型设计、**自动浏览器仿真**、代码编译和固件上传。
+**Wokwi Arduino 仿真 Skill** — v0.5.4 — 一个可移植的技能包，专为 AI 编程助手（DeepCode、WorkBuddy、Claude Code、Cursor）设计，实现自动化硬件原型设计、**自动浏览器仿真**、代码编译和固件上传。
 
 ### 功能
 
