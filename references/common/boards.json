@@ -9,7 +9,8 @@
       "gndTop": "GND.1",
       "gndBottom": "GND.2",
       "railGnd": "GND.2",
-      "railVcc": "5V"
+      "railVcc": "5V",
+      "i2c": { "sda": "A4", "scl": "A5" }
     }
   }
 }

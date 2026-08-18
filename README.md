@@ -8,8 +8,11 @@
 
 ## 📋 What's New / 本次大版本更新
 
-**v0.5.1 — Board Profile + Measured Geometry + Constraint Grading / 板型配置 + 几何数据实测 + 约束分级**
+**v0.5.1 — Layout Iteration + Measured Geometry + Board Profile / 迭代骨架 + 几何实测 + 板型配置**
 
+- 🔁 **Iteration Skeleton** / 迭代骨架 — `iterate-layout.js`：生成→检测→硬伤/软伤/豁免分级→扩容重排→建议改组（`--rounds/--tolerance/--step`）
+- 🛡️ **I2C Reverse-Order Exemption** / I2C 反序豁免 — `boards.json` 记 i2c 脚；检测器识别 `cross-i2c`（SDA/SCL 反序，拓扑必然，单独豁免不计软伤）
+- 📏 **Directional Expansion** / 定向扩容 — `--expand <region>:<px>` 朝远离板子方向扩容 + `--spacing <px>` 覆盖元件间距
 - 🗺️ **Board Profile** / 板型配置抽象 — Uno 假设（id/分侧阈值/电源脚）抽到 `boards.json`，多板型复用零改算法
 - 📏 **Measured Pin Coords** / 引脚坐标实测 — OLED（board-ssd1306）+ DHT22 悬停实测，修复网页版 $bb 对不齐
 - 📐 **OLED Size Fix** / OLED 尺寸修正 — 27→63（含引脚），修复 OLED/蜂鸣器重叠检测盲区

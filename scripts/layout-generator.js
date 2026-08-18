@@ -18,7 +18,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const MIN_SPACING = 30; // 元件间距
+let MIN_SPACING = 30; // 元件间距（--spacing 可覆盖，迭代骨架用）
 const GROUP_SPACING = 80; // 组间距
 
 // 元件尺寸（从 sizes.json 加载）
@@ -65,6 +65,20 @@ function main() {
   }
   const intent = JSON.parse(fs.readFileSync(args[0], 'utf-8'));
   const OUT_DIR = args[1] ? path.resolve(args[1]) : path.dirname(path.resolve(args[0]));
+  // --spacing <px>：覆盖元件间距（迭代骨架逐轮加大间距消重叠用）
+  const spIdx = args.indexOf('--spacing');
+  if (spIdx >= 0 && args[spIdx + 1]) {
+    const v = parseInt(args[spIdx + 1], 10);
+    if (v > 0) MIN_SPACING = v;
+  }
+  // --expand <region>:<px>：定向扩容（如 --expand right:40 把 right 区往右推 40；模型决策用）
+  const EXPAND = { top: 0, right: 0, bottom: 0, left: 0 };
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--expand' && args[i + 1]) {
+      const m = args[i + 1].match(/^(top|right|bottom|left):(\d+)$/);
+      if (m) EXPAND[m[1]] = parseInt(m[2], 10);
+    }
+  }
   const sizesData = loadSizes();
 
   // 板子位置（面包板模式：板子右侧；直连：下方居中）
@@ -369,10 +383,10 @@ function main() {
 
     // 直连元件：分区围绕板子（top/right/bottom/left）；region 显式 > zone 映射 > right 兜底
     const dRegions = {
-      top:    { x: board.left, y: board.top - 160 },
-      right:  { x: board.left + board.w + 40, y: board.top - 20 },
-      bottom: { x: board.left, y: board.top + board.h + 80 },
-      left:   { x: board.left - 160, y: board.top }
+      top:    { x: board.left, y: board.top - 160 - EXPAND.top },
+      right:  { x: board.left + board.w + 40 + EXPAND.right, y: board.top - 20 },
+      bottom: { x: board.left, y: board.top + board.h + 80 + EXPAND.bottom },
+      left:   { x: board.left - 160 - EXPAND.left, y: board.top }
     };
     const dCursor = { top: 0, right: 0, bottom: 0, left: 0 };
     (intent.groups || []).forEach(g => {
@@ -588,10 +602,10 @@ function main() {
   // 第 1 层：区域分配（硬）— 每个 region 独立排布，组间自动错开
   // ============================================================
   const regions = {
-    top:    { baseX: board.left, baseY: board.top - 160, dirX: 1, rowMax: 4, rowGap: 45 },
-    bottom: { baseX: board.left, baseY: board.top + board.h + 80, dirX: 1, rowMax: 4, rowGap: 45 },
-    left:   { baseX: board.left - 160, baseY: board.top, dirX: 1, rowMax: 3, rowGap: 40 },
-    right:  { baseX: board.left + board.w + 150, baseY: board.top + board.h / 2, dirX: 1, rowMax: 3, rowGap: 40 },
+    top:    { baseX: board.left, baseY: board.top - 160 - EXPAND.top, dirX: 1, rowMax: 4, rowGap: 45 },
+    bottom: { baseX: board.left, baseY: board.top + board.h + 80 + EXPAND.bottom, dirX: 1, rowMax: 4, rowGap: 45 },
+    left:   { baseX: board.left - 160 - EXPAND.left, baseY: board.top, dirX: 1, rowMax: 3, rowGap: 40 },
+    right:  { baseX: board.left + board.w + 150 + EXPAND.right, baseY: board.top + board.h / 2, dirX: 1, rowMax: 3, rowGap: 40 },
   };
 
   // 每个 region 的"下一个组起始位置"（组间错开）

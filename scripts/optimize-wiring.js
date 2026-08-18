@@ -46,6 +46,27 @@ function loadGeometry() {
   }
 }
 
+// 板型配置（boards.json：id、I2C 脚等——识别 I2C 反序交叉用）
+let BOARDS = {};
+function loadBoards() {
+  const p = path.join(__dirname, '..', 'references', 'common', 'boards.json');
+  if (fs.existsSync(p)) {
+    BOARDS = JSON.parse(fs.readFileSync(p, 'utf-8'));
+  }
+}
+
+/** 是否 I2C 反序交叉：板子 i2c.sda/scl 两脚 ↔ 同一元件的 SDA/SCL 两脚（引脚顺序相反，拓扑必然交叉） */
+function isI2cReverseCross(c1From, c1To, c2From, c2To, bp) {
+  if (!bp || !bp.i2c) return false;
+  const sdaRef = `${bp.id}:${bp.i2c.sda}`;
+  const sclRef = `${bp.id}:${bp.i2c.scl}`;
+  const fromOk = (c1From === sdaRef && c2From === sclRef) || (c1From === sclRef && c2From === sdaRef);
+  const p1 = c1To.split(':')[0], n1 = c1To.split(':')[1] || '';
+  const p2 = c2To.split(':')[0], n2 = c2To.split(':')[1] || '';
+  const toOk = p1 === p2 && ((n1 === 'SDA' && n2 === 'SCL') || (n1 === 'SCL' && n2 === 'SDA'));
+  return fromOk && toOk;
+}
+
 // ============================================================
 // 工具函数：几何计算
 // ============================================================
@@ -309,7 +330,7 @@ function polylineToSegments(points) {
 // 检测
 // ============================================================
 
-function detectConflicts(diagram, partRects) {
+function detectConflicts(diagram, partRects, boardProfile) {
   const conflicts = [];
   const conns = diagram.connections || [];
   const parts = diagram.parts || [];
@@ -430,7 +451,8 @@ function detectConflicts(diagram, partRects) {
         if (crossed) break;
         for (const [c, d] of segs2) {
           if (segmentsIntersect(a.x, a.y, b.x, b.y, c.x, c.y, d.x, d.y)) {
-            conflicts.push({ conn: i, type: 'cross', with: j, connStr: JSON.stringify(conn) });
+            const ctype = isI2cReverseCross(c1From, c1To, c2From, c2To, boardProfile) ? 'cross-i2c' : 'cross';
+            conflicts.push({ conn: i, type: ctype, with: j, connStr: JSON.stringify(conn) });
             crossed = true;
             break;
           }
@@ -487,6 +509,8 @@ function main() {
   }
   const PROJECT_DIR = path.resolve(args[0]);
   const FIX = args.includes('--fix');
+  const soIdx = args.indexOf('--summary-out');
+  const SUMMARY_OUT = soIdx >= 0 && args[soIdx + 1] ? path.resolve(args[soIdx + 1]) : null;
 
   const diagramPath = path.join(PROJECT_DIR, 'diagram.json');
   if (!fs.existsSync(diagramPath)) {
@@ -503,12 +527,19 @@ function main() {
     sizesData = JSON.parse(fs.readFileSync(sizesPath, 'utf-8'));
   }
 
-  // 加载引脚坐标（pins.json） + 面包板几何（geometry.json）
+  // 加载引脚坐标（pins.json） + 面包板几何（geometry.json） + 板型配置（boards.json）
   loadPins();
   loadGeometry();
+  loadBoards();
 
   // 构建元件矩形（带安全边距；旋转元件用 _rot90 引脚包围盒，LED 用 20×20 本体）
   const parts = diagram.parts || [];
+  // 找到板子对应的板型配置（含 id + i2c 脚）
+  const boardProfile = (() => {
+    const bp = BOARDS.boards || {};
+    const boardPart = parts.find(p => bp[p.type]);
+    return boardPart ? bp[boardPart.type] : null;
+  })();
   const partRects = new Map();
   for (const p of parts) {
     partRects.set(p.id, computeRect(p, sizesData));
@@ -516,8 +547,25 @@ function main() {
 
   // 检测冲突（函数化）
 
-  const conflicts = detectConflicts(diagram, partRects);
+  const conflicts = detectConflicts(diagram, partRects, boardProfile);
 
+  // --summary-out <file>：写机器可读分级摘要（iterate-layout.js 用：硬伤必须修 / 软伤可妥协）
+  if (SUMMARY_OUT) {
+    const HARD = ['hits-part', 'part-on-board', 'part-on-breadboard', 'parts-overlap', 'wire-through-board', 'bb-misaligned'];
+    const EXEMPT = ['cross-i2c'];
+    const hard = conflicts.filter(c => HARD.includes(c.type));
+    const soft = conflicts.filter(c => !HARD.includes(c.type) && !EXEMPT.includes(c.type));
+    const exempt = conflicts.filter(c => EXEMPT.includes(c.type));
+    fs.writeFileSync(SUMMARY_OUT, JSON.stringify({
+      total: conflicts.length,
+      hard: hard.length,
+      soft: soft.length,
+      exempt: exempt.length,
+      hardTypes: [...new Set(hard.map(c => c.type))],
+      softTypes: [...new Set(soft.map(c => c.type))],
+      exemptTypes: [...new Set(exempt.map(c => c.type))]
+    }, null, 2));
+  }
 
   // 报告
   console.log(`[INFO] 元件 ${parts.length} 个, 连接 ${(diagram.connections || []).length} 条`);
@@ -530,7 +578,8 @@ function main() {
     'parts-overlap': '元件重叠',
     'wire-through-board': '线穿板子',
     'overlap': '线重叠',
-    'bb-misaligned': '引脚未对齐孔位'
+    'bb-misaligned': '引脚未对齐孔位',
+    'cross-i2c': '线交叉(I2C反序)'
   };
   // Phase 3：suggest 层 —— 冲突类型 → 「根因 + 建议动作 + 对应规则卡」
   // 模型读建议后按泛化闸门 record-back（见 generic-wiring.md），而非照抄实例
@@ -542,7 +591,8 @@ function main() {
     'part-on-board':      { 根因: '元件压在板子上', 建议: '移回目标 zone（output→top / input→bottom…）', 规则: 'intent-format.md zone 映射' },
     'part-on-breadboard': { 根因: '元件压面包板且未插接', 建议: '改 placement=bb 或移开', 规则: 'intent-format.md placement' },
     'parts-overlap':      { 根因: '元件互相重叠', 建议: '错开间距 ≥30', 规则: 'layout-rules.md 间距规则' },
-    'bb-misaligned':      { 根因: '元件引脚坐标与孔位偏差 >0.5px（取整导致亚像素偏差）', 建议: '用 2 位小数精确对齐（r2），勿 Math.round 取整', 规则: 'breadboard.md $bb 对齐' }
+    'bb-misaligned':      { 根因: '元件引脚坐标与孔位偏差 >0.5px（取整导致亚像素偏差）', 建议: '用 2 位小数精确对齐（r2），勿 Math.round 取整', 规则: 'breadboard.md $bb 对齐' },
+    'cross-i2c':         { 根因: 'I2C 总线 SDA/SCL 引脚顺序相反（拓扑必然交叉）', 建议: '可豁免：单独列出、不计入软伤', 规则: 'layout-rules.md 约束分级' }
   };
   for (const c of conflicts.slice(0, 15)) {
     const label = TYPE_LABEL[c.type] || c.type;
@@ -663,7 +713,7 @@ function main() {
     console.log(`[INFO] 迭代 ${iteration}: 修正 ${fixed} 处，重新检测...`);
 
     // 重新检测
-    const newConflicts = detectConflicts(diagram, partRects);
+    const newConflicts = detectConflicts(diagram, partRects, boardProfile);
     conflicts.length = 0;
     conflicts.push(...newConflicts);
   }
