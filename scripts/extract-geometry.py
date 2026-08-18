@@ -276,6 +276,8 @@ def main():
         pins = extract_pins(source)
         # footprint：SVG 尺寸(px) 与引脚范围取大者（round 1 位）
         svg_w, svg_h = extract_svg_size(source)
+        if svg_w is None or svg_h is None:
+            print(f"⚠️ {ptype or fname}: SVG 尺寸未解析，footprint 退化为引脚范围（疑似插值解析失败）", file=sys.stderr)
         result = {ptype: pins}
         result["footprint"] = footprint(svg_w, svg_h, pins)
         print(json.dumps(result, ensure_ascii=False, indent=2))
@@ -313,6 +315,8 @@ def main():
             if ptype and pins:
                 result[ptype] = pins
                 svg_w, svg_h = extract_svg_size(source)
+                if svg_w is None or svg_h is None:
+                    print(f"  ⚠️ {ptype}: SVG 尺寸未解析，footprint 退化为引脚范围（疑似插值解析失败）", file=sys.stderr)
                 sizes[ptype] = footprint(svg_w, svg_h, pins)
         except Exception as e:
             print(f"  ⚠️ {fname} 失败: {e}")
