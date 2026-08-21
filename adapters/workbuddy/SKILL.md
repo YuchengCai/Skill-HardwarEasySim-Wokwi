@@ -60,6 +60,7 @@ WorkBuddy 专用的 wokwi-arduino skill 适配器。与 deepcode/claude/cursor �
 4. `references/common/layout-rules.md` / `breadboard.md` / `waypoints.md` — 布局/面包板/控制点规则
 5. `references/arduino/index.json`（中文名匹配）→ `components.md` → `detail/<type>.json`
 6. `references/arduino/experience.json` — 累积接线经验
+7. 库外元件（index.json 查不到）→ 发现缺元件先查 `placeholders/<name>/` 复用；否则【暂停问用户品牌型号】→ 搜 datasheet 拿真实引脚 → `scripts/generate-part-placeholder.js` 生成（存 `placeholders/`）
 
 ## 硬件核对（接实物前强制）
 

@@ -18,6 +18,9 @@
 const fs = require('fs');
 const path = require('path');
 
+// mm→px（96dpi；96/25.4）。占位符 board.json 的尺寸/引脚是 mm，换算成画布 px 用。
+const MM2PX = 96 / 25.4;
+
 let MIN_SPACING = 30; // 元件间距（--spacing 可覆盖，迭代骨架用）
 const GROUP_SPACING = 80; // 组间距
 
@@ -128,9 +131,22 @@ function main() {
   board.gndPat = new RegExp('^' + board.id + ':GND\\.\\d+$');   // GND 脚（uno:GND.1）
 
   // 元件清单
+  // 占位符（wokwi-custom-board）从 attrs.board 读 board.json 拿尺寸（mm→px）
+  const customBoardOf = {};
+  intent.parts.forEach(p => {
+    if (p.type === 'wokwi-custom-board' && p.attrs && p.attrs.board) {
+      const data = JSON.parse(fs.readFileSync(path.resolve(OUT_DIR, p.attrs.board), 'utf-8'));
+      customBoardOf[p.id] = {
+        w: Math.round(data.width * MM2PX),
+        h: Math.round(data.height * MM2PX),
+        pins: data.pins,
+      };
+    }
+  });
   const parts = intent.parts.map(p => {
-    const size = sizesData.sizes[p.type] || sizesData.default;
-    return { ...p, w: size.width, h: size.height, left: 0, top: 0 };
+    const cb = customBoardOf[p.id];
+    const size = cb || sizesData.sizes[p.type] || sizesData.default;
+    return { ...p, w: size.w || size.width, h: size.h || size.height, left: 0, top: 0 };
   });
   const partById = {};
   parts.forEach(p => partById[p.id] = p);
@@ -146,6 +162,17 @@ function main() {
 
   // 引脚坐标 + 面包板对象 + 走线路由（两个分支共用：面包板 / 直连）
   const pins = loadPins();
+  // 占位符引脚按 id 存（实例级），mm→px，round 2 位
+  Object.keys(customBoardOf).forEach(id => {
+    const obj = {};
+    Object.keys(customBoardOf[id].pins).forEach(pn => {
+      obj[pn] = [
+        Math.round(customBoardOf[id].pins[pn].x * MM2PX * 100) / 100,
+        Math.round(customBoardOf[id].pins[pn].y * MM2PX * 100) / 100,
+      ];
+    });
+    pins[id] = obj;
+  });
   let bb = null;   // 面包板对象（面包板分支赋值；直连分支保持 null，pinPos 不引用 bb1）
 
   const pinPos = (id, pinName) => {
@@ -162,7 +189,8 @@ function main() {
       base = { left: p.left, top: p.top };
       type = p.type; rotate = p.rotate || 0;
     }
-    const pd = pins[type];
+    // 占位符（wokwi-custom-board）引脚是实例级（按 id 查）；普通元件仍按 type 查
+    const pd = (type === 'wokwi-custom-board') ? pins[id] : pins[type];
     if (!pd) return null;
     const off = (rotate === 90 && pd._rot90 && pd._rot90[pinName]) ? pd._rot90[pinName] : pd[pinName];
     if (!off) return null;

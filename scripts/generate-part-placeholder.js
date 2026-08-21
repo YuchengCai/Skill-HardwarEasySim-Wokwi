@@ -25,6 +25,9 @@
 const fs = require('fs');
 const path = require('path');
 
+// mm→px（96dpi；96/25.4）。board.json（逻辑）用 mm，board.svg（视觉）用 px，两者乘 MM2PX 对齐。
+const MM2PX = 96 / 25.4;
+
 function main() {
   const args = process.argv.slice(2);
   let outDir = '.';
@@ -47,37 +50,45 @@ function main() {
     return { name: p, x: null, y: null };
   });
 
-  // 自动布局：上排/下排交替，间距 20，居中
+  // 自动布局：上排/下排交替，0.1 英寸标准引脚间距（mm）
   const N = parsed.length;
-  const SPACING = 20;
-  const W = Math.max(80, N * SPACING + 20);   // 矩形宽
-  const H = 60;                                // 矩形高
+  const PITCH = 2.54;   // 标准 0.1 英寸引脚间距（mm）
+  const H = 20;          // 矩形高（mm），上排 y=0，下排 y=20
+  const MARGIN = 2.54;   // 左右边距（mm）
+  const cols = Math.ceil(N / 2);
+  const W = cols * PITCH + 2 * MARGIN;
   parsed.forEach((p, i) => {
     const top = i % 2 === 0;                   // 偶数上排，奇数下排
     const col = Math.floor(i / 2);
-    const totalCols = Math.ceil(N / 2);
-    const startX = (W - (totalCols - 1) * SPACING) / 2;
-    if (p.x === null) p.x = startX + col * SPACING;
+    if (p.x === null) p.x = MARGIN + col * PITCH;
     if (p.y === null) p.y = top ? 0 : H;
   });
 
-  // board.json（Wokwi 自定义板格式）
+  // board.json（Wokwi 自定义板格式）：pins 是对象 {name: {x,y}}，width/height 是 mm
+  const pinsObj = {};
+  parsed.forEach(p => { pinsObj[p.name] = { x: p.x, y: p.y }; });
   const boardJson = {
     name,
-    pins: parsed.map(p => ({ name: p.name, x: p.x, y: p.y })),
+    version: 1,
+    width: W,
+    height: H,
+    pins: pinsObj,
   };
 
-  // board.svg（矩形 + 引脚标签）
+  // board.svg（矩形 + 引脚标签）——board.json 是 mm，svg 是 px，全部乘 MM2PX 对齐
+  // （viewBox/rect/文字一起乘，保证矩形与标签的相对位置与 board.json 一致）
+  const svgW = W * MM2PX;
+  const svgH = H * MM2PX;
   const labels = parsed
     .map(p => {
-      const anchor = p.y === 0 ? 'end' : 'start';
-      const dy = p.y === 0 ? '-3' : '12';
-      return `  <text x="${p.x}" y="${p.y + (p.y === 0 ? -3 : 12)}" font-size="9" text-anchor="middle">${p.name}</text>`;
+      // 标签坐标：p.x/p.y 是 mm（乘 MM2PX 转 px），偏移 -3/12 本来就是 px，不乘
+      const ly = p.y * MM2PX + (p.y === 0 ? -3 : 12);
+      return `  <text x="${p.x * MM2PX}" y="${ly}" font-size="9" text-anchor="middle">${p.name}</text>`;
     })
     .join('\n');
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
-  <rect x="1" y="1" width="${W - 2}" height="${H - 2}" fill="#e8e8e8" stroke="#333" rx="4"/>
-  <text x="${W / 2}" y="${H / 2 + 4}" font-size="14" text-anchor="middle" font-family="monospace">${name}</text>
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${svgW}" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}">
+  <rect x="${1 * MM2PX}" y="${1 * MM2PX}" width="${(W - 2) * MM2PX}" height="${(H - 2) * MM2PX}" fill="#e8e8e8" stroke="#333" rx="4"/>
+  <text x="${(W / 2) * MM2PX}" y="${(H / 2 + 4) * MM2PX}" font-size="14" text-anchor="middle" font-family="monospace">${name}</text>
 ${labels}
 </svg>
 `;

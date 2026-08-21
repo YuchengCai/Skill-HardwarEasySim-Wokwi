@@ -9,7 +9,7 @@
 1. **识引脚**（拿到 type + pin 列表）
    ① 查 `references/arduino/index.json` / `detail/<type>.json`
    ② 缺 → 抓 wokwi-elements 源码 pinInfo（curl，见 SKILL.md source fallback）
-   ③ 仍缺（库外元件）→ 用户提供引脚 + `generate-part-placeholder.js`
+   ③ 仍缺（库外元件）→ 先查 `placeholders/<name>/` 复用；没有则【暂停问用户品牌型号】→ 模型搜 datasheet 拿真实引脚 → `generate-part-placeholder.js` 生成（存 `placeholders/`）
 
 2. **按引脚功能分类**（不是按具体元件背）
    - 电源脚：VCC / 5V / 3V3 / VIN / GND

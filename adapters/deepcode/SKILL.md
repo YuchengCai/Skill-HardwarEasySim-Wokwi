@@ -283,6 +283,13 @@ Extract `pinInfo` from the source. After verification, note it for future refere
 
 For components not in the Wokwi library at all (RC522, MP3 modules, domestic sensors), generate a **placeholder** (pins + rectangle, no simulation behavior):
 
+When a required component is NOT in the Wokwi library at all (index.json 查不到):
+1. **First check `placeholders/<name>/`** — if it already exists, reuse it (skip search, consistent shape).
+2. If missing: **STOP and ask the user** for the exact brand/model (e.g. "RC522 RFID module" or the specific IC number), so you can search for its real pinout.
+3. Search the web for the datasheet/pinout, extract the real pin names + count.
+4. Generate the placeholder with those pins (see below).
+5. The placeholder participates in layout + routing; wiring is verifiable visually, behavior is NOT simulated — always add a physical-verification reminder.
+
 ```bash
 node scripts/generate-part-placeholder.js <name> <pin1> [pin2 ...]
 ```
