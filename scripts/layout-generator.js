@@ -203,6 +203,7 @@ function main() {
     pins[id] = obj;
   });
   let bb = null;   // 面包板对象（面包板分支赋值；直连分支保持 null，pinPos 不引用 bb1）
+  let laneMax = { top: -1, bottom: -1 };   // 板脚车道最大值（chip 右列走廊用；useBB 内填充）
 
   const pinPos = (id, pinName) => {
     let base, type, rotate;
@@ -232,8 +233,51 @@ function main() {
     return p && p[1] < board.pinSideThreshold ? 'top' : 'bottom';
   };
 
+  // chip-<name> 占位符出线游标：每实例每列独立计数，用于错开出线 x（避免同列竖线共线）
+  const chipEsc = {};
+
   const routeWp = (fid, fpin, a, b, stagger, toId, toPin) => {
     const r1 = v => Math.round(v * 10) / 10;   // 1 位小数
+    // 占位符芯片（DIP 两列引脚）专属出线：左列→左、右列→右先离开芯片包围盒，
+    // 再走独立走廊（信号左列走板侧车道、右列走芯片上方走廊；电源走芯片下方走廊，
+    // bn 上轨从面包板上方绕入），从结构上消除「竖线沿芯片本体/焊盘穿行」与共线重叠。
+    const cp = fid ? partById[fid] : null;
+    if (cp && cp.type && cp.type.startsWith('chip-')) {
+      const off = (pins[fid] || {})[fpin];
+      if (!off) return [];
+      const esc = (chipEsc[fid] = chipEsc[fid] || { left: 0, right: 0, below: 0, up: 0 });
+      const isLeft = off[0] < cp.w / 2;
+      const colIdx = isLeft ? esc.left++ : esc.right++;
+      const escX = r1(isLeft ? cp.left - 6 - colIdx * 6 : cp.left + cp.w + 6 + colIdx * 6);
+      let laneY;
+      if (toId === board.id) {
+        // 信号线：左列走板侧车道（stagger = -lane*8，已按目标脚分配）；
+        // 右列走芯片上方/下方专属走廊（按 laneMax 反向排：右端目标贴芯片、左端目标靠外）
+        if (isLeft) {
+          laneY = r1(board.top - 7 + stagger);
+        } else {
+          const side = boardPinSide(toId, toPin) || 'top';
+          const lane = stagger ? Math.round(Math.abs(stagger) / 8) : 0;
+          const slot = (laneMax[side] + 2) - lane;
+          laneY = side === 'top' ? r1(cp.top - 8 - 6 * slot) : r1(cp.top + cp.h + 8 + 6 * slot);
+        }
+      } else if (toId === 'bb1' && /^(bn|bp|tn|tp)\.\d+$/.test(toPin || '')) {
+        // 电源线：bn（面包板上轨）从面包板左侧上方绕入（竖直段避开面包板本体）；
+        // 其余轨（tp 等）从芯片下方走廊直达
+        if (toPin.startsWith('bn')) {
+          const belowY = r1(cp.top + cp.h + 14 + 6 * esc.below++);
+          const upIdx = esc.up++;
+          const upY = r1(bb.top - 8 - upIdx * 6);
+          const upX = r1(bb.left - 20 - upIdx * 6);
+          return [`h${r1(escX - a.x)}`, `v${r1(belowY - a.y)}`, `h${r1(upX - escX)}`,
+                  `v${r1(upY - belowY)}`, `h${r1(b.x - upX)}`, `v${r1(b.y - upY)}`];
+        }
+        laneY = r1(cp.top + cp.h + 14 + 6 * esc.below++);
+      } else {
+        laneY = r1(b.y);
+      }
+      return [`h${r1(escX - a.x)}`, `v${r1(laneY - a.y)}`, `h${r1(b.x - escX)}`, `v${r1(b.y - laneY)}`];
+    }
     if (fid === board.id) {
       // 板源 → 目标：出线到板外安全带（远一点，给别的线留空间），不沿引脚排横穿
       const side = boardPinSide(fid, fpin);
@@ -578,17 +622,19 @@ function main() {
     const boardPinLane = {};
     {
       const usedBySide = { top: [], bottom: [] };
-      (intent.connections || []).forEach(c => {
-        const m = c.from.match(board.fromPat);
+      const addPin = (ref) => {
+        const m = ref.match(board.digitPat);   // 仅数字信号脚占车道（电源脚走轨、不参与）
         if (!m) return;
         const pd = (pins[board.type] || {})[m[1]];
         if (!pd || !Array.isArray(pd)) return;
         const side = pd[1] < board.pinSideThreshold ? 'top' : 'bottom';
         if (!usedBySide[side].includes(m[1])) usedBySide[side].push(m[1]);
-      });
+      };
+      // 双向统计（板子做源、做目标都占车道），避免「元件→板脚」线因目标脚未登记而共线
+      (intent.connections || []).forEach(c => { addPin(c.from); addPin(c.to); });
       (['top', 'bottom']).forEach(side => {
         usedBySide[side].sort((a, b) => pins[board.type][a][0] - pins[board.type][b][0]);
-        usedBySide[side].forEach((k, i) => { boardPinLane[k] = i; });
+        usedBySide[side].forEach((k, i) => { boardPinLane[k] = i; laneMax[side] = i; });
       });
     }
 
@@ -714,9 +760,18 @@ function main() {
         const lane = (boardPinLane[fpin] != null) ? boardPinLane[fpin] : edgeLane[side]++;
         stagger = side === 'top' ? -lane * 8 : lane * 8;
       } else {
-        const seen = finalTargetSeen[toRef] || 0;
-        finalTargetSeen[toRef] = seen + 1;
-        stagger = seen * 10;
+        // 元件→板脚：按目标板脚的车道错开（同侧每脚一条独立水平车道，消除多线共线重叠）
+        const tId = toRef.split(':')[0], tPin = toRef.split(':')[1];
+        const tpd = tId === board.id ? (pins[board.type] || {})[tPin] : null;
+        if (tpd && Array.isArray(tpd) && board.digitPat.test(toRef)) {
+          const side = tpd[1] < board.pinSideThreshold ? 'top' : 'bottom';
+          const lane = (boardPinLane[tPin] != null) ? boardPinLane[tPin] : edgeLane[side]++;
+          stagger = side === 'top' ? -lane * 8 : lane * 8;
+        } else {
+          const seen = finalTargetSeen[toRef] || 0;
+          finalTargetSeen[toRef] = seen + 1;
+          stagger = seen * 10;
+        }
       }
       wireConns.push([fromRef, toRef, c.color || 'green', routeWp(fid, fpin, a, b, stagger, toRef.split(':')[0], toRef.split(':')[1])]);
     });
