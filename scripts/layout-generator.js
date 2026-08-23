@@ -251,6 +251,12 @@ function main() {
   const corridorYFor = (side, lane) => (chipBase == null || side !== 'top')
     ? null
     : chipBase - 8 * (laneMax[side] - lane);
+  // 板底走廊带（布线阶段概念）：板子下缘以下、电源类水平线的专属走廊。
+  //   上两条槽位预留给板电源主线（生成在后、贴近板底），芯片电源线用更下方
+  //   槽位——两族走廊互不交叉；间距 10、距板底 16，与板身保持距离。
+  const BELOW_BASE = board.top + board.h + 16;
+  const BELOW_STEP = 10;
+  let powerBelowIdx = 0;   // 芯片电源线槽位游标（从 BELOW_BASE + 2*BELOW_STEP 起）
 
   const routeWp = (fid, fpin, a, b, stagger, toId, toPin) => {
     const r1 = v => Math.round(v * 10) / 10;   // 1 位小数
@@ -281,10 +287,11 @@ function main() {
           laneY = side === 'top' ? r1(cp.top - 8 - 6 * slot) : r1(cp.top + cp.h + 8 + 6 * slot);
         }
       } else if (toId === 'bb1' && /^(bn|bp|tn|tp)\.\d+$/.test(toPin || '')) {
-        // 电源线：上轨(bn)走面包板上方走廊；其余轨走「板底 + 9」走廊——
-        // 从板子下方绕行，与上方信号网格彻底分开（上方走廊互不干扰），
-        // 落轨纵段只贴轨边，不横穿面包板/板身。
-        const powerY = b.y < bb.top ? r1(bb.top - 8) : r1(board.top + board.h + 9);
+        // 电源线：上轨(bn)走面包板上方走廊；其余轨走「板底走廊带」——
+        // 主线槽位之下按序分配（VCC/GND 等各占一条，互不共线），从板子下方
+        // 绕行、与上方信号网格彻底分开，落轨纵段只贴轨边，不横穿面包板/板身。
+        const powerY = b.y < bb.top ? r1(bb.top - 8)
+          : r1(BELOW_BASE + 2 * BELOW_STEP + BELOW_STEP * powerBelowIdx++);
         return [`h${r1(escX - a.x)}`, `v${r1(powerY - a.y)}`, `h${r1(b.x - escX)}`, `v${r1(b.y - powerY)}`];
       } else {
         laneY = r1(b.y);
@@ -803,21 +810,31 @@ function main() {
       wireConns.push([fromRef, toRef, c.color || 'green', routeWp(fid, fpin, a, b, stagger, toRef.split(':')[0], toRef.split(':')[1])]);
     });
 
-    // 电源轨：板子 GND/5V → 主线接 tn/tp（元件从 bn 取 GND、从 tp 取 5V）。
-    // GND 需跳线 tn→bn（主线落 tn、元件用 bn）；5V 主线直接落 tp（= 元件取电轨），
-    // 故无需 tp→bp 跳线（bp 轨当前无元件使用，生成会多余）。
-    // 仅一条轨时主线走最左轨位 25（旧行为，金样不变）；两条轨同时用时：
-    //   GND 主线仍 tn.25，但 stagger+8 下探更深(y=534)；5V 主线改 tp.23(x=43.4) 贴板(y=526)。
-    //   左右脚 ↔ 左右轨交叉配对 + 不同深度 → 两条主线既不共线也不相交（几何消交叉）。
-    const bothRails = railUsed['bn'].size > 0 && railUsed['tp'].size > 0;
-    if (railUsed['bn'].size > 0) {
-      const stagger = bothRails ? 8 : 0;
-      wireConns.push([`${board.id}:${board.railGnd}`, `bb1:tn.${RAIL_MAX}`, 'black', routeWp(board.id, board.railGnd, pinPos(board.id, board.railGnd), railPos('tn', RAIL_MAX), stagger)]);
-      wireConns.push([`bb1:tn.${RAIL_MAX - 1}`, `bb1:bn.${RAIL_MAX - 1}`, 'black', routeWp('bb1', '', railPos('tn', RAIL_MAX - 1), railPos('bn', RAIL_MAX - 1), 0)]);
+    // 电源轨主线（板底走廊带上两条槽位）：板子 GND/5V → 主线接 tn/tp。
+    // GND 需跳线 tn→bn（主线落 tn、元件用 bn，bn 有消费者才需要跳线）；
+    // 5V 主线直接落 tp（= 元件取电轨，bp 无消费者不需要跳线）。
+    // 仅一条轨时主线走最左轨位 25；两条轨同时用时 GND 主线仍 tn.25、
+    // 5V 主线改 tp.23(x=43.4)，两主线不同 x + 不同深度（527/537）互不共线。
+    // 主线存在性按「轨是否有消费者」判断：tn 的消费者（芯片 GND）也计入，
+    // 否则芯片 GND 落到 tn 却无主线接入板子 GND（电气断链）。
+    const rw = v => Math.round(v * 10) / 10;
+    const bothRails = (railUsed['bn'].size > 0 || railUsed['tn'].size > 0) && railUsed['tp'].size > 0;
+    if (railUsed['bn'].size > 0 || railUsed['tn'].size > 0) {
+      const a = pinPos(board.id, board.railGnd), b = railPos('tn', RAIL_MAX);
+      const cy = BELOW_BASE + BELOW_STEP;
+      wireConns.push([`${board.id}:${board.railGnd}`, `bb1:tn.${RAIL_MAX}`, 'black',
+        [`v${rw(cy - a.y)}`, `h${rw(b.x - a.x)}`, `v${rw(b.y - cy)}`]]);
+      if (railUsed['bn'].size > 0) {
+        wireConns.push([`bb1:tn.${RAIL_MAX - 1}`, `bb1:bn.${RAIL_MAX - 1}`, 'black',
+          [`v${rw(railPos('bn', RAIL_MAX - 1).y - railPos('tn', RAIL_MAX - 1).y)}`]]);
+      }
     }
     if (railUsed['tp'].size > 0) {
       const n = bothRails ? RAIL_MAX - 2 : RAIL_MAX;
-      wireConns.push([`${board.id}:${board.railVcc}`, `bb1:tp.${n}`, 'red', routeWp(board.id, board.railVcc, pinPos(board.id, board.railVcc), railPos('tp', n), 0)]);
+      const a = pinPos(board.id, board.railVcc), b = railPos('tp', n);
+      const cy = BELOW_BASE;
+      wireConns.push([`${board.id}:${board.railVcc}`, `bb1:tp.${n}`, 'red',
+        [`v${rw(cy - a.y)}`, `h${rw(b.x - a.x)}`, `v${rw(b.y - cy)}`]]);
     }
 
     // 输出
