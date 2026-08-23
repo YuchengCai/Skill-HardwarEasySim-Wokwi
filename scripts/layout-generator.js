@@ -141,10 +141,14 @@ function main() {
   board.gndPat = new RegExp('^' + board.id + ':GND\\.\\d+$');   // GND 脚（uno:GND.1）
 
   // 元件清单
-  // 占位符（chip-<name>，custom chip）从 chip.json 读引脚。官方 chip.json 的
-  // pins 是字符串数组（无坐标），按 DIP 布局推断引脚位置（px，round 2 位）：
-  //   左列 = pin1..pin(ceil(N/2)) 从上到下；右列 = pinN..pin(ceil(N/2)+1) 从下到上
-  //   空字符串 "" = 跳过该位置（不产生可连引脚）；间距 = 0.1 英寸标准（2.54mm）
+  // 占位符（chip-<name>，custom chip）引脚几何 —— wokwi 截图实测校准（nRF24L01 8 脚）：
+  //   wokwi 把 custom chip 渲染成横向绿色 PCB：本体宽扁，焊盘在左右短边内侧竖直两列，
+  //   DIP 逆时针序（左列 index 0..rows-1 上→下；右列 index N-1..rows 下→上）。
+  //   实测：焊盘距左右边缘 ≈ 4.5 单位、距顶边 ≈ 5 单位、间距标准 0.1"（9.6px）；
+  //   本体宽度 ≈ 显示文本驱动（wokwi 渲染显示 "<name> Breakout"，约 5.5 单位/字符）。
+  //   官方 chip.json 仅 pins 字符串数组（无坐标），焊盘位置由渲染器算法决定，
+  //   此处为经验近似；换芯片若出现偏差，用同一「截图→反推」流程回填校准。
+  const CHIP_GEO = { pitch: 2.54 * MM2PX, insetX: 4.5, marginY: 5, textPad: 5, charW: 5.5 };
   const customBoardOf = {};
   intent.parts.forEach(p => {
     if (p.type && p.type.startsWith('chip-')) {
@@ -156,20 +160,22 @@ function main() {
       const pinsArr = data.pins || [];
       const N = pinsArr.length;
       const rows = Math.ceil(N / 2);
-      const PITCH = 2.54 * MM2PX;   // DIP 标准 0.1 英寸引脚间距（px）
-      const MARGIN = 2.54 * MM2PX;  // 边距（px）
+      const name = String(data.name || chipName) + ' Breakout';
+      const w = Math.max(2 * CHIP_GEO.insetX + 2 * CHIP_GEO.textPad + name.length * CHIP_GEO.charW,
+                         2 * CHIP_GEO.insetX + 2 * CHIP_GEO.textPad + (rows - 1) * CHIP_GEO.pitch);
+      const h = 2 * CHIP_GEO.marginY + (rows - 1) * CHIP_GEO.pitch;
       const pinMap = {};
       pinsArr.forEach((pn, i) => {
         if (!pn) return;   // 空字符串 = 跳过引脚
         if (i < rows) {
-          pinMap[pn] = [MARGIN, MARGIN + i * PITCH];
+          pinMap[pn] = [CHIP_GEO.insetX, CHIP_GEO.marginY + i * CHIP_GEO.pitch];
         } else {
-          pinMap[pn] = [MARGIN + PITCH, MARGIN + (N - 1 - i) * PITCH];
+          pinMap[pn] = [w - CHIP_GEO.insetX, CHIP_GEO.marginY + (N - 1 - i) * CHIP_GEO.pitch];
         }
       });
       customBoardOf[p.id] = {
-        w: Math.round(PITCH + 2 * MARGIN),
-        h: Math.round(2 * MARGIN + (rows - 1) * PITCH),
+        w: Math.round(w * 100) / 100,
+        h: Math.round(h * 100) / 100,
         pins: pinMap,
       };
     }
@@ -245,7 +251,7 @@ function main() {
     if (cp && cp.type && cp.type.startsWith('chip-')) {
       const off = (pins[fid] || {})[fpin];
       if (!off) return [];
-      const esc = (chipEsc[fid] = chipEsc[fid] || { left: 0, right: 0, below: 0, up: 0 });
+      const esc = (chipEsc[fid] = chipEsc[fid] || { left: 0, right: 0 });
       const isLeft = off[0] < cp.w / 2;
       const colIdx = isLeft ? esc.left++ : esc.right++;
       const escX = r1(isLeft ? cp.left - 6 - colIdx * 6 : cp.left + cp.w + 6 + colIdx * 6);
@@ -262,17 +268,12 @@ function main() {
           laneY = side === 'top' ? r1(cp.top - 8 - 6 * slot) : r1(cp.top + cp.h + 8 + 6 * slot);
         }
       } else if (toId === 'bb1' && /^(bn|bp|tn|tp)\.\d+$/.test(toPin || '')) {
-        // 电源线：bn（面包板上轨）从面包板左侧上方绕入（竖直段避开面包板本体）；
-        // 其余轨（tp 等）从芯片下方走廊直达
-        if (toPin.startsWith('bn')) {
-          const belowY = r1(cp.top + cp.h + 14 + 6 * esc.below++);
-          const upIdx = esc.up++;
-          const upY = r1(bb.top - 8 - upIdx * 6);
-          const upX = r1(bb.left - 20 - upIdx * 6);
-          return [`h${r1(escX - a.x)}`, `v${r1(belowY - a.y)}`, `h${r1(upX - escX)}`,
-                  `v${r1(upY - belowY)}`, `h${r1(b.x - upX)}`, `v${r1(b.y - upY)}`];
-        }
-        laneY = r1(cp.top + cp.h + 14 + 6 * esc.below++);
+        // 电源线：出列后先到「面包板本体内外」的干净走廊——轨在面包板上缘以上走
+        // bb.top-8 走廊、否则走「面包板底缘与板顶之间」走廊（bb.top+bb.h+2，
+        // 该带既避开面包板本体、又在 Arduino 板顶边缘之上，且不与信号走廊共线），
+        // 再水平到轨位、竖落轨上（纵向只贴轨边 4-8px，不横穿板身）。
+        const powerY = b.y < bb.top ? r1(bb.top - 8) : r1(bb.top + bb.h + 2);
+        return [`h${r1(escX - a.x)}`, `v${r1(powerY - a.y)}`, `h${r1(b.x - escX)}`, `v${r1(b.y - powerY)}`];
       } else {
         laneY = r1(b.y);
       }
@@ -343,7 +344,7 @@ function main() {
     const OFF_Y = (G.hole && G.hole.offsetY) || 9;
     const OFF_B = (G.hole && G.hole.halfBOffset) || 19.2;
     const RAIL_G = G.rail || {};
-    bb = { type: intent.breadboard || 'wokwi-breadboard-half', id: 'bb1', top: 100, left: 0, rotate: 180 };
+    bb = { type: intent.breadboard || 'wokwi-breadboard-half', id: 'bb1', top: 100, left: 0, rotate: 180, w: BB_W, h: BB_H };
     const LETTER = 'abcdefghij';
     const idx = L => LETTER.indexOf(L);
     const rx = n => bb.left + (BB_W - OFF_X) - (n - 1) * PITCH;
@@ -593,21 +594,27 @@ function main() {
     const railPos = (rail, n) => ({ x: railX(n), y: railY[rail] });
     // 识别电源连线（目标 = uno:GND/5V/3V3/VIN）→ 连对应轨
     const railUsed = { bn: new Set(), bp: new Set(), tn: new Set(), tp: new Set() };
-    const railTarget = (toRef, sourceX) => {
+    const railXCross = {};   // 已被任一轨占用的 x（防同 x 跨轨电源线共线）
+    const railTarget = (toRef, src) => {
       const [rid, rpin] = toRef.split(':');
       if (rid !== board.id || !rpin) return null;
       const prefix = board.powerPins.find(p => rpin.startsWith(p));
       if (!prefix) return null;
       const isGND = prefix.startsWith('GND');
-      const rail = isGND ? 'bn' : 'tp';
-      // 就近：扫描 1..25 找离源 x 最近的空闲位置（一孔一接）
+      // GND 就近选负轨（bn 视觉顶部 / tn 视觉底部；两轨经跳线互通、都连板子 GND）：
+      // 元件带（面包板顶部）用 bn，直连/芯片等靠近板子的用 tn，避免绕大圈
+      const rail = isGND ? (Math.abs(src.y - railY.bn) <= Math.abs(railY.tn - src.y) ? 'bn' : 'tn') : 'tp';
+      // 就近：扫描 1..25 找离源 x 最近的空闲位置（一孔一接；跨轨同 x 冲突则跳过）
       const used = railUsed[rail];
       let best = 1, bestDist = Infinity;
       for (let n = 1; n <= RAIL_MAX; n++) {
-        const d = Math.abs(railX(n) - sourceX);
-        if (d < bestDist && !used.has(n)) { bestDist = d; best = n; }
+        const x = railX(n);
+        const d = Math.abs(x - src.x);
+        const xKey = Math.round(x * 10);
+        if (d < bestDist && !used.has(n) && !railXCross[xKey]) { bestDist = d; best = n; }
       }
       used.add(best);
+      railXCross[Math.round(railX(best) * 10)] = true;
       return { rail, n: best, ref: `bb1:${rail}.${best}` };
     };
 
@@ -726,7 +733,7 @@ function main() {
       }
 
       // ① 电源连线（目标 = GND/5V/3V3/VIN）→ 连电源轨（就近走轨，不穿板）
-      const rt = railTarget(toRef0, a.x);
+      const rt = railTarget(toRef0, a);
       if (rt) {
         toRef = rt.ref;
         b = railPos(rt.rail, rt.n);   // 先算轨位置，供下方判断出线方向
