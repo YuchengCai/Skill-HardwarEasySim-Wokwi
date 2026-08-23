@@ -1,0 +1,13 @@
+{
+  "version": "0.1",
+  "semantics": {
+    "wokwi-resistor": {
+      "swapPair": ["1", "2"],
+      "direction": "signal-near-board"
+    },
+    "wokwi-pushbutton": {
+      "terminalPairs": [["1.l", "1.r"], ["2.l", "2.r"]],
+      "defaultSide": "opposite"
+    }
+  }
+}

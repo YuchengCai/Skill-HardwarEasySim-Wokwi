@@ -60,7 +60,7 @@ WorkBuddy 专用的 wokwi-arduino skill 适配器。与 deepcode/claude/cursor �
 4. `references/common/layout-rules.md` / `breadboard.md` / `waypoints.md` — 布局/面包板/控制点规则
 5. `references/arduino/index.json`（中文名匹配）→ `components.md` → `detail/<type>.json`
 6. `references/arduino/experience.json` — 累积接线经验
-7. 库外元件（index.json 查不到）→ 发现缺元件先查 `placeholders/<name>/` 复用；否则【暂停问用户品牌型号】→ 搜 datasheet 拿真实引脚 → `scripts/generate-part-placeholder.js` 生成（存 `placeholders/`）
+7. 库外元件（index.json 查不到）→ 发现缺元件先查 `placeholders/<name>/` 复用；否则【暂停问用户品牌型号】→ 搜 datasheet 拿真实引脚 → `scripts/generate-part-placeholder.js` 生成（存 `placeholders/`，diagram.json 用 `chip-<name>`，wokwi.toml 声明 `[[chip]]`；生成器随附通用空 wasm，无仿真行为）
 
 ## 硬件核对（接实物前强制）
 
@@ -75,6 +75,7 @@ WorkBuddy 专用的 wokwi-arduino skill 适配器。与 deepcode/claude/cursor �
 1. 脚本失败 → 降级 `references/monaco-steps.md` 原生操作，禁止重试脚本
 2. 脚本只"填和点"，代码/电路图由 agent 生成
 3. 原生操作步骤保留在 references 供降级
+4. **设计选择（C 值）归模型——脚本只做"默认兜底 + 显式覆盖"，不静默替模型决定。** 有多种合理权衡的选择（按钮对侧/同侧、zone/region、引脚分配）由模型思考；脚本只提醒后果（如按钮默认对侧、`hint.sameSide` 显式省线），不替模型做决定。
 
 ## 自愈检查（强制，激活时执行）
 

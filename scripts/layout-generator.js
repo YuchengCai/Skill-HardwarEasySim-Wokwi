@@ -60,6 +60,16 @@ function loadBoards() {
   return { boards: {} };
 }
 
+// 引脚语义（pin-semantics.json：swapPair 可互换对 / terminalPairs 端子对 / 方向规则）
+// 数据驱动：新元件加一条数据即自动受益，不加 if 分支
+function loadPinSemantics() {
+  const p = path.join(__dirname, '..', 'references', 'common', 'pin-semantics.json');
+  if (fs.existsSync(p)) {
+    return JSON.parse(fs.readFileSync(p, 'utf-8'));
+  }
+  return { semantics: {} };
+}
+
 function main() {
   const args = process.argv.slice(2);
   if (args.length < 1) {
@@ -131,15 +141,36 @@ function main() {
   board.gndPat = new RegExp('^' + board.id + ':GND\\.\\d+$');   // GND 脚（uno:GND.1）
 
   // 元件清单
-  // 占位符（wokwi-custom-board）从 attrs.board 读 board.json 拿尺寸（mm→px）
+  // 占位符（chip-<name>，custom chip）从 chip.json 读引脚。官方 chip.json 的
+  // pins 是字符串数组（无坐标），按 DIP 布局推断引脚位置（px，round 2 位）：
+  //   左列 = pin1..pin(ceil(N/2)) 从上到下；右列 = pinN..pin(ceil(N/2)+1) 从下到上
+  //   空字符串 "" = 跳过该位置（不产生可连引脚）；间距 = 0.1 英寸标准（2.54mm）
   const customBoardOf = {};
   intent.parts.forEach(p => {
-    if (p.type === 'wokwi-custom-board' && p.attrs && p.attrs.board) {
-      const data = JSON.parse(fs.readFileSync(path.resolve(OUT_DIR, p.attrs.board), 'utf-8'));
+    if (p.type && p.type.startsWith('chip-')) {
+      const chipName = p.type.slice('chip-'.length);
+      const chipPath = p.attrs && p.attrs.chip
+        ? path.resolve(OUT_DIR, p.attrs.chip)
+        : path.resolve(OUT_DIR, 'placeholders', chipName, `${chipName}.chip.json`);
+      const data = JSON.parse(fs.readFileSync(chipPath, 'utf-8'));
+      const pinsArr = data.pins || [];
+      const N = pinsArr.length;
+      const rows = Math.ceil(N / 2);
+      const PITCH = 2.54 * MM2PX;   // DIP 标准 0.1 英寸引脚间距（px）
+      const MARGIN = 2.54 * MM2PX;  // 边距（px）
+      const pinMap = {};
+      pinsArr.forEach((pn, i) => {
+        if (!pn) return;   // 空字符串 = 跳过引脚
+        if (i < rows) {
+          pinMap[pn] = [MARGIN, MARGIN + i * PITCH];
+        } else {
+          pinMap[pn] = [MARGIN + PITCH, MARGIN + (N - 1 - i) * PITCH];
+        }
+      });
       customBoardOf[p.id] = {
-        w: Math.round(data.width * MM2PX),
-        h: Math.round(data.height * MM2PX),
-        pins: data.pins,
+        w: Math.round(PITCH + 2 * MARGIN),
+        h: Math.round(2 * MARGIN + (rows - 1) * PITCH),
+        pins: pinMap,
       };
     }
   });
@@ -162,14 +193,12 @@ function main() {
 
   // 引脚坐标 + 面包板对象 + 走线路由（两个分支共用：面包板 / 直连）
   const pins = loadPins();
-  // 占位符引脚按 id 存（实例级），mm→px，round 2 位
+  // 占位符引脚按 id 存（实例级），坐标已是 px（DIP 推断，round 2 位）
   Object.keys(customBoardOf).forEach(id => {
     const obj = {};
     Object.keys(customBoardOf[id].pins).forEach(pn => {
-      obj[pn] = [
-        Math.round(customBoardOf[id].pins[pn].x * MM2PX * 100) / 100,
-        Math.round(customBoardOf[id].pins[pn].y * MM2PX * 100) / 100,
-      ];
+      const pos = customBoardOf[id].pins[pn];
+      obj[pn] = [Math.round(pos[0] * 100) / 100, Math.round(pos[1] * 100) / 100];
     });
     pins[id] = obj;
   });
@@ -189,8 +218,8 @@ function main() {
       base = { left: p.left, top: p.top };
       type = p.type; rotate = p.rotate || 0;
     }
-    // 占位符（wokwi-custom-board）引脚是实例级（按 id 查）；普通元件仍按 type 查
-    const pd = (type === 'wokwi-custom-board') ? pins[id] : pins[type];
+    // 占位符（chip-<name>）引脚是实例级（按 id 查）；普通元件仍按 type 查
+    const pd = (type && type.startsWith('chip-')) ? pins[id] : pins[type];
     if (!pd) return null;
     const off = (rotate === 90 && pd._rot90 && pd._rot90[pinName]) ? pd._rot90[pinName] : pd[pinName];
     if (!off) return null;
@@ -563,26 +592,101 @@ function main() {
       });
     }
 
+    // ============================================================
+    // 方向推导层（pin-semantics.json 数据驱动，不写死元件名）：
+    //   swapPair 元件（如电阻 1/2 可互换）：信号接"靠近板子一侧"（t 区），
+    //     生成连线时交换引脚映射（不改 intent 数据本身）。
+    //   terminalPairs 元件（如按钮）：默认对侧接线；同侧时——
+    //     无 hint.sameSide → 自动调为对侧（信号脚 l/r 互换，GND 不动）；
+    //     有 hint.sameSide: true → 尊重显式省线选择。
+    // ============================================================
+    const semantics = loadPinSemantics().semantics || {};
+    const pinSwap = {};   // 引脚重映射：{"r1:1" → "r1:2", "r1:2" → "r1:1"}
+    const isPowerRef = (pin) => board.powerPins.some(p => pin === p || pin.startsWith(p + '.'));
     (intent.connections || []).forEach(c => {
-      let fid = c.from.split(':')[0];
-      const fpin = c.from.split(':')[1];
-      let fromRef = c.from;
-      let toRef = c.to;
+      [c.from, c.to].forEach(ref => {
+        const m = ref.match(/^([^:]+):(.+)$/);
+        if (!m) return;
+        const pid = m[1], pin = m[2];
+        const p = partById[pid];
+        if (!p) return;
+        const sem = semantics[p.type];
+        if (!sem || !sem.swapPair || !sem.swapPair.includes(pin)) return;
+        // 信号线 = 连板子的那条线（排除电源脚：GND/5V 等不算信号）
+        const other = ref === c.from ? c.to : c.from;
+        const om = other.match(new RegExp('^' + board.id + ':(\\S+)$'));
+        if (!om || isPowerRef(om[1])) return;
+        // 该引脚在 b 区（视觉上方、远离板子）→ 信号应改接 t 区那端
+        const hole = pinHole[ref];
+        if (!hole || hole.half !== 'b') return;
+        if (pinSwap[`${pid}:${pin}`] || pinSwap[`${pid}:${sem.swapPair.find(x => x !== pin)}`]) return;
+        const otherPin = sem.swapPair.find(x => x !== pin);
+        pinSwap[`${pid}:${pin}`] = `${pid}:${otherPin}`;
+        pinSwap[`${pid}:${otherPin}`] = `${pid}:${pin}`;
+        console.error(`[方向推导] ${pid} 信号改接 t 区`);
+      });
+    });
+    // terminalPairs（按钮等）：默认对侧；同侧时——有 hint.sameSide 尊重（省线），
+    // 无 hint 自动调整为对侧（信号脚 l/r 互换，GND 不动），并提示后果。
+    const sideOf = {};   // pid → { signal: 'l'|'r', gnd: 'l'|'r', signalRef: 完整引用 }
+    (intent.connections || []).forEach(c => {
+      [c.from, c.to].forEach(ref => {
+        const m = ref.match(/^([^:]+):(.+)$/);
+        if (!m) return;
+        const pid = m[1], pin = m[2];
+        const p = partById[pid];
+        if (!p) return;
+        const sem = semantics[p.type];
+        if (!sem || !sem.terminalPairs) return;
+        const side = (pin.match(/\.([lr])$/) || [])[1];
+        if (!side) return;
+        const other = ref === c.from ? c.to : c.from;
+        const om = other.match(new RegExp('^' + board.id + ':(\\S+)$'));
+        if (!om) return;
+        sideOf[pid] = sideOf[pid] || {};
+        if (/^GND/.test(om[1])) sideOf[pid].gnd = side;
+        else { sideOf[pid].signal = side; sideOf[pid].signalRef = ref; }
+      });
+    });
+    Object.keys(sideOf).forEach(pid => {
+      const s = sideOf[pid];
+      const sem = semantics[(partById[pid] || {}).type] || {};
+      if (sem.defaultSide !== 'opposite' || !s.signal || !s.gnd || s.signal !== s.gnd) return;
+      const part = partById[pid];
+      const keepSame = part && part.hint && part.hint.sameSide === true;
+      if (keepSame) {
+        console.error(`[方向提示] ${pid} 显式声明同侧（hint.sameSide），尊重省线选择`);
+      } else {
+        // 信号脚 l/r 互换 → 对侧（信号换到另一侧，GND 不动）
+        const otherSide = s.signal === 'l' ? 'r' : 'l';
+        const swappedRef = s.signalRef.replace(/\.([lr])$/, '.' + otherSide);
+        pinSwap[s.signalRef] = swappedRef;
+        console.error(`[方向推导] ${pid} 信号与 GND 同侧，已按默认对侧调整（${s.signalRef} → ${swappedRef}；若有意省线请加 hint.sameSide）`);
+      }
+    });
+
+    (intent.connections || []).forEach(c => {
+      const fromRef0 = pinSwap[c.from] || c.from;
+      const toRef0 = pinSwap[c.to] || c.to;
+      let fid = fromRef0.split(':')[0];
+      const fpin = fromRef0.split(':')[1];
+      let fromRef = fromRef0;
+      let toRef = toRef0;
       let a = pinPos(fid, fpin);
-      let b = pinPos(c.to.split(':')[0], c.to.split(':')[1]);
+      let b = pinPos(toRef0.split(':')[0], toRef0.split(':')[1]);
       if (!a || !b) {
         console.log(`  [走线跳过] ${c.from}→${c.to}：引脚坐标缺失`);
         return;
       }
 
       // ① 电源连线（目标 = GND/5V/3V3/VIN）→ 连电源轨（就近走轨，不穿板）
-      const rt = railTarget(c.to, a.x);
+      const rt = railTarget(toRef0, a.x);
       if (rt) {
         toRef = rt.ref;
         b = railPos(rt.rail, rt.n);   // 先算轨位置，供下方判断出线方向
         // 源若是插面板引脚（$bb）→ 从「同行空闲孔」出线再接轨，而非从引脚直接出线
         // （面包板接线惯例：引脚插孔、相邻孔出线 —— 与 dragramtest 模板一致）
-        const fHole = pinHole[c.from];
+        const fHole = pinHole[fromRef0];
         if (fHole) {
           const h = freeHole(fHole.row, fHole.half, fHole.letter, b.y < a.y ? 1 : -1);
           if (h) { fid = 'bb1'; fromRef = `bb1:${h.row}${h.half}.${h.letter}`; a = holePos(h); }
@@ -590,12 +694,12 @@ function main() {
       } else {
         // ② 端点若是插面板元件引脚 → 连到同行空闲孔（面包板内部连通）
         //    freeHole 朝「线的来向」选外侧孔，让线露在元件外侧（不被元件盖住）
-        const fHole = pinHole[c.from];
+        const fHole = pinHole[fromRef0];
         if (fHole) {
           const h = freeHole(fHole.row, fHole.half, fHole.letter, b.y < a.y ? 1 : -1);
           if (h) { fid = 'bb1'; fromRef = `bb1:${h.row}${h.half}.${h.letter}`; a = holePos(h); }
         }
-        const tHole = pinHole[c.to];
+        const tHole = pinHole[toRef0];
         if (tHole) {
           const h = freeHole(tHole.row, tHole.half, tHole.letter, a.y < b.y ? 1 : -1);
           if (h) { toRef = `bb1:${h.row}${h.half}.${h.letter}`; b = holePos(h); }

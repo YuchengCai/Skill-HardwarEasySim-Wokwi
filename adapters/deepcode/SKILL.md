@@ -182,6 +182,7 @@ This compiles (if needed), uploads, auto-captures serial output, and prints the 
 3. **Content generation stays with the agent** — scripts only "fill and click", never "think"
 4. **HARD RULE: Simulation → Physical wiring requires hardware check.** Before guiding physical wiring, confirm the user's component model/version matches the simulation. Warn about interface differences (e.g. I2C vs SPI OLED).
 5. **Derivable rules belong in scripts, not SKILL.md.** 凡脚本能确定性推导的（B 值：part 数、bus 场景、坐标、孔位、走线），脚本兜底，不前置进 SKILL.md、也不让模型逐条记。SKILL.md 只放「原则 + 指向」和「真选择（C 值）的指引」——防止 SKILL.md 退化成规则清单。
+6. **Design choices (C 值) belong to the model — scripts default + warn, never silently override.** 有多种合理权衡的选择（按钮对侧/同侧、zone/region、引脚分配）由模型思考；脚本做"默认兜底 + 显式覆盖"（如按钮默认对侧、hint.sameSide 显式省线），只提醒后果、不替模型决定。
 
 ---
 
@@ -281,7 +282,7 @@ Extract `pinInfo` from the source. After verification, note it for future refere
 
 ### Library-external parts (not in Wokwi)
 
-For components not in the Wokwi library at all (RC522, MP3 modules, domestic sensors), generate a **placeholder** (pins + rectangle, no simulation behavior):
+For components not in the Wokwi library at all (RC522, MP3 modules, domestic sensors), generate a **placeholder** (custom chip: pins only, no simulation behavior):
 
 When a required component is NOT in the Wokwi library at all (index.json 查不到):
 1. **First check `placeholders/<name>/`** — if it already exists, reuse it (skip search, consistent shape).
@@ -294,7 +295,7 @@ When a required component is NOT in the Wokwi library at all (index.json 查不�
 node scripts/generate-part-placeholder.js <name> <pin1> [pin2 ...]
 ```
 
-Then add it to `diagram.json` as a `wokwi-custom-board`. Wiring is verifiable visually; behavior is NOT simulated — always pair with a text wiring plan and a physical-verification reminder.
+Then add it to `diagram.json` as a `chip-<name>` part (custom chip, e.g. `chip-rc522`), and declare the chip in `wokwi.toml` (`[[chip]]` section). The generator also copies a generic empty `chip.wasm` (no simulation behavior, pins floating) so Wokwi can load the chip — wiring is verifiable visually; behavior is NOT simulated — always pair with a text wiring plan and a physical-verification reminder.
 
 ### Layout & wiring quality
 

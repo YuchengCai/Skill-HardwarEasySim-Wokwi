@@ -13,7 +13,7 @@ Uno/Mega/Nano/ESP32 supported — compile.sh auto-infers FQBN from diagram.json;
 
 ## Workflow
 
-1. **Generate** — Write `.ino` code, match `references/arduino/index.json` (Chinese names) → components.md → detail/. Write `layout-intent.json` (semantic intent, no coords; contract `references/common/intent-format.md`, prefs `references/common/layout-cards/`; `breadboard` may be left empty — script auto-falls-back on bus scenes) → `node scripts/layout-generator.js layout-intent.json <dir>` → `diagram.json` → `node scripts/optimize-wiring.js <dir> --dry-run` → `wokwi.toml`. **Library-external parts (not in index.json): first check `placeholders/<name>/` and reuse; else STOP and ask the user for the exact brand/model → search datasheet for real pins → generate via `scripts/generate-part-placeholder.js` (stored in `placeholders/`)**
+1. **Generate** — Write `.ino` code, match `references/arduino/index.json` (Chinese names) → components.md → detail/. Write `layout-intent.json` (semantic intent, no coords; contract `references/common/intent-format.md`, prefs `references/common/layout-cards/`; `breadboard` may be left empty — script auto-falls-back on bus scenes) → `node scripts/layout-generator.js layout-intent.json <dir>` → `diagram.json` → `node scripts/optimize-wiring.js <dir> --dry-run` → `wokwi.toml`. **Library-external parts (not in index.json): first check `placeholders/<name>/` and reuse; else STOP and ask the user for the exact brand/model → search datasheet for real pins → generate via `scripts/generate-part-placeholder.js` (stored in `placeholders/`, used as `chip-<name>` in diagram.json + `[[chip]]` in wokwi.toml; generator copies a generic empty wasm — no simulation behavior)**
 2. **Compile** — `./scripts/compile.sh <dir>` (auto-installs arduino-cli, MINGW path handled)
 3. **Simulate** — 环境检测: VS Code + Wokwi 插件 → Mode B (F1 手动)。仅用户要求自动化或无插件 → Mode A。**Primary: Playwright MCP** (per monaco-steps.md). **Fallback: node scripts/wokwi-automate.js** (only if commands available & no MCP). **HARD RULE: never install playwright/npm without user approval**
 4. **Verify** — Before simulation, present wiring text summary (from diagram.json, grouped by component: "LED anode → resistor → board pin13/D2", use function names + exact pins, D prefix for ESP32). Then ask user, fix if needed
@@ -31,6 +31,7 @@ If hardware differs (e.g. SPI OLED): offer options (A) regenerate for physical p
 - Script failure → fall back to `references/monaco-steps.md`, never retry script
 - Scripts only "fill and click"; agent generates all content
 - Native steps kept in references for fallback
+- **Design choices (C 值) belong to the model — scripts default + warn, never silently override.** 有多种合理权衡的选择（按钮对侧/同侧、zone/region、引脚分配）由模型思考；脚本做"默认兜底 + 显式覆盖"（如按钮默认对侧、hint.sameSide 显式省线），只提醒后果、不替模型决定。
 
 ## Self-Healing
 
