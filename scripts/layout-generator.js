@@ -241,6 +241,16 @@ function main() {
 
   // chip-<name> 占位符出线游标：每实例每列独立计数，用于错开出线 x（避免同列竖线共线）
   const chipEsc = {};
+  // 统一信号走廊网格：场景含占位符芯片时，板子上缘所有水平走廊统一编号——
+  //   基准 = min(芯片顶, 板顶) - 8，向上每 8 单位一条，车道越大越靠近芯片本体
+  //   （左端目标车道 0 = 最高 = 绕行最长；右端目标最低，落线最短不压本体，
+  //    任意 laneMax 都不会压到芯片；间距 8 保证视觉可辨）。
+  //   无芯片时 corridorYFor 返回 null，各线沿用旧公式（走廊行为不变）。
+  //   chipBase 依赖元件最终放置位置，故在放置循环之后赋值（见下方 chipBase=…）。
+  let chipBase = null;
+  const corridorYFor = (side, lane) => (chipBase == null || side !== 'top')
+    ? null
+    : chipBase - 8 * (laneMax[side] - lane);
 
   const routeWp = (fid, fpin, a, b, stagger, toId, toPin) => {
     const r1 = v => Math.round(v * 10) / 10;   // 1 位小数
@@ -257,22 +267,24 @@ function main() {
       const escX = r1(isLeft ? cp.left - 6 - colIdx * 6 : cp.left + cp.w + 6 + colIdx * 6);
       let laneY;
       if (toId === board.id) {
-        // 信号线：左列走板侧车道（stagger = -lane*8，已按目标脚分配）；
-        // 右列走芯片上方/下方专属走廊（按 laneMax 反向排：右端目标贴芯片、左端目标靠外）
-        if (isLeft) {
+        // 信号线：统一走全局走廊网格（corridorYFor，间距 8）；
+        // 无芯片场景回退旧公式（左列板侧车道 / 右列芯片上方专属走廊）
+        const side = boardPinSide(toId, toPin) || 'top';
+        const lane = stagger ? Math.round(Math.abs(stagger) / 8) : 0;
+        const cy = corridorYFor(side, lane);
+        if (cy != null) {
+          laneY = r1(cy);
+        } else if (isLeft) {
           laneY = r1(board.top - 7 + stagger);
         } else {
-          const side = boardPinSide(toId, toPin) || 'top';
-          const lane = stagger ? Math.round(Math.abs(stagger) / 8) : 0;
           const slot = (laneMax[side] + 2) - lane;
           laneY = side === 'top' ? r1(cp.top - 8 - 6 * slot) : r1(cp.top + cp.h + 8 + 6 * slot);
         }
       } else if (toId === 'bb1' && /^(bn|bp|tn|tp)\.\d+$/.test(toPin || '')) {
-        // 电源线：出列后先到「面包板本体内外」的干净走廊——轨在面包板上缘以上走
-        // bb.top-8 走廊、否则走「面包板底缘与板顶之间」走廊（bb.top+bb.h+2，
-        // 该带既避开面包板本体、又在 Arduino 板顶边缘之上，且不与信号走廊共线），
-        // 再水平到轨位、竖落轨上（纵向只贴轨边 4-8px，不横穿板身）。
-        const powerY = b.y < bb.top ? r1(bb.top - 8) : r1(bb.top + bb.h + 2);
+        // 电源线：上轨(bn)走面包板上方走廊；其余轨走「板底 + 9」走廊——
+        // 从板子下方绕行，与上方信号网格彻底分开（上方走廊互不干扰），
+        // 落轨纵段只贴轨边，不横穿面包板/板身。
+        const powerY = b.y < bb.top ? r1(bb.top - 8) : r1(board.top + board.h + 9);
         return [`h${r1(escX - a.x)}`, `v${r1(powerY - a.y)}`, `h${r1(b.x - escX)}`, `v${r1(b.y - powerY)}`];
       } else {
         laneY = r1(b.y);
@@ -282,7 +294,9 @@ function main() {
     if (fid === board.id) {
       // 板源 → 目标：出线到板外安全带（远一点，给别的线留空间），不沿引脚排横穿
       const side = boardPinSide(fid, fpin);
-      const safeY = (side === 'top' ? board.top - 15 : board.top + board.h + 15) + stagger;
+      const lane = stagger ? Math.round(Math.abs(stagger) / 8) : 0;
+      const cy = corridorYFor(side, lane);
+      const safeY = cy != null ? cy : (side === 'top' ? board.top - 15 : board.top + board.h + 15) + stagger;
       const v1 = r1(safeY - a.y);
       // 目标若是直连元件，且竖直段会纵穿其包围盒 → 先走到元件外侧，再水平进引脚（先离开区域再走线）
       const tp = toId ? partById[toId] : null;
@@ -301,7 +315,9 @@ function main() {
     if (toId === board.id) {
       // 元件源 → 板脚：贴近板子的安全带（短接近，避免横跨别的线）
       const side = boardPinSide(toId, toPin);
-      const safeY = (side === 'top' ? board.top - 7 : board.top + board.h + 7) + stagger;
+      const lane = stagger ? Math.round(Math.abs(stagger) / 8) : 0;
+      const cy = corridorYFor(side, lane);
+      const safeY = cy != null ? cy : (side === 'top' ? board.top - 7 : board.top + board.h + 7) + stagger;
       const v1 = r1(safeY - a.y);
       const h1 = r1(b.x - a.x);
       const v3 = r1(b.y - (a.y + v1));
@@ -531,6 +547,10 @@ function main() {
         dCursor[reg] += p.w + MIN_SPACING;
       });
     });
+
+    // 统一信号走廊基准（依赖上面刚算出的元件最终 top；必须在放置之后）
+    const chipList = parts.filter(p => p.type && p.type.startsWith('chip-'));
+    chipBase = chipList.length ? Math.min(...chipList.map(p => p.top), board.top) - 8 : null;
 
     // ============================================================
     // 走线生成（v1）：读取 intent.connections 逻辑网表，生成物理连线
