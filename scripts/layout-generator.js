@@ -272,6 +272,11 @@ function main() {
       const colIdx = isLeft ? esc.left++ : esc.right++;
       const escX = r1(isLeft ? cp.left - 6 - colIdx * 6 : cp.left + cp.w + 6 + colIdx * 6);
       let laneY;
+      if (toId === board.id && /^(3\.3V|VIN)$/.test(toPin || '')) {
+        // 直连板脚电源（3.3V/VIN 无专属轨）：走板底走廊带，与电源主线/轨线同带分层
+        const powerY = r1(BELOW_BASE + 2 * BELOW_STEP + BELOW_STEP * powerBelowIdx++);
+        return [`h${r1(escX - a.x)}`, `v${r1(powerY - a.y)}`, `h${r1(b.x - escX)}`, `v${r1(b.y - powerY)}`];
+      }
       if (toId === board.id) {
         // 信号线：统一走全局走廊网格（corridorYFor，间距 8）；
         // 无芯片场景回退旧公式（左列板侧车道 / 右列芯片上方专属走廊）
@@ -318,6 +323,10 @@ function main() {
       const wp = [`v${v1}`, `h${h1}`, `v${v3}`];
       if (outX != null && Math.abs(b.x - outX) > 0.5) wp.push(`h${r1(b.x - outX)}`);
       return wp;
+    }
+    if (toId === board.id && /^(3\.3V|VIN)$/.test(toPin || '')) {
+      const powerY = r1(BELOW_BASE + 2 * BELOW_STEP + BELOW_STEP * powerBelowIdx++);
+      return [`v${r1(powerY - a.y)}`, `h${r1(b.x - a.x)}`, `v${r1(b.y - powerY)}`];
     }
     if (toId === board.id) {
       // 元件源 → 板脚：贴近板子的安全带（短接近，避免横跨别的线）
@@ -628,6 +637,8 @@ function main() {
       const prefix = board.powerPins.find(p => rpin.startsWith(p));
       if (!prefix) return null;
       const isGND = prefix.startsWith('GND');
+      // 3.3V / VIN 无专属电源轨 → 不映射到轨，直连板子对应脚（修复被错接 5V 轨）
+      if (prefix.startsWith('3.3V') || prefix.startsWith('VIN')) return null;
       // GND 就近选负轨（bn 视觉顶部 / tn 视觉底部；两轨经跳线互通、都连板子 GND）：
       // 元件带（面包板顶部）用 bn，直连/芯片等靠近板子的用 tn，避免绕大圈
       const rail = isGND ? (Math.abs(src.y - railY.bn) <= Math.abs(railY.tn - src.y) ? 'bn' : 'tn') : 'tp';
@@ -745,6 +756,48 @@ function main() {
       }
     });
 
+    // ============================================================
+    // 电源线调色板（电压家族，按实际电气归宿取色）—— 见 PLAN-power-colors.md
+    //   GND 黑灰系 / 5V 红系 / 3.3V 橙系 / VIN 棕系；每组 4 档由深到浅。
+    //   仅长线消费者(placement !== 'bb')参与，按 intent.parts 声明顺序在其
+    //   电压家族内领组号；同一元件的 VCC 与 GND 用同一组号（深浅配对）。
+    //   模型 color:'red'/'black' 视为历史惯例不阻断调色板；其他颜色显式覆盖。
+    // ============================================================
+    const POWER_PALETTE = {
+      GND: { shades: ['#212529', '#343A40', '#495057', '#6C757D'] },
+      '5V': { shades: ['#CC1B1B', '#D33636', '#D95252', '#DE6D6D'] },
+      '3.3V': { shades: ['#EE7F00', '#F08B1E', '#F2983A', '#F4A452'] },
+      VIN: { shades: ['#A0522D', '#B46A42', '#C5835C', '#D49D78'] },
+    };
+    const powerFamOf = (ref) => {
+      if (/^bb1:(bn|tn)\.\d+$/.test(ref)) return 'GND';
+      if (/^bb1:(tp|bp)\.\d+$/.test(ref)) return '5V';
+      const m = ref.match(new RegExp('^' + board.id + ':(GND(?:\\.\\d+)?|5V|3\\.3V|VIN)$'));
+      if (!m) return null;
+      return m[1].startsWith('GND') ? 'GND' : m[1];
+    };
+    const famNext = { GND: 0, '5V': 0, '3.3V': 0, VIN: 0 };
+    const powerSlotOf = {};   // partId → 组号（0 起）
+    parts.forEach(p => {      // parts 即 intent.parts 声明顺序
+      if ((p.placement || 'bb') === 'bb') return;
+      const fams = new Set();
+      (intent.connections || []).forEach(c => {
+        if (c.from.split(':')[0] !== p.id) return;
+        const f = powerFamOf(c.to);
+        if (f) fams.add(f);
+      });
+      const vccFam = ['5V', '3.3V', 'VIN'].find(f => fams.has(f));
+      const fam = vccFam || (fams.has('GND') ? 'GND' : null);
+      if (fam) powerSlotOf[p.id] = famNext[fam]++ % 4;
+    });
+    const paletteColor = (fromRef, toRef) => {
+      const fam = powerFamOf(toRef);
+      if (!fam) return null;
+      const slot = powerSlotOf[fromRef.split(':')[0]];
+      if (slot == null) return null;
+      return POWER_PALETTE[fam].shades[slot];
+    };
+
     (intent.connections || []).forEach(c => {
       const fromRef0 = pinSwap[c.from] || c.from;
       const toRef0 = pinSwap[c.to] || c.to;
@@ -807,7 +860,11 @@ function main() {
           stagger = seen * 10;
         }
       }
-      wireConns.push([fromRef, toRef, c.color || 'green', routeWp(fid, fpin, a, b, stagger, toRef.split(':')[0], toRef.split(':')[1])]);
+      const modelCol = c.color;
+      const col = (modelCol && modelCol !== 'red' && modelCol !== 'black')
+        ? modelCol
+        : (paletteColor(fromRef, toRef) || modelCol || 'green');
+      wireConns.push([fromRef, toRef, col, routeWp(fid, fpin, a, b, stagger, toRef.split(':')[0], toRef.split(':')[1])]);
     });
 
     // 电源轨主线（板底走廊带上两条槽位）：板子 GND/5V → 主线接 tn/tp。
