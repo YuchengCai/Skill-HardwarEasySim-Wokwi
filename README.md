@@ -20,6 +20,12 @@
 
 **小版本更新历程**
 
+- **v0.5.6** — Unknown Parts & Wiring Governance / 未知元件占位符与走线治理：
+  - 未知元件占位符：custom chip（chip.json + 通用空 wasm），`chip-<name>` 自动几何重建（横向 PCB 模型 + 实测校准常量），无仿真仅接线展示；`generate-part-placeholder.js` 一条龙生成
+  - 布线方向推导层：`pin-semantics.json` 数据驱动（电阻 swapPair 自动换向、按钮 terminalPairs 对侧默认 + `hint.sameSide` 显式省线）
+  - 走廊体系：统一信号网格（含无芯片场景）、板底走廊带一统、长线电源智能直连、逃离三分（顶缘上逃/底缘直穿/侧列水平）
+  - 电源线电压家族调色板（5V 红系/3.3V 橙系/VIN 棕系/GND 黑灰系，主线传统红黑）；修复 3.3V/VIN 错接 5V 轨
+  - 重叠检测器（共线/过近/端点近触三类自动告警）+ 回归测试不变式化（golden 硬对照退役，快照留作人工参考）
 - **v0.5.4** — Bus Scene Hotfix / 总线场景热修复：
   - 脚本兜底：检测到多元件共用电源脚（VCC/GND）自动配面包板走轨分发，修复 5 舵机直连串接问题
   - SKILL.md 设计判据：可推导的 B 值脚本化、不进 SKILL.md，防止退化成规则清单
@@ -45,7 +51,7 @@
 <a id="english"></a>
 ## 📘 English
 
-**Wokwi Arduino Simulation Skill** — v0.5.4 — A portable skill package for AI coding agents (DeepCode, WorkBuddy, Claude Code, Cursor) that enables automated Arduino hardware prototyping, **auto browser simulation**, circuit compilation, and firmware upload.
+**Wokwi Arduino Simulation Skill** — v0.5.6 — A portable skill package for AI coding agents (DeepCode, WorkBuddy, Claude Code, Cursor) that enables automated Arduino hardware prototyping, **auto browser simulation**, circuit compilation, and firmware upload.
 
 ### Features
 
@@ -167,7 +173,7 @@ The agent reads `components.md` for correct pin names, generates the project, co
 <a id="chinese"></a>
 ## 📘 中文
 
-**Wokwi Arduino 仿真 Skill** — v0.5.4 — 一个可移植的技能包，专为 AI 编程助手（DeepCode、WorkBuddy、Claude Code、Cursor）设计，实现自动化硬件原型设计、**自动浏览器仿真**、代码编译和固件上传。
+**Wokwi Arduino 仿真 Skill** — v0.5.6 — 一个可移植的技能包，专为 AI 编程助手（DeepCode、WorkBuddy、Claude Code、Cursor）设计，实现自动化硬件原型设计、**自动浏览器仿真**、代码编译和固件上传。
 
 ### 功能
 
