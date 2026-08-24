@@ -70,6 +70,56 @@ function loadPinSemantics() {
   return { semantics: {} };
 }
 
+// 重叠检测: 解析每条线的绝对折线段, 报「水平/竖直共线重叠」与「平行间距过近」。
+// 阈值: 共线 |d| <= 0.1 且重叠 > 2 单位; 过近 0.1 < |d| <= 4 且投影重叠 > 8 单位。
+// 交叉(h×v)不报。用途: 防回归, 替代 golden 硬对照。
+function detectOverlaps(wirePaths) {
+  const segs = [];
+  for (const w of wirePaths) {
+    const pts = w.pts;
+    for (let i = 0; i + 1 < pts.length; i++) {
+      const [x1, y1] = pts[i], [x2, y2] = pts[i + 1];
+      if (Math.abs(y1 - y2) < 0.1 && Math.abs(x1 - x2) > 0.5) {
+        segs.push({ w, horiz: true, p: y1, a: Math.min(x1, x2), b: Math.max(x1, x2) });
+      } else if (Math.abs(x1 - x2) < 0.1 && Math.abs(y1 - y2) > 0.5) {
+        segs.push({ w, horiz: false, p: x1, a: Math.min(y1, y2), b: Math.max(y1, y2) });
+      }
+    }
+  }
+  let n = 0;
+  for (let i = 0; i < segs.length; i++) {
+    for (let j = i + 1; j < segs.length; j++) {
+      const s = segs[i], t = segs[j];
+      if (s.w === t.w) continue;   // 同一条线的段对不判（折线拐点端点必在自己竖段上，非近触）
+      // 端点近触：水平段端点 vs 竖直段（及对称）——端点 x 与竖段 x 差 <=2 且端点 y 落在竖段 y 区间内
+      if (s.horiz && !t.horiz) {
+        const near = (ex, ey) => (Math.abs(ex - t.p) <= 2 && ey >= Math.min(t.a, t.b) - 0.5 && ey <= Math.max(t.a, t.b) + 0.5);
+        if (near(s.a, s.p) || near(s.b, s.p)) {
+          console.error(`[重叠] 端点近触 ${s.w.from}→${s.w.to} × ${t.w.from}→${t.w.to} @x=${Math.round(t.p * 10) / 10} 端点y=${Math.round(s.p * 10) / 10}`);
+          n++;
+        }
+      } else if (!s.horiz && t.horiz) {
+        const near = (ex, ey) => (Math.abs(ex - s.p) <= 2 && ey >= Math.min(s.a, s.b) - 0.5 && ey <= Math.max(s.a, s.b) + 0.5);
+        if (near(t.a, t.p) || near(t.b, t.p)) {
+          console.error(`[重叠] 端点近触 ${s.w.from}→${s.w.to} × ${t.w.from}→${t.w.to} @x=${Math.round(s.p * 10) / 10} 端点y=${Math.round(t.p * 10) / 10}`);
+          n++;
+        }
+      }
+      if (s.horiz !== t.horiz) continue;
+      const gap = Math.abs(s.p - t.p);
+      const ov = Math.min(s.b, t.b) - Math.max(s.a, t.a);
+      if (gap <= 0.1 && ov > 2) {
+        console.error(`[重叠] 共线 ${s.w.from}→${s.w.to} × ${t.w.from}→${t.w.to} @${s.horiz ? 'y' : 'x'}=${Math.round(s.p * 10) / 10} 重叠 ${Math.round(ov * 10) / 10} 单位`);
+        n++;
+      } else if (gap <= 4 && ov > 8) {
+        console.error(`[重叠] 过近 ${s.w.from}→${s.w.to} × ${t.w.from}→${t.w.to} 间距 ${Math.round(gap * 10) / 10} 投影重叠 ${Math.round(ov * 10) / 10} 单位`);
+        n++;
+      }
+    }
+  }
+  return n;
+}
+
 function main() {
   const args = process.argv.slice(2);
   if (args.length < 1) {
@@ -257,6 +307,12 @@ function main() {
   const BELOW_BASE = board.top + board.h + 16;
   const BELOW_STEP = 10;
   let powerBelowIdx = 0;   // 芯片电源线槽位游标（从 BELOW_BASE + 2*BELOW_STEP 起）
+  // 板底走廊带公共分配器：领下一个槽位（round 1 位，与 routeWp 内 r1 同语义）
+  const nextBelowSlot = () => Math.round((BELOW_BASE + 2 * BELOW_STEP + BELOW_STEP * powerBelowIdx++) * 10) / 10;
+
+  // 绝对折线采集(重叠检测用)。main 级声明：routeWp（智能直连判定）与两分支共用同一数组，
+  // 分支内只做重置/追加，不重复声明（避免 routeWp 引用 TDZ/块级遮蔽）。
+  let wirePaths = [];
 
   const routeWp = (fid, fpin, a, b, stagger, toId, toPin) => {
     const r1 = v => Math.round(v * 10) / 10;   // 1 位小数
@@ -274,7 +330,7 @@ function main() {
       let laneY;
       if (toId === board.id && /^(3\.3V|VIN)$/.test(toPin || '')) {
         // 直连板脚电源（3.3V/VIN 无专属轨）：走板底走廊带，与电源主线/轨线同带分层
-        const powerY = r1(BELOW_BASE + 2 * BELOW_STEP + BELOW_STEP * powerBelowIdx++);
+        const powerY = nextBelowSlot();
         return [`h${r1(escX - a.x)}`, `v${r1(powerY - a.y)}`, `h${r1(b.x - escX)}`, `v${r1(b.y - powerY)}`];
       }
       if (toId === board.id) {
@@ -282,6 +338,10 @@ function main() {
         // 无芯片场景回退旧公式（左列板侧车道 / 右列芯片上方专属走廊）
         const side = boardPinSide(toId, toPin) || 'top';
         const lane = stagger ? Math.round(Math.abs(stagger) / 8) : 0;
+        if (side === 'bottom') {
+          const powerY = nextBelowSlot();
+          return [`h${r1(escX - a.x)}`, `v${r1(powerY - a.y)}`, `h${r1(b.x - escX)}`, `v${r1(b.y - powerY)}`];
+        }
         const cy = corridorYFor(side, lane);
         if (cy != null) {
           laneY = r1(cy);
@@ -296,7 +356,7 @@ function main() {
         // 主线槽位之下按序分配（VCC/GND 等各占一条，互不共线），从板子下方
         // 绕行、与上方信号网格彻底分开，落轨纵段只贴轨边，不横穿面包板/板身。
         const powerY = b.y < bb.top ? r1(bb.top - 8)
-          : r1(BELOW_BASE + 2 * BELOW_STEP + BELOW_STEP * powerBelowIdx++);
+          : nextBelowSlot();
         return [`h${r1(escX - a.x)}`, `v${r1(powerY - a.y)}`, `h${r1(b.x - escX)}`, `v${r1(b.y - powerY)}`];
       } else {
         laneY = r1(b.y);
@@ -324,13 +384,124 @@ function main() {
       if (outX != null && Math.abs(b.x - outX) > 0.5) wp.push(`h${r1(b.x - outX)}`);
       return wp;
     }
+    if (toId === 'bb1' && /^(bn|bp|tn|tp)\.\d+$/.test(toPin || '')) {
+      // 长线电源→轨(placement !== 'bb' 的元件): 走板底走廊带领槽,
+      // 不再贴轨高度直连(消除与其它电源线共线、穿面包板本体、与信号走廊 1px 粘连)
+      const src = partById[fid];
+      if (src && (src.placement || 'bb') !== 'bb') {
+        // 智能直连判定：贴轨直连本就干净（短线）时不再绕板底走廊带。
+        // 三条件全满足 → 直连 [v,h]；任一不满足 → 走板底走廊带（下方兜底）。
+        if (src.w != null) {
+          const railY = b.y;
+          const h0 = Math.min(a.x, b.x), h1 = Math.max(a.x, b.x);
+          // 条件1: 水平段不穿板身(2 单位容差)
+          const boardHit = railY >= board.top && railY <= board.top + board.h &&
+                           h1 >= board.left + 2 && h0 <= board.left + board.w - 2;
+          // 条件2: 不与已生成线的同高水平段共线(重叠 >2)
+          const sameYHit = wirePaths.some(w => w.pts.some((pt, i) => {
+            const q = w.pts[i + 1]; if (!q) return false;
+            if (Math.abs(pt[1] - railY) > 0.1 || Math.abs(q[1] - railY) > 0.1) return false;
+            const lo = Math.min(pt[0], q[0]), hi = Math.max(pt[0], q[0]);
+            return Math.min(h1, hi) - Math.max(h0, lo) > 2;
+          }));
+          // 条件3: 竖段不穿自家本体(2 单位容差)
+          const vLo = Math.min(a.y, railY), vHi = Math.max(a.y, railY);
+          const ownHit = a.x >= src.left + 2 && a.x <= src.left + src.w - 2 &&
+                         Math.max(vLo, src.top + 2) < Math.min(vHi, src.top + src.h - 2);
+          if (!boardHit && !sameYHit && !ownHit) {
+            // 贴轨直连(短跳线): 不绕板底走廊带
+            return [`v${r1(railY - a.y)}`, `h${r1(b.x - a.x)}`];
+          }
+        }
+        const powerY = nextBelowSlot();
+        // 逃离三分：顶缘/上半部垂直上逃（错开高度列）、底缘/体外下方直接下穿、
+        // 中部/侧列水平逃离——同排引脚避免水平逃离段共线
+        const esc = (chipEsc[fid] = chipEsc[fid] || { left: 0, right: 0, up: 0 });
+        const goLeft = b.x < src.left + src.w / 2;
+        if (a.y < src.top + src.h / 2) {
+          // 顶缘/上半部引脚: 垂直上逃, 逃到统一走廊网格上方, 高度/列都错开
+          const idx = esc.up++;
+          const top0 = corridorYFor('top', 0);
+          const escTop = (top0 != null ? top0 : src.top) - 6;
+          const escY = r1(escTop - idx * 6);
+          const escX = r1((goLeft ? src.left : src.left + src.w) + (goLeft ? -6 : 6) + idx * 6);
+          return [`v${r1(escY - a.y)}`, `h${r1(escX - a.x)}`, `v${r1(powerY - escY)}`,
+                  `h${r1(b.x - escX)}`, `v${r1(b.y - powerY)}`];
+        }
+        if (a.y >= src.top + src.h - 4) {
+          // 底缘/体外下方引脚: 已离开本体, 直接下穿(无需逃离)
+          return [`v${r1(powerY - a.y)}`, `h${r1(b.x - a.x)}`, `v${r1(b.y - powerY)}`];
+        }
+        // 中部/侧列引脚: 水平逃离
+        const idx = goLeft ? esc.left++ : esc.right++;
+        const escX = r1(goLeft ? src.left - 6 - idx * 6 : src.left + src.w + 6 + idx * 6);
+        return [`h${r1(escX - a.x)}`, `v${r1(powerY - a.y)}`, `h${r1(b.x - escX)}`, `v${r1(b.y - powerY)}`];
+      }
+      // 面包板上的短跳线(placement==='bb'): 保持原有贴轨直连, 不领槽
+    }
     if (toId === board.id && /^(3\.3V|VIN)$/.test(toPin || '')) {
-      const powerY = r1(BELOW_BASE + 2 * BELOW_STEP + BELOW_STEP * powerBelowIdx++);
+      const powerY = nextBelowSlot();
+      const p = partById[fid];
+      if (p) {
+        // 逃离三分：顶缘/上半部垂直上逃（错开高度列）、底缘/体外下方直接下穿、
+        // 中部/侧列水平逃离——同排引脚避免水平逃离段共线
+        const esc = (chipEsc[fid] = chipEsc[fid] || { left: 0, right: 0, up: 0 });
+        const goLeft = b.x < p.left + p.w / 2;
+        if (a.y < p.top + p.h / 2) {
+          // 顶缘/上半部引脚: 垂直上逃, 逃到统一走廊网格上方, 高度/列都错开
+          const idx = esc.up++;
+          const top0 = corridorYFor('top', 0);
+          const escTop = (top0 != null ? top0 : p.top) - 6;
+          const escY = r1(escTop - idx * 6);
+          const escX = r1((goLeft ? p.left : p.left + p.w) + (goLeft ? -6 : 6) + idx * 6);
+          return [`v${r1(escY - a.y)}`, `h${r1(escX - a.x)}`, `v${r1(powerY - escY)}`,
+                  `h${r1(b.x - escX)}`, `v${r1(b.y - powerY)}`];
+        }
+        if (a.y >= p.top + p.h - 4) {
+          // 底缘/体外下方引脚: 已离开本体, 直接下穿(无需逃离)
+          return [`v${r1(powerY - a.y)}`, `h${r1(b.x - a.x)}`, `v${r1(b.y - powerY)}`];
+        }
+        // 中部/侧列引脚: 水平逃离
+        const idx = goLeft ? esc.left++ : esc.right++;
+        const escX = r1(goLeft ? p.left - 6 - idx * 6 : p.left + p.w + 6 + idx * 6);
+        return [`h${r1(escX - a.x)}`, `v${r1(powerY - a.y)}`, `h${r1(b.x - escX)}`, `v${r1(b.y - powerY)}`];
+      }
       return [`v${r1(powerY - a.y)}`, `h${r1(b.x - a.x)}`, `v${r1(b.y - powerY)}`];
     }
     if (toId === board.id) {
       // 元件源 → 板脚：贴近板子的安全带（短接近，避免横跨别的线）
       const side = boardPinSide(toId, toPin);
+      if (side === 'bottom') {
+        // 板底侧目标(模拟脚 A0-A5 等): 走板底走廊带领槽, 替代旧的
+        // board.top+board.h+7+stagger 走廊(该旧走廊与主线 527/537 网格不同源, 易共线)
+        const powerY = nextBelowSlot();
+        const p = partById[fid];
+        if (p) {
+          // 逃离三分：顶缘/上半部垂直上逃（错开高度列）、底缘/体外下方直接下穿、
+          // 中部/侧列水平逃离——同排引脚避免水平逃离段共线
+          const esc = (chipEsc[fid] = chipEsc[fid] || { left: 0, right: 0, up: 0 });
+          const goLeft = b.x < p.left + p.w / 2;
+          if (a.y < p.top + p.h / 2) {
+            // 顶缘/上半部引脚: 垂直上逃, 逃到统一走廊网格上方, 高度/列都错开
+            const idx = esc.up++;
+            const top0 = corridorYFor('top', 0);
+            const escTop = (top0 != null ? top0 : p.top) - 6;
+            const escY = r1(escTop - idx * 6);
+            const escX = r1((goLeft ? p.left : p.left + p.w) + (goLeft ? -6 : 6) + idx * 6);
+            return [`v${r1(escY - a.y)}`, `h${r1(escX - a.x)}`, `v${r1(powerY - escY)}`,
+                    `h${r1(b.x - escX)}`, `v${r1(b.y - powerY)}`];
+          }
+          if (a.y >= p.top + p.h - 4) {
+            // 底缘/体外下方引脚: 已离开本体, 直接下穿(无需逃离)
+            return [`v${r1(powerY - a.y)}`, `h${r1(b.x - a.x)}`, `v${r1(b.y - powerY)}`];
+          }
+          // 中部/侧列引脚: 水平逃离
+          const idx = goLeft ? esc.left++ : esc.right++;
+          const escX = r1(goLeft ? p.left - 6 - idx * 6 : p.left + p.w + 6 + idx * 6);
+          return [`h${r1(escX - a.x)}`, `v${r1(powerY - a.y)}`, `h${r1(b.x - escX)}`, `v${r1(b.y - powerY)}`];
+        }
+        return [`v${r1(powerY - a.y)}`, `h${r1(b.x - a.x)}`, `v${r1(b.y - powerY)}`];
+      }
       const lane = stagger ? Math.round(Math.abs(stagger) / 8) : 0;
       const cy = corridorYFor(side, lane);
       const safeY = cy != null ? cy : (side === 'top' ? board.top - 7 : board.top + board.h + 7) + stagger;
@@ -388,6 +559,7 @@ function main() {
 
     const bbConns = [];   // $bb 插接连接
     const wireConns = []; // 可见线连接（LED 等）
+    wirePaths = [];   // 重置折线采集（main 级数组，routeWp 智能直连判定共用）
     const is = (p, t) => (p.type || '').includes(t);
 
     // ============================================================
@@ -565,8 +737,17 @@ function main() {
     });
 
     // 统一信号走廊基准（依赖上面刚算出的元件最终 top；必须在放置之后）
+    // 常开：无芯片时基准 = 板顶-8，板源线与元件→板线共用同一 8px 网格（消除两套旧网格相差 8 的共线）
     const chipList = parts.filter(p => p.type && p.type.startsWith('chip-'));
-    chipBase = chipList.length ? Math.min(...chipList.map(p => p.top), board.top) - 8 : null;
+    chipBase = chipList.length ? Math.min(...chipList.map(p => p.top), board.top) - 8 : board.top - 8;
+
+    // $bb 元件锚点孔所在行 x = 其可见出线列。轨位选择时回避其他线的出线列(±4),
+    // 避免落点贴着别的出线竖段(如 dht VCC 落 tp.5 与 SDA 出线 0.4 单位近触)。
+    const anchorCols = new Set();
+    bbConns.forEach(c => {
+      const m = c[1].match(/bb1:(\d+)([tb])\.([a-j])/);
+      if (m) anchorCols.add(rx(parseInt(m[1], 10)));
+    });
 
     // ============================================================
     // 走线生成（v1）：读取 intent.connections 逻辑网表，生成物理连线
@@ -631,7 +812,7 @@ function main() {
     // 识别电源连线（目标 = uno:GND/5V/3V3/VIN）→ 连对应轨
     const railUsed = { bn: new Set(), bp: new Set(), tn: new Set(), tp: new Set() };
     const railXCross = {};   // 已被任一轨占用的 x（防同 x 跨轨电源线共线）
-    const railTarget = (toRef, src) => {
+    const railTarget = (toRef, src, ownCol) => {
       const [rid, rpin] = toRef.split(':');
       if (rid !== board.id || !rpin) return null;
       const prefix = board.powerPins.find(p => rpin.startsWith(p));
@@ -642,14 +823,19 @@ function main() {
       // GND 就近选负轨（bn 视觉顶部 / tn 视觉底部；两轨经跳线互通、都连板子 GND）：
       // 元件带（面包板顶部）用 bn，直连/芯片等靠近板子的用 tn，避免绕大圈
       const rail = isGND ? (Math.abs(src.y - railY.bn) <= Math.abs(railY.tn - src.y) ? 'bn' : 'tn') : 'tp';
-      // 就近：扫描 1..25 找离源 x 最近的空闲位置（一孔一接；跨轨同 x 冲突则跳过）
+      // 就近：扫描 1..25 找离源 x 最近的空闲位置（一孔一接；跨轨同 x 冲突则跳过）。
+      // 回避其他线的出线列(anchorCols ±4)，但不回避自己的出线列(ownCol 豁免——自己落自己列是理想落点)
       const used = railUsed[rail];
       let best = 1, bestDist = Infinity;
       for (let n = 1; n <= RAIL_MAX; n++) {
         const x = railX(n);
         const d = Math.abs(x - src.x);
         const xKey = Math.round(x * 10);
-        if (d < bestDist && !used.has(n) && !railXCross[xKey]) { bestDist = d; best = n; }
+        let nearOther = false;
+        for (const c of anchorCols) {
+          if (Math.abs(c - x) <= 4 && (ownCol == null || Math.abs(ownCol - c) > 4)) { nearOther = true; break; }
+        }
+        if (d < bestDist && !used.has(n) && !railXCross[xKey] && !nearOther) { bestDist = d; best = n; }
       }
       used.add(best);
       railXCross[Math.round(railX(best) * 10)] = true;
@@ -813,7 +999,12 @@ function main() {
       }
 
       // ① 电源连线（目标 = GND/5V/3V3/VIN）→ 连电源轨（就近走轨，不穿板）
-      const rt = railTarget(toRef0, a);
+      // 就近基准: $bb 元件实际从「锚点孔列」出线, 按锚点孔位置就近选轨位
+      // (避免按引脚位置选位导致落点贴着相邻孔出线, 如 dht VCC 落 tp.5 与 SDA 出线 0.4 单位近触)
+      const fHolePre = pinHole[fromRef0];
+      const railSrc = fHolePre ? holePos(fHolePre) : a;
+      const ownCol = fHolePre ? railSrc.x : null;
+      const rt = railTarget(toRef0, railSrc, ownCol);
       if (rt) {
         toRef = rt.ref;
         b = railPos(rt.rail, rt.n);   // 先算轨位置，供下方判断出线方向
@@ -864,7 +1055,21 @@ function main() {
       const col = (modelCol && modelCol !== 'red' && modelCol !== 'black')
         ? modelCol
         : (paletteColor(fromRef, toRef) || modelCol || 'green');
-      wireConns.push([fromRef, toRef, col, routeWp(fid, fpin, a, b, stagger, toRef.split(':')[0], toRef.split(':')[1])]);
+      const wps = routeWp(fid, fpin, a, b, stagger, toRef.split(':')[0], toRef.split(':')[1]);
+      wireConns.push([fromRef, toRef, col, wps]);
+      {
+        const pts = [[a.x, a.y]];
+        let cx = a.x, cy = a.y;
+        for (const m of wps) {
+          const mm = /^([hv])(-?[\d.]+)$/.exec(m);
+          if (!mm) continue;
+          const d = parseFloat(mm[2]);
+          if (mm[1] === 'h') cx += d; else cy += d;
+          pts.push([cx, cy]);
+        }
+        pts.push([b.x, b.y]);
+        wirePaths.push({ from: fromRef, to: toRef, pts });
+      }
     });
 
     // 电源轨主线（板底走廊带上两条槽位）：板子 GND/5V → 主线接 tn/tp。
@@ -879,20 +1084,51 @@ function main() {
     if (railUsed['bn'].size > 0 || railUsed['tn'].size > 0) {
       const a = pinPos(board.id, board.railGnd), b = railPos('tn', RAIL_MAX);
       const cy = BELOW_BASE + BELOW_STEP;
-      wireConns.push([`${board.id}:${board.railGnd}`, `bb1:tn.${RAIL_MAX}`, 'black',
-        [`v${rw(cy - a.y)}`, `h${rw(b.x - a.x)}`, `v${rw(b.y - cy)}`]]);
+      const wps = [`v${rw(cy - a.y)}`, `h${rw(b.x - a.x)}`, `v${rw(b.y - cy)}`];
+      wireConns.push([`${board.id}:${board.railGnd}`, `bb1:tn.${RAIL_MAX}`, 'black', wps]);
+      {
+        const pts = [[a.x, a.y]];
+        let cx = a.x, cyy = a.y;
+        for (const m of wps) {
+          const mm = /^([hv])(-?[\d.]+)$/.exec(m);
+          if (!mm) continue;
+          const d = parseFloat(mm[2]);
+          if (mm[1] === 'h') cx += d; else cyy += d;
+          pts.push([cx, cyy]);
+        }
+        pts.push([b.x, b.y]);
+        wirePaths.push({ from: `${board.id}:${board.railGnd}`, to: `bb1:tn.${RAIL_MAX}`, pts });
+      }
       if (railUsed['bn'].size > 0) {
+        const A = railPos('tn', RAIL_MAX - 1), B = railPos('bn', RAIL_MAX - 1);
         wireConns.push([`bb1:tn.${RAIL_MAX - 1}`, `bb1:bn.${RAIL_MAX - 1}`, 'black',
-          [`v${rw(railPos('bn', RAIL_MAX - 1).y - railPos('tn', RAIL_MAX - 1).y)}`]]);
+          [`v${rw(B.y - A.y)}`]]);
+        wirePaths.push({ from: `bb1:tn.${RAIL_MAX - 1}`, to: `bb1:bn.${RAIL_MAX - 1}`, pts: [[A.x, A.y], [B.x, B.y]] });
       }
     }
     if (railUsed['tp'].size > 0) {
       const n = bothRails ? RAIL_MAX - 2 : RAIL_MAX;
       const a = pinPos(board.id, board.railVcc), b = railPos('tp', n);
       const cy = BELOW_BASE;
-      wireConns.push([`${board.id}:${board.railVcc}`, `bb1:tp.${n}`, 'red',
-        [`v${rw(cy - a.y)}`, `h${rw(b.x - a.x)}`, `v${rw(b.y - cy)}`]]);
+      const wps = [`v${rw(cy - a.y)}`, `h${rw(b.x - a.x)}`, `v${rw(b.y - cy)}`];
+      wireConns.push([`${board.id}:${board.railVcc}`, `bb1:tp.${n}`, 'red', wps]);
+      {
+        const pts = [[a.x, a.y]];
+        let cx = a.x, cyy = a.y;
+        for (const m of wps) {
+          const mm = /^([hv])(-?[\d.]+)$/.exec(m);
+          if (!mm) continue;
+          const d = parseFloat(mm[2]);
+          if (mm[1] === 'h') cx += d; else cyy += d;
+          pts.push([cx, cyy]);
+        }
+        pts.push([b.x, b.y]);
+        wirePaths.push({ from: `${board.id}:${board.railVcc}`, to: `bb1:tp.${n}`, pts });
+      }
     }
+
+    const ovCount = detectOverlaps(wirePaths);
+    if (ovCount > 0) console.error(`[重叠] 共 ${ovCount} 处, 见上`);
 
     // 输出
     const outParts = [
@@ -1061,6 +1297,7 @@ function main() {
   // 复用 routeWp + pinPos + 共线错开（edgeLane / finalTargetSeen）
   // ============================================================
   const wireConns = [];
+  wirePaths = [];   // 重置折线采集（main 级数组，routeWp 智能直连判定共用）
   const edgeLane = { top: 0, bottom: 0 };
   const targetLane = { top: 0, bottom: 0 };
   const finalTargetSeen = {};
@@ -1089,18 +1326,34 @@ function main() {
       const lane = edgeLane[side]++;
       stagger = side === 'top' ? -lane * 8 : lane * 8;
     } else if (toId === board.id) {
-      // 元件源 → 板脚：贴近板子，小错开（4px）
+      // 元件源 → 板脚：贴近板子，小错开（8px）
       const side = boardPinSide(toId, toPin);
       const lane = targetLane[side]++;
-      stagger = side === 'top' ? -lane * 4 : lane * 4;
+      stagger = side === 'top' ? -lane * 8 : lane * 8;
     } else {
       // 元件→元件：同一目标引脚的第二条起错开 10px
       const seen = finalTargetSeen[toRef] || 0;
       finalTargetSeen[toRef] = seen + 1;
       stagger = seen * 10;
     }
-    wireConns.push([c.from, toRef, c.color || 'green', routeWp(fid, fpin, a, b, stagger, toId, toPin)]);
+    const wps = routeWp(fid, fpin, a, b, stagger, toId, toPin);
+    wireConns.push([c.from, toRef, c.color || 'green', wps]);
+    {
+      const pts = [[a.x, a.y]];
+      let cx = a.x, cy = a.y;
+      for (const m of wps) {
+        const mm = /^([hv])(-?[\d.]+)$/.exec(m);
+        if (!mm) continue;
+        const d = parseFloat(mm[2]);
+        if (mm[1] === 'h') cx += d; else cy += d;
+        pts.push([cx, cy]);
+      }
+      pts.push([b.x, b.y]);
+      wirePaths.push({ from: c.from, to: toRef, pts });
+    }
   });
+  const ovCount = detectOverlaps(wirePaths);
+  if (ovCount > 0) console.error(`[重叠] 共 ${ovCount} 处, 见上`);
 
   // ============================================================
   // 输出：diagram.json parts + connections
