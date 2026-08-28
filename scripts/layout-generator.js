@@ -191,14 +191,9 @@ function main() {
   board.gndPat = new RegExp('^' + board.id + ':GND\\.\\d+$');   // GND 脚（uno:GND.1）
 
   // 元件清单
-  // 占位符（chip-<name>，custom chip）引脚几何 —— wokwi 截图实测校准（nRF24L01 8 脚）：
-  //   wokwi 把 custom chip 渲染成横向绿色 PCB：本体宽扁，焊盘在左右短边内侧竖直两列，
-  //   DIP 逆时针序（左列 index 0..rows-1 上→下；右列 index N-1..rows 下→上）。
-  //   实测：焊盘距左右边缘 ≈ 4.5 单位、距顶边 ≈ 5 单位、间距标准 0.1"（9.6px）；
-  //   本体宽度 ≈ 显示文本驱动（wokwi 渲染显示 "<name> Breakout"，约 5.5 单位/字符）。
-  //   官方 chip.json 仅 pins 字符串数组（无坐标），焊盘位置由渲染器算法决定，
-  //   此处为经验近似；换芯片若出现偏差，用同一「截图→反推」流程回填校准。
-  const CHIP_GEO = { pitch: 2.54 * MM2PX, insetX: 4.5, marginY: 5, textPad: 5, charW: 5.5 };
+  // 占位符（chip-<name>，custom chip）引脚几何 —— 与 optimize-wiring.js 共用
+  // chip-geometry.js 单一事实源（wokwi 截图实测校准，见 chip-geometry.js 头注）。
+  const { computeChipGeometry } = require('./chip-geometry');
   const customBoardOf = {};
   intent.parts.forEach(p => {
     if (p.type && p.type.startsWith('chip-')) {
@@ -207,27 +202,8 @@ function main() {
         ? path.resolve(OUT_DIR, p.attrs.chip)
         : path.resolve(OUT_DIR, 'placeholders', chipName, `${chipName}.chip.json`);
       const data = JSON.parse(fs.readFileSync(chipPath, 'utf-8'));
-      const pinsArr = data.pins || [];
-      const N = pinsArr.length;
-      const rows = Math.ceil(N / 2);
-      const name = String(data.name || chipName) + ' Breakout';
-      const w = Math.max(2 * CHIP_GEO.insetX + 2 * CHIP_GEO.textPad + name.length * CHIP_GEO.charW,
-                         2 * CHIP_GEO.insetX + 2 * CHIP_GEO.textPad + (rows - 1) * CHIP_GEO.pitch);
-      const h = 2 * CHIP_GEO.marginY + (rows - 1) * CHIP_GEO.pitch;
-      const pinMap = {};
-      pinsArr.forEach((pn, i) => {
-        if (!pn) return;   // 空字符串 = 跳过引脚
-        if (i < rows) {
-          pinMap[pn] = [CHIP_GEO.insetX, CHIP_GEO.marginY + i * CHIP_GEO.pitch];
-        } else {
-          pinMap[pn] = [w - CHIP_GEO.insetX, CHIP_GEO.marginY + (N - 1 - i) * CHIP_GEO.pitch];
-        }
-      });
-      customBoardOf[p.id] = {
-        w: Math.round(w * 100) / 100,
-        h: Math.round(h * 100) / 100,
-        pins: pinMap,
-      };
+      const geo = computeChipGeometry(chipName, data);
+      customBoardOf[p.id] = { w: geo.w, h: geo.h, pins: geo.pins };
     }
   });
   const parts = intent.parts.map(p => {

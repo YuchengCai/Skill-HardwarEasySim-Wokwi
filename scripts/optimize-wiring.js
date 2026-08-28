@@ -55,6 +55,14 @@ function loadBoards() {
   }
 }
 
+// ============================================================
+// 占位符(chip-<name>)几何: 与 layout-generator.js 共用 chip-geometry.js 单一事实源
+// 缺失此数据时 chip-* 会被当成 20×20、引脚全在元件中心，导致「线穿板子」误报
+// （检测几何与生成几何不一致）。共用后检测与生成天然一致。
+// ============================================================
+const { loadChipPlaceholders } = require('./chip-geometry');
+const CHIP_GEO_BY_ID = {};   // partId → { w, h, pins }
+
 /** 是否 I2C 反序交叉：板子 i2c.sda/scl 两脚 ↔ 同一元件的 SDA/SCL 两脚（引脚顺序相反，拓扑必然交叉） */
 function isI2cReverseCross(c1From, c1To, c2From, c2To, bp) {
   if (!bp || !bp.i2c) return false;
@@ -222,6 +230,12 @@ function pinPosition(part, pinName) {
     return { x: x + ox, y: y + oy };
   }
 
+  // 占位符（chip-<name>）：引脚几何按实例（part.id）取，与 layout-generator.js 一致
+  const cg = CHIP_GEO_BY_ID[part.id];
+  if (cg && cg.pins[pin]) {
+    return { x: x + cg.pins[pin][0], y: y + cg.pins[pin][1] };
+  }
+
   // 权威引脚坐标：优先查 pins.json（wokwi-elements 源码提取），
   // rotate 90/270 时用 _rot90 校准偏移（电阻/按钮在面包板上会旋转）
   const pinsData = PINS[type];
@@ -263,6 +277,12 @@ function computeRect(p, sizesData) {
       if (maxY - minY < 6) { const c = (minY + maxY) / 2; minY = c - 5; maxY = c + 5; }
       bx += minX; by += minY; w = maxX - minX; h = maxY - minY;
     }
+  }
+  // 占位符（chip-<name>）：用占位符几何宽高（与 layout-generator.js 同款），替代 20×20 默认
+  const cg = CHIP_GEO_BY_ID[p.id];
+  if (cg && w == null) {
+    w = cg.w;
+    h = cg.h;
   }
   if (w == null) {
     let s = (sizesData.sizes && sizesData.sizes[type]) || sizesData.default || { width: 20, height: 20 };
@@ -534,6 +554,8 @@ function main() {
 
   // 构建元件矩形（带安全边距；旋转元件用 _rot90 引脚包围盒，LED 用 20×20 本体）
   const parts = diagram.parts || [];
+  // 占位符（chip-<name>）几何：与生成器同源，避免 chip-* 被 20×20 中心近似导致误报
+  loadChipPlaceholders(parts, PROJECT_DIR, CHIP_GEO_BY_ID, (m) => console.warn('[WARN] ' + m));
   // 找到板子对应的板型配置（含 id + i2c 脚）
   const boardProfile = (() => {
     const bp = BOARDS.boards || {};

@@ -60,7 +60,7 @@ WorkBuddy 专用的 wokwi-arduino skill 适配器。与 deepcode/claude/cursor �
 4. `references/common/layout-rules.md` / `breadboard.md` / `waypoints.md` — 布局/面包板/控制点规则
 5. `references/arduino/index.json`（中文名匹配）→ `components.md` → `detail/<type>.json`
 6. `references/arduino/experience.json` — 累积接线经验
-7. 库外元件（index.json 查不到）→ 发现缺元件先查 `placeholders/<name>/` 复用；否则【暂停问用户品牌型号】→ 搜 datasheet 拿真实引脚 → `scripts/generate-part-placeholder.js` 生成（存 `placeholders/`，diagram.json 用 `chip-<name>`，wokwi.toml 声明 `[[chip]]`；生成器随附通用空 wasm，无仿真行为）
+7. 库外元件（index.json 查不到）→ 发现缺元件先查 `placeholders/<name>/` 复用；否则【暂停问用户品牌型号】→ 搜 datasheet 拿真实引脚 → `scripts/generate-part-placeholder.js` 生成（存 `placeholders/`，diagram.json 用 `chip-<name>`，wokwi.toml 声明 `[[chip]]`；生成器随附通用空 wasm，无仿真行为）；生成前【暂停让用户选】：最小模式（默认，空 wasm 仅接线展示）或 功能模式（写仿真 wasm，耗时长/token 多/可能不能完整模拟）；未明确要求则一律最小模式
 
 ## 硬件核对（接实物前强制）
 

@@ -9,7 +9,7 @@
 1. **识引脚**（拿到 type + pin 列表）
    ① 查 `references/arduino/index.json` / `detail/<type>.json`
    ② 缺 → 抓 wokwi-elements 源码 pinInfo（curl，见 SKILL.md source fallback）
-   ③ 仍缺（库外元件）→ 先查 `placeholders/<name>/` 复用；没有则【暂停问用户品牌型号】→ 模型搜 datasheet 拿真实引脚 → `generate-part-placeholder.js` 生成（存 `placeholders/`，diagram.json 用 `chip-<name>`，wokwi.toml 声明 `[[chip]]`）
+   ③ 仍缺（库外元件）→ 先查 `placeholders/<name>/` 复用；没有则【暂停问用户品牌型号】→ 模型搜 datasheet 拿真实引脚 → `generate-part-placeholder.js` 生成（存 `placeholders/`，diagram.json 用 `chip-<name>`，wokwi.toml 声明 `[[chip]]`）；生成前【暂停告知用户两种模式并让其选择】：**最小模式（默认，随附通用空 wasm——可正常画线接线，但元件不工作）** 或 **功能模式（写完整仿真 wasm——可模拟工作；风险：耗时长、token 消耗大、可能无法完全还原元件真实工作过程）**。用户未明确要求功能模式时一律最小模式
 
 2. **按引脚功能分类**（不是按具体元件背）
    - 电源脚：VCC / 5V / 3V3 / VIN / GND

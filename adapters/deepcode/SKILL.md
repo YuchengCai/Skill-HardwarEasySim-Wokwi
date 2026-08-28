@@ -285,7 +285,7 @@ Extract `pinInfo` from the source. After verification, note it for future refere
 For components not in the Wokwi library at all (RC522, MP3 modules, domestic sensors), generate a **placeholder** (custom chip: pins only, no simulation behavior):
 
 When a required component is NOT in the Wokwi library at all (index.json 查不到):
-1. **First check `placeholders/<name>/`** — if it already exists, reuse it (skip search, consistent shape).
+1. **First check `placeholders/<name>/`** — if it already exists, reuse it (skip search, consistent shape). Before generating, **pause and let the user choose a mode**: Minimal mode (default; ships the generic empty wasm — wiring display only, part does not work) or Functional mode (write a full simulation wasm — works in simulation, but slow / token-heavy / may not fully reproduce the real part). Always default to Minimal mode unless the user explicitly asks for Functional mode.
 2. If missing: **STOP and ask the user** for the exact brand/model (e.g. "RC522 RFID module" or the specific IC number), so you can search for its real pinout.
 3. Search the web for the datasheet/pinout, extract the real pin names + count.
 4. Generate the placeholder with those pins (see below).

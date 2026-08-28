@@ -235,7 +235,7 @@ async function main() {
   console.log(`[INFO] 请提醒用户：自己点击网页上的 Start the simulation 按钮查看结果；登录 Wokwi 后模拟更快更稳`);
 
   // 等待用户手动关闭浏览器（不超时自动退出）
-  console.log(`[DONE] 仿真已启动。请观察电路行为，观察完成后【手动关闭浏览器窗口】。`);
+  console.log(`[DONE] 代码与电路图已填入浏览器。请在浏览器中点击 Start 启动仿真，观察完成后【手动关闭浏览器窗口】。`);
   console.log(`[DONE] 如果线上编译未成功（未注册/付费限制）导致电路无反应：`);
   console.log(`       · 可手动点击页面 Start/运行 按钮重试，或刷新页面后重新运行本脚本`);
   console.log(`       · 或跳过模拟验证，直接烧录到物理板子测试（见 SKILL.md 烧录步骤）`);
