@@ -288,9 +288,17 @@ compile_project() {
     BUILD_DIR="$PROJECT_DIR/build"
     mkdir -p "$BUILD_DIR"
 
+    # 中间产物目录（必须落在项目内）：arduino-cli 默认写系统缓存
+    # （macOS ~/Library/Caches/arduino/sketches、Windows %LOCALAPPDATA%\arduino\sketches），
+    # 受限沙箱会直接拒绝 → "Cannot create build directory: Access is denied"。
+    # --build-path 把中间产物收进项目内，--output-dir 仅决定最终产物位置（行为不变）
+    INTERMEDIATE_DIR="$PROJECT_DIR/.arduino-build"
+    mkdir -p "$INTERMEDIATE_DIR"
+
     # 转换为 Windows 路径（MINGW 环境下 arduino-cli 需要）
     INO_FILE_WIN=$(normalize_path "$INO_FILE")
     BUILD_DIR_WIN=$(normalize_path "$BUILD_DIR")
+    INTERMEDIATE_DIR_WIN=$(normalize_path "$INTERMEDIATE_DIR")
 
     # FQBN: 优先用 --fqbn 参数，否则从 diagram.json 自动推断
     if [ -z "$FQBN" ]; then
@@ -301,6 +309,7 @@ compile_project() {
     section "编译 $PROJECT_NAME"
     arduino-cli compile \
         --fqbn "$FQBN" \
+        --build-path "$INTERMEDIATE_DIR_WIN" \
         --output-dir "$BUILD_DIR_WIN" \
         "$INO_FILE_WIN"
 
