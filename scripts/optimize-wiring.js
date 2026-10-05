@@ -286,11 +286,29 @@ function computeRect(p, sizesData) {
   }
   if (w == null) {
     let s = (sizesData.sizes && sizesData.sizes[type]) || sizesData.default || { width: 20, height: 20 };
-    if (type.includes('led')) s = { width: 20, height: 20 };   // LED 视觉本体 ~16px 圆泡
+    // 小 LED 视觉本体 ~16px 圆泡：仅发光二极管本体用 20×20 近似；
+    // led-ring / led-bar-graph / neopixel 等含 "led" 的**模块**必须走 sizes.json 真实尺寸，
+    // 否则检测矩形被缩小 → 线穿元件(hits-part)硬冲突漏检（T2 / N8 / B1）
+    if (type === 'wokwi-led' || type === 'wokwi-rgb-led') s = { width: 20, height: 20 };
     w = rotated ? s.height : s.width;
     h = rotated ? s.width : s.height;
   }
   p.w = w; p.h = h;
+  // 检测几何绊线(T2 回归证据机制):仅当「sizes.json 在册类型被意外缩小」时报一行。
+  // 读 p.w/p.h 实际返回值(不读 sizes.json,防日志变假证据)。
+  // wokwi-led / wokwi-rgb-led 是**有意**缩小(本体近似 20×20),白名单不报;
+  // 其余在册类型(led-ring/led-bar-graph 等)若检测尺寸 ≠ sizes.json → 即回归信号。
+  const realSize = sizesData.sizes && sizesData.sizes[type];
+  if (realSize) {
+    const flipped = p.rotate === 90 || p.rotate === 270;
+    const ldw = flipped ? p.h : p.w;
+    const ldh = flipped ? p.w : p.h;
+    const wasShrunk = ldw !== realSize.width || ldh !== realSize.height;
+    const intentionalShrink = type === 'wokwi-led' || type === 'wokwi-rgb-led';
+    if (wasShrunk && !intentionalShrink) {
+      console.warn(`  [尺寸] ${p.id}: ${type} → 检测矩形 ${ldw}×${ldh}(sizes.json 为 ${realSize.width}×${realSize.height},疑似缩小回归)`);
+    }
+  }
   return makeRect(bx, by, w, h, SAFE_MARGIN);
 }
 

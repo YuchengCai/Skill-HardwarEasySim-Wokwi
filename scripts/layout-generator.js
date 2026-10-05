@@ -1139,6 +1139,7 @@ function main() {
   Object.keys(regions).forEach(k => regionCursor[k] = { x: regions[k].baseX, y: regions[k].baseY });
 
   // 组内排布：纵向优先（每列 columnMax 个，列横向分开）— 让线从板子出发有纵向空间
+
   groups.forEach(g => {
     const regName = directRegion(g);
     const reg = regions[regName];
@@ -1157,7 +1158,7 @@ function main() {
       // 间距：按钮/蜂鸣器 50；LED/电阻配对 50（走线空间）；其他 30
       let spacing = MIN_SPACING;
       if (p.type.includes('pushbutton') || p.type.includes('buzzer')) spacing = 50;
-      if (p.type.includes('led')) spacing = 50;
+      if (p.type === 'wokwi-led' || p.type === 'wokwi-rgb-led') spacing = 50;
       if (idx > 0 && colCount >= columnMax) {
         colX += colMaxW + spacing;  // 换列
         colY = cur.y;

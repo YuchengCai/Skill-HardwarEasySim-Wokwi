@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "author": "test",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "wokwi-arduino-uno", "id": "uno", "top": 0, "left": 0, "attrs": {} },
+    { "type": "wokwi-led", "id": "led1", "top": 400, "left": 685, "attrs": { "color": "red" } },
+    { "type": "wokwi-led", "id": "led2", "top": -100, "left": 685, "attrs": { "color": "green" } },
+    { "type": "wokwi-led-ring", "id": "ring1", "top": 100, "left": 600, "attrs": {} }
+  ],
+  "connections": [
+    [ "led1:A", "led2:A", "red", [ "v-442" ] ]
+  ]
+}
