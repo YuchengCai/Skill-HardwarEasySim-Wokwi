@@ -86,43 +86,52 @@ Auto-installs `arduino-cli` + Uno core if missing. Handles MINGW/Windows path co
 
 **⚠️ Non-blocking code rule:** when a sketch handles buttons + sensors/display together, NEVER use `delay()` to pace the loop — buttons become unresponsive and presses get missed. Use edge-detection for buttons (`lastState` compare) and `millis()` timing for periodic tasks (e.g. DHT sampling every 2s). See the Uno template in `core/uno/`.
 
-### 3. Simulate — Auto-select Mode
+### 3. Simulate — Tool-face detection + degradation tree
 
-**First, detect the environment:**
-- User is in VS Code with the Wokwi extension installed → **Mode B** (manual, no extra deps)
-- User explicitly requests auto browser simulation (`@simulate`) OR no VS Code Wokwi plugin → **Mode A** (browser automation)
+**Detect the tool face, take the first reachable branch — no dead ends:**
 
-**⚠️ HARD RULE: NEVER install playwright (or any npm package) without explicit user approval.**
-- Check availability first; if missing, ASK the user before installing
-- VS Code + Wokwi plugin users use Mode B — playwright is never needed
+```
+0. VS Code + Wokwi extension                 → Mode B (F1, zero deps)
+1. Playwright MCP tools (browser_navigate…)  → Mode A·Path 1 (primary)
+2. no MCP; node + playwright installed,
+   or user approves install                  → Mode A·Path 2 (wokwi-automate.js)
+3. built-in browser (Computer Use class)     → light ops only; ≥2 failures → branch 4
+   (Wokwi is UI-heavy: snapshot/JS timeouts are common — never grind)
+4. none reachable                            → Mode C (manual import delivery)
+```
 
-#### Mode A: Browser Automation (on-demand)
+**⚠️ HARD RULE: NEVER install playwright (or any npm package) without explicit user approval.** No MCP + no playwright + user declines → go straight to Mode C — no dead ends.
 
-Only used when the user asks for auto browser simulation, or when no VS Code Wokwi plugin is available.
+#### Mode A: Browser Automation
 
-**Two paths (primary → fallback):**
+**Path 1 (PRIMARY): Playwright MCP** — standard for non-IDE agents (WorkBuddy, Kimi, Cline…). Any MCP-capable agent, no node/npm.
+- Follow **`references/monaco-steps.md`**: `browser_navigate` → wait Monaco → `browser_evaluate` (setValue) → switch diagram.json → **user clicks Start (never auto-click — unlogged users get no compute quota)**.
+- MCP not configured → see the adapter's MCP setup section (e.g. WorkBuddy: `~/.workbuddy/mcp.json`).
 
-**Path 1 (PRIMARY): Playwright MCP** — the standard way for non-IDE agents (WorkBuddy, Kimi, Cline, etc.).
-- Works on any agent that supports MCP — no node/npm needed.
-- Follow the step-by-step operations in **`references/monaco-steps.md`**:
-  `browser_navigate` → wait Monaco → `browser_evaluate` (setValue) → switch diagram.json → **交给用户点击 Start（不自动点，未登录无资源）**.
-- If Playwright MCP is not configured, see the adapter's MCP setup section (e.g. WorkBuddy: `~/.workbuddy/mcp.json`).
-
-**Path 2 (FALLBACK only): `wokwi-automate.js`** — a pre-built node script, **NOT the default**.
-- Only consider when: agent can run commands, MCP is unavailable/unconfigured, AND the user explicitly wants automation.
-- `node scripts/wokwi-automate.js <project-dir>`
-- ⚠️ Requires `playwright` npm package — **NEVER install without explicit user approval** (HARD RULE).
-- ⚠️ **Use REAL browser (non-headless)** — wokwi.com downgrades to read-only preview in headless mode. Do NOT pass `--headless`.
-- The script does 5 steps (open → fill .ino → fill diagram.json → **提醒用户自己点击 Start**), then **waits for the user to manually close the browser window** (no auto-exit).
-- **After the script returns** (user closed browser), ask the user to confirm the simulation result.
-- **If simulation shows no behavior** (likely wokwi online-compile limits for unregistered users): suggest (a) manually clicking Start/Run to retry, (b) re-running, or (c) **skip simulation and verify on the physical board** (upload + wire test).
-- **If the script fails (non-zero exit): DO NOT retry — switch to Path 1 (MCP operations in monaco-steps.md).**
-
-> ⚠️ **Fallback nature:** Path 2 exists only for agents that can run commands but lack MCP. Prefer Path 1 whenever MCP is available.
+**Path 2 (FALLBACK only): `wokwi-automate.js`** — only for agents that run commands but have no MCP.
+- `node scripts/wokwi-automate.js <project-dir>` — requires `playwright` npm (HARD RULE above applies).
+- REAL browser only (non-headless; wokwi.com downgrades headless to read-only). Do NOT pass `--headless`.
+- Script: open → fill .ino → fill diagram.json → **remind user to click Start** → waits for user to close the browser. After return, ask the user to confirm the result.
+- No visible behavior (wokwi online-compile limits) → user retries Start, or verify on the physical board (upload + wire test).
+- Script fails (non-zero exit) → DO NOT retry → Path 1 steps (monaco-steps.md), else Mode C.
 
 #### Mode B: Manual (VS Code plugin — DEFAULT for VS Code users)
 
 Tell the user: Press F1 → "Wokwi: Start Simulation" (VS Code). No extra dependencies needed.
+
+#### Mode C: Manual import delivery (terminal fallback — FIRST-CLASS deliverable)
+
+Always reachable; the standard exit when automation fails or tools are missing. The workflow delivers a **`web-import/` three-file set** as a standard output (produce it in this step):
+
+```
+web-import/sketch.ino      merged full sketch (all tabs concatenated)
+web-import/diagram.json    generated circuit
+web-import/libraries.txt   third-party libraries
+```
+
+Tell the user: ① open `wokwi.com/projects/new`; ② replace the sketch with `web-import/sketch.ino`; ③ switch to diagram.json, replace with `web-import/diagram.json`; ④ add libraries from `libraries.txt`; ⑤ click **Start Simulation** yourself. Then ask the verification question (section 4).
+
+**⚠️ HARD RULE (Verification gate): visual verification is satisfied ONLY by Wokwi itself (browser / CLI / VS Code plugin).** Self-drawn artifacts (netlist→SVG, hand-rendered previews) may serve as auxiliary documentation but **must NEVER appear in a verification conclusion**. Gate unreachable → deliver honestly as **UNVERIFIED** + Mode C. Never fabricate verification.
 
 ### 4. Verify with User
 
