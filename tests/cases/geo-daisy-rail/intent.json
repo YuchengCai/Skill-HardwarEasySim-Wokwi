@@ -1,0 +1,17 @@
+{
+  "board": "wokwi-arduino-uno",
+  "breadboard": "wokwi-breadboard-half",
+  "parts": [
+    { "id": "imu1", "type": "wokwi-mpu6050", "placement": "board" },
+    { "id": "lcd1", "type": "wokwi-lcd1602", "attrs": { "pins": "i2c" }, "placement": "board" }
+  ],
+  "groups": [
+    { "name": "left-sensor", "parts": ["imu1"], "region": "left" },
+    { "name": "bottom-display", "parts": ["lcd1"], "region": "bottom" }
+  ],
+  "connections": [
+    { "from": "imu1:VCC", "to": "lcd1:VCC", "color": "red" },
+    { "from": "imu1:GND", "to": "lcd1:GND", "color": "black" }
+  ],
+  "constraints": []
+}

@@ -323,6 +323,87 @@ function main() {
   // 板底走廊带公共分配器：领下一个槽位（round 1 位，与 routeWp 内 r1 同语义）
   const nextBelowSlot = () => Math.round((BELOW_BASE + 2 * BELOW_STEP + BELOW_STEP * powerBelowIdx++) * 10) / 10;
 
+  // ============================================================
+  // T3.5 Fix A/B（条件触发）：逃逸竖段「列治理」——
+  //   Fix B 触发：拟定列落在板盒(uno sizes.json 大包围盒) x 带内，且竖段 y 跨度
+  //             触及板盒 y 带（即该竖段实际穿板）→ 推到盒外近侧
+  //             (board.left-8 或右缘+8，取离元件中心近者)，水平段相应延长；
+  //   Fix A 触发：该列与本次生成中已登记逃逸列水平距离 <6（共线/近触风险）→
+  //             沿远离板中心方向步进 8 至空闲列；
+  //   两条件都不满足 → 原样返回（现行干净路径逐字节不变）。
+  //   usedEscCols 仅登记真实逃逸列，不登记引脚原生列，避免污染干净场景。
+  // ============================================================
+  const usedEscCols = [];
+  const escColFor = (want, src, vTop, vBot) => {
+    const r1v = v => Math.round(v * 10) / 10;
+    let x = r1v(want);
+    let moved = false;
+    const touchY = Math.max(vTop, vBot) >= board.top && Math.min(vTop, vBot) <= board.top + board.h;
+    if (x >= board.left && x <= board.left + board.w && touchY) {
+      // Fix B：穿板列 → 推到盒外近侧
+      const mid = src.left + src.w / 2;
+      const leftCand = r1v(board.left - 8), rightCand = r1v(board.left + board.w + 8);
+      x = Math.abs(mid - leftCand) <= Math.abs(rightCand - mid) ? leftCand : rightCand;
+      moved = true;
+    }
+    if (usedEscCols.some(u => Math.abs(u - x) < 6)) {
+      // Fix A：与已用列 <6px → 沿远离板中心方向错开一档(8px)
+      const dir = x <= board.left + board.w / 2 ? -1 : 1;
+      let guard = 0;
+      while (usedEscCols.some(u => Math.abs(u - x) < 6) && guard++ < 80) x = r1v(x + dir * 8);
+      moved = true;
+    }
+    usedEscCols.push(x);
+    if (moved) console.error(`[FixAB] 逃逸列调整 x=${r1v(want)}→${x}（${src.id}）`);
+    return x;
+  };
+  // Fix D 上路车道游标：顶区直放元件 → bb 轨改走 bb 上方通道（bb.top-12 起 8px 网格）
+  let topFeedLane = 0;
+  // T3.5 Fix A 前置①：同元件同排(行)多线登记——同排第 2 条起水平段上移 10*k 错行，
+  // 消「同排水平逃离段共线/过近」。仅在真正同排第 2+ 条线时改变行为（首条原样）。
+  const escRowCount = {};
+  const escRowShift = (fidKey, y) => {
+    const key = fidKey + '@' + (Math.round(y * 10) / 10);   // 精确同行（同 y）才错行
+    const k = escRowCount[key] || 0;
+    escRowCount[key] = k + 1;
+    return k;
+  };
+  // T3.5 Fix A 前置②：同元件「同列引脚」登记——≥2 个引脚同 x（如 lcd VCC/GND 同列）
+  // 时该列视为冲突列，各线出线列强制错开。分支放置完成后调用（需 pinPos）。
+  let dupPinCols = new Set();
+  // 板脚落点侧偏（T3.5）：wired 列登记（scanDupPinCols 填充）+ 已用落点列
+  const boardDropCols = [];
+  const usedDropCols = [];
+  const dropMulti = new Set();   // 同板脚 ≥2 条连接端点（板脚落点侧偏门槛）
+  const sideByPin = {};
+  const scanDupPinCols = () => {
+    const colCount = {};
+    const pinEndCount = {};
+    boardDropCols.length = 0;
+    (intent.connections || []).forEach(c => {
+      [c.from, c.to].forEach(ref => {
+        const m = ref.match(/^([^:]+):(.+)$/);
+        if (!m) return;
+        if (m[1] === board.id) {
+          // 板上有线脚列登记（板脚落点侧偏的避让依据）
+          const bpos = pinPos(board.id, m[2]);
+          pinEndCount[m[2]] = (pinEndCount[m[2]] || 0) + 1;
+          if (bpos) boardDropCols.push(Math.round(bpos.x * 10) / 10);
+          return;
+        }
+        if (m[1] === 'bb1') return;
+        const p = partById[m[1]];
+        if (!p || (p.placement || 'bb') === 'bb') return;
+        const pos = pinPos(m[1], m[2]);
+        if (!pos) return;
+        const key = m[1] + '@' + (Math.round(pos.x * 10) / 10);
+        colCount[key] = (colCount[key] || 0) + 1;
+        if (colCount[key] >= 2) dupPinCols.add(key);
+      });
+    });
+    Object.keys(pinEndCount).forEach(pk => { if (pinEndCount[pk] >= 2) dropMulti.add(pk); });
+  };
+
   // 绝对折线采集(重叠检测用)。main 级声明：routeWp（智能直连判定）与两分支共用同一数组，
   // 分支内只做重置/追加，不重复声明（避免 routeWp 引用 TDZ/块级遮蔽）。
   let wirePaths = [];
@@ -342,8 +423,23 @@ function main() {
     return pts;
   };
 
-  const routeWp = (fid, fpin, a, b, stagger, toId, toPin) => {
+  const routeWpRaw = (fid, fpin, a, b, stagger, toId, toPin) => {
     const r1 = v => Math.round(v * 10) / 10;   // 1 位小数
+    // T3.5 Fix A：水平逃离族出线段统一构造（条件触发）——
+    //   同元件共列引脚(dupPinCols) → 列视为已占，escColFor 强制错开；
+    //   同元件同排第 2 条线(rowK>0) → 水平段上移 10*k 错行；
+    //   干净单线（无共列、首条、列无需治理）→ 与旧路径逐字节一致。
+    const escHorizWps = (sp, powerY, wantCol) => {
+      if (dupPinCols.has(fid + '@' + r1(a.x))) usedEscCols.push(r1(a.x));
+      const rowK = escRowShift(fid, a.y);
+      const y0 = r1(a.y - 10 * rowK);
+      const col = escColFor(wantCol, sp, y0, powerY);
+      const wps = [];
+      if (rowK > 0) wps.push(`v${r1(y0 - a.y)}`);
+      if (Math.abs(col - a.x) > 0.05) wps.push(`h${r1(col - a.x)}`);
+      wps.push(`v${r1(powerY - y0)}`, `h${r1(b.x - col)}`, `v${r1(b.y - powerY)}`, '@drop');
+      return wps;
+    };
     // 占位符芯片（DIP 两列引脚）专属出线：左列→左、右列→右先离开芯片包围盒，
     // 再走独立走廊（信号左列走板侧车道、右列走芯片上方走廊；电源走芯片下方走廊，
     // bn 上轨从面包板上方绕入），从结构上消除「竖线沿芯片本体/焊盘穿行」与共线重叠。
@@ -354,12 +450,14 @@ function main() {
       const esc = (chipEsc[fid] = chipEsc[fid] || { left: 0, right: 0 });
       const isLeft = off[0] < cp.w / 2;
       const colIdx = isLeft ? esc.left++ : esc.right++;
-      const escX = r1(isLeft ? cp.left - 6 - colIdx * 6 : cp.left + cp.w + 6 + colIdx * 6);
+      const escX0 = r1(isLeft ? cp.left - 6 - colIdx * 6 : cp.left + cp.w + 6 + colIdx * 6);
+      // Fix A/B（条件触发）：芯片逃逸列实际穿板盒或与已用列 <6px 时改列，否则原样
+      const escX = escColFor(escX0, cp, a.y, BELOW_BASE);
       let laneY;
       if (toId === board.id && /^(3\.3V|VIN)$/.test(toPin || '')) {
         // 直连板脚电源（3.3V/VIN 无专属轨）：走板底走廊带，与电源主线/轨线同带分层
         const powerY = nextBelowSlot();
-        return [`h${r1(escX - a.x)}`, `v${r1(powerY - a.y)}`, `h${r1(b.x - escX)}`, `v${r1(b.y - powerY)}`];
+        return [`h${r1(escX - a.x)}`, `v${r1(powerY - a.y)}`, `h${r1(b.x - escX)}`, `v${r1(b.y - powerY)}`, '@drop'];
       }
       if (toId === board.id) {
         // 信号线：统一走全局走廊网格（corridorYFor，间距 8）；
@@ -368,7 +466,7 @@ function main() {
         const lane = stagger ? Math.round(Math.abs(stagger) / 8) : 0;
         if (side === 'bottom') {
           const powerY = nextBelowSlot();
-          return [`h${r1(escX - a.x)}`, `v${r1(powerY - a.y)}`, `h${r1(b.x - escX)}`, `v${r1(b.y - powerY)}`];
+          return [`h${r1(escX - a.x)}`, `v${r1(powerY - a.y)}`, `h${r1(b.x - escX)}`, `v${r1(b.y - powerY)}`, '@drop'];
         }
         const cy = corridorYFor(side, lane);
         if (cy != null) {
@@ -385,7 +483,7 @@ function main() {
         // 绕行、与上方信号网格彻底分开，落轨纵段只贴轨边，不横穿面包板/板身。
         const powerY = b.y < bb.top ? r1(bb.top - 8)
           : nextBelowSlot();
-        return [`h${r1(escX - a.x)}`, `v${r1(powerY - a.y)}`, `h${r1(b.x - escX)}`, `v${r1(b.y - powerY)}`];
+        return [`h${r1(escX - a.x)}`, `v${r1(powerY - a.y)}`, `h${r1(b.x - escX)}`, `v${r1(b.y - powerY)}`, '@drop'];
       } else {
         laneY = r1(b.y);
       }
@@ -409,7 +507,12 @@ function main() {
       const h1 = r1((outX != null ? outX : b.x) - a.x);
       const v3 = r1(b.y - (a.y + v1));
       const wp = [`v${v1}`, `h${h1}`, `v${v3}`];
-      if (outX != null && Math.abs(b.x - outX) > 0.5) wp.push(`h${r1(b.x - outX)}`);
+      if (outX != null && Math.abs(b.x - outX) > 0.5) {
+        wp.push(`h${r1(b.x - outX)}`);
+        // T3.5 Fix A 前置: 板→元件信号线经元件侧沿入脚（末段在该元件引脚行）——
+        // 登记该行, 使后续同排逃逸线（如 VCC/GND 馈线）自动错行（条件触发, 仅登记）
+        if (tp) escRowShift(toId, b.y);
+      }
       return wp;
     }
     if (toId === 'bb1' && /^(bn|bp|tn|tp)\.\d+$/.test(toPin || '')) {
@@ -436,34 +539,85 @@ function main() {
           const vLo = Math.min(a.y, railY), vHi = Math.max(a.y, railY);
           const ownHit = a.x >= src.left + 2 && a.x <= src.left + src.w - 2 &&
                          Math.max(vLo, src.top + 2) < Math.min(vHi, src.top + src.h - 2);
-          if (!boardHit && !sameYHit && !ownHit) {
+          // Fix C（条件4，条件触发）: 直连两段(v@a.x 跨 [vLo,vHi] / h@railY 跨 [h0,h1])
+          // 与任何其他元件 rect 重叠 >20px → 判不满足，改走板底走廊带。
+          // 排除线两端所属元件自身；面包板本体不在 parts 表，天然排除。
+          const partHit = parts.some(q => {
+            if (!q || q.id === fid || q.id === toId || q.w == null || q.left == null) return false;
+            const vLen = (a.x >= q.left && a.x <= q.left + q.w)
+              ? Math.min(vHi, q.top + q.h) - Math.max(vLo, q.top) : -1;
+            const hLen = (railY >= q.top && railY <= q.top + q.h)
+              ? Math.min(h1, q.left + q.w) - Math.max(h0, q.left) : -1;
+            return Math.max(vLen, hLen) > 20;
+          });
+          if (!boardHit && !sameYHit && !ownHit && !partHit) {
             // 贴轨直连(短跳线): 不绕板底走廊带
             return [`v${r1(railY - a.y)}`, `h${r1(b.x - a.x)}`];
           }
         }
         const powerY = nextBelowSlot();
+        // Fix D（条件触发）: 源元件整体在板盒上缘之上(src.top+src.h < board.top)且目标
+        // 是 bb 轨 → 不再下坠板底走廊，改走「上路」：升到 bb 上方通道(bb.top-12 起
+        // 8px 网格，按序领道)，水平行至轨位 x 上方，竖直落轨。全程 y < board.top，
+        // 不穿板盒；从上方进轨不穿 bb（bench 对面包板单独口径）。越界(laneY<8)或
+        // 上行竖段穿自家本体 >20px → 回退现行下路（Fix A/B/C 修正后）。
+        if (bb && src.top != null && src.top + src.h < board.top && bb.top - 12 >= 8) {
+          const selfAtPin = a.x > src.left && a.x < src.left + src.w &&
+            Math.min(a.y, src.top + src.h) - Math.max(bb.top - 12, src.top) > 20;
+          if (selfAtPin) {
+            // pin 列上行会穿自家本体 → 仍走上路，但先水平让到体外近侧列再上行
+            //（全程 y ≤ a.y < board.top，不穿板盒；体外列不穿本体）
+            const laneY = r1(bb.top - 12 - 8 * topFeedLane++);
+            const want = a.x < src.left + src.w / 2 ? r1(src.left - 6) : r1(src.left + src.w + 6);
+            // Fix A 前置（条件触发）: 共列出线/同排多线 → 列/行错开（干净单线原样）
+            if (dupPinCols.has(fid + '@' + r1(a.x))) usedEscCols.push(r1(a.x));
+            const rowK = escRowShift(fid, a.y);
+            const y0 = r1(a.y - 10 * rowK);
+            const col = escColFor(want, src, y0, laneY);
+            const wps = [];
+            if (rowK > 0) wps.push(`v${r1(y0 - a.y)}`);
+            wps.push(`h${r1(col - a.x)}`, `v${r1(laneY - y0)}`, `h${r1(b.x - col)}`, `v${r1(b.y - laneY)}`);
+            return wps;
+          }
+          // pin 列直上不穿本体 → 直接上路（车道只在真正上路时消耗，回退下路不占道）
+          const laneY = r1(bb.top - 12 - 8 * topFeedLane++);
+          if (laneY >= 8) {
+            return [`v${r1(laneY - a.y)}`, `h${r1(b.x - a.x)}`, `v${r1(b.y - laneY)}`];
+          }
+        }
         // 逃离三分：顶缘/上半部垂直上逃（错开高度列）、底缘/体外下方直接下穿、
         // 中部/侧列水平逃离——同排引脚避免水平逃离段共线
         const esc = (chipEsc[fid] = chipEsc[fid] || { left: 0, right: 0, up: 0 });
         const goLeft = b.x < src.left + src.w / 2;
         if (a.y < src.top + src.h / 2) {
           // 顶缘/上半部引脚: 垂直上逃, 逃到统一走廊网格上方, 高度/列都错开
+          // Fix B（条件触发）: 首竖段(pin 列)穿板盒 → 改为引脚高度水平逃逸 +
+          // 治理列单竖段直落走廊；否则第二竖段列仍过 Fix A/B 列治理（干净时原样）
           const idx = esc.up++;
           const top0 = corridorYFor('top', 0);
           const escTop = (top0 != null ? top0 : src.top) - 6;
           const escY = r1(escTop - idx * 6);
-          const escX = r1((goLeft ? src.left : src.left + src.w) + (goLeft ? -6 : 6) + idx * 6);
+          const escX0 = r1((goLeft ? src.left : src.left + src.w) + (goLeft ? -6 : 6) + idx * 6);
+          // Fix A 前置（条件触发）: 同元件共列出线 → 弃「pin 列直上」形态（消同列 pin
+          // 竖段共线/端点近触）; Fix B（条件触发）: pin 列直上穿板盒 → 水平先逃 +
+          // 治理列直落。两者都不满足才走原 5 段上逃形态。
+          if (dupPinCols.has(fid + '@' + r1(a.x)) ||
+              (a.x >= board.left && a.x <= board.left + board.w &&
+               Math.max(a.y, escY) >= board.top && Math.min(a.y, escY) <= board.top + board.h)) {
+            return escHorizWps(src, powerY, a.x);
+          }
+          const escX = escColFor(escX0, src, escY, powerY);
           return [`v${r1(escY - a.y)}`, `h${r1(escX - a.x)}`, `v${r1(powerY - escY)}`,
-                  `h${r1(b.x - escX)}`, `v${r1(b.y - powerY)}`];
+                  `h${r1(b.x - escX)}`, `v${r1(b.y - powerY)}`, '@drop'];
         }
         if (a.y >= src.top + src.h - 4) {
           // 底缘/体外下方引脚: 已离开本体, 直接下穿(无需逃离)
-          return [`v${r1(powerY - a.y)}`, `h${r1(b.x - a.x)}`, `v${r1(b.y - powerY)}`];
+          // Fix B/A/前置（条件触发）: 列穿板盒/<6px 近触/共列/同排 → 治理, 否则原样
+          return escHorizWps(src, powerY, a.x);
         }
-        // 中部/侧列引脚: 水平逃离
+        // 中部/侧列引脚: 水平逃离（列过 Fix A/B 治理，干净时原样）
         const idx = goLeft ? esc.left++ : esc.right++;
-        const escX = r1(goLeft ? src.left - 6 - idx * 6 : src.left + src.w + 6 + idx * 6);
-        return [`h${r1(escX - a.x)}`, `v${r1(powerY - a.y)}`, `h${r1(b.x - escX)}`, `v${r1(b.y - powerY)}`];
+        return escHorizWps(src, powerY, r1(goLeft ? src.left - 6 - idx * 6 : src.left + src.w + 6 + idx * 6));
       }
       // 面包板上的短跳线(placement==='bb'): 保持原有贴轨直连, 不领槽
     }
@@ -477,24 +631,32 @@ function main() {
         const goLeft = b.x < p.left + p.w / 2;
         if (a.y < p.top + p.h / 2) {
           // 顶缘/上半部引脚: 垂直上逃, 逃到统一走廊网格上方, 高度/列都错开
+          // Fix B（条件触发）: 首竖段(pin 列)穿板盒 → 引脚高度水平逃逸 + 治理列直落
           const idx = esc.up++;
           const top0 = corridorYFor('top', 0);
           const escTop = (top0 != null ? top0 : p.top) - 6;
           const escY = r1(escTop - idx * 6);
-          const escX = r1((goLeft ? p.left : p.left + p.w) + (goLeft ? -6 : 6) + idx * 6);
+          const escX0 = r1((goLeft ? p.left : p.left + p.w) + (goLeft ? -6 : 6) + idx * 6);
+          // Fix A 前置 / Fix B（条件触发）: 共列出线或 pin 列直上穿板盒 → 水平先逃 + 治理列直落
+          if (dupPinCols.has(fid + '@' + r1(a.x)) ||
+              (a.x >= board.left && a.x <= board.left + board.w &&
+               Math.max(a.y, escY) >= board.top && Math.min(a.y, escY) <= board.top + board.h)) {
+            return escHorizWps(p, powerY, a.x);
+          }
+          const escX = escColFor(escX0, p, escY, powerY);
           return [`v${r1(escY - a.y)}`, `h${r1(escX - a.x)}`, `v${r1(powerY - escY)}`,
-                  `h${r1(b.x - escX)}`, `v${r1(b.y - powerY)}`];
+                  `h${r1(b.x - escX)}`, `v${r1(b.y - powerY)}`, '@drop'];
         }
         if (a.y >= p.top + p.h - 4) {
           // 底缘/体外下方引脚: 已离开本体, 直接下穿(无需逃离)
-          return [`v${r1(powerY - a.y)}`, `h${r1(b.x - a.x)}`, `v${r1(b.y - powerY)}`];
+          // Fix B/A/前置（条件触发）: 列穿板盒/<6px 近触/共列/同排 → 治理, 否则原样
+          return escHorizWps(p, powerY, a.x);
         }
-        // 中部/侧列引脚: 水平逃离
+        // 中部/侧列引脚: 水平逃离（列过 Fix A/B 治理，干净时原样）
         const idx = goLeft ? esc.left++ : esc.right++;
-        const escX = r1(goLeft ? p.left - 6 - idx * 6 : p.left + p.w + 6 + idx * 6);
-        return [`h${r1(escX - a.x)}`, `v${r1(powerY - a.y)}`, `h${r1(b.x - escX)}`, `v${r1(b.y - powerY)}`];
+        return escHorizWps(p, powerY, r1(goLeft ? p.left - 6 - idx * 6 : p.left + p.w + 6 + idx * 6));
       }
-      return [`v${r1(powerY - a.y)}`, `h${r1(b.x - a.x)}`, `v${r1(b.y - powerY)}`];
+      return [`v${r1(powerY - a.y)}`, `h${r1(b.x - a.x)}`, `v${r1(b.y - powerY)}`, '@drop'];
     }
     if (toId === board.id) {
       // 元件源 → 板脚：贴近板子的安全带（短接近，避免横跨别的线）
@@ -511,24 +673,32 @@ function main() {
           const goLeft = b.x < p.left + p.w / 2;
           if (a.y < p.top + p.h / 2) {
             // 顶缘/上半部引脚: 垂直上逃, 逃到统一走廊网格上方, 高度/列都错开
+            // Fix B（条件触发）: 首竖段(pin 列)穿板盒 → 引脚高度水平逃逸 + 治理列直落
             const idx = esc.up++;
             const top0 = corridorYFor('top', 0);
             const escTop = (top0 != null ? top0 : p.top) - 6;
             const escY = r1(escTop - idx * 6);
-            const escX = r1((goLeft ? p.left : p.left + p.w) + (goLeft ? -6 : 6) + idx * 6);
+            const escX0 = r1((goLeft ? p.left : p.left + p.w) + (goLeft ? -6 : 6) + idx * 6);
+            // Fix A 前置 / Fix B（条件触发）: 共列出线或 pin 列直上穿板盒 → 水平先逃 + 治理列直落
+            if (dupPinCols.has(fid + '@' + r1(a.x)) ||
+                (a.x >= board.left && a.x <= board.left + board.w &&
+                 Math.max(a.y, escY) >= board.top && Math.min(a.y, escY) <= board.top + board.h)) {
+              return escHorizWps(p, powerY, a.x);
+            }
+            const escX = escColFor(escX0, p, escY, powerY);
             return [`v${r1(escY - a.y)}`, `h${r1(escX - a.x)}`, `v${r1(powerY - escY)}`,
-                    `h${r1(b.x - escX)}`, `v${r1(b.y - powerY)}`];
+                    `h${r1(b.x - escX)}`, `v${r1(b.y - powerY)}`, '@drop'];
           }
           if (a.y >= p.top + p.h - 4) {
             // 底缘/体外下方引脚: 已离开本体, 直接下穿(无需逃离)
-            return [`v${r1(powerY - a.y)}`, `h${r1(b.x - a.x)}`, `v${r1(b.y - powerY)}`];
+            // Fix B/A/前置（条件触发）: 列穿板盒/<6px 近触/共列/同排 → 治理, 否则原样
+            return escHorizWps(p, powerY, a.x);
           }
-          // 中部/侧列引脚: 水平逃离
+          // 中部/侧列引脚: 水平逃离（列过 Fix A/B 治理，干净时原样）
           const idx = goLeft ? esc.left++ : esc.right++;
-          const escX = r1(goLeft ? p.left - 6 - idx * 6 : p.left + p.w + 6 + idx * 6);
-          return [`h${r1(escX - a.x)}`, `v${r1(powerY - a.y)}`, `h${r1(b.x - escX)}`, `v${r1(b.y - powerY)}`];
+          return escHorizWps(p, powerY, r1(goLeft ? p.left - 6 - idx * 6 : p.left + p.w + 6 + idx * 6));
         }
-        return [`v${r1(powerY - a.y)}`, `h${r1(b.x - a.x)}`, `v${r1(b.y - powerY)}`];
+        return [`v${r1(powerY - a.y)}`, `h${r1(b.x - a.x)}`, `v${r1(b.y - powerY)}`, '@drop'];
       }
       const lane = stagger ? Math.round(Math.abs(stagger) / 8) : 0;
       const cy = corridorYFor(side, lane);
@@ -549,6 +719,45 @@ function main() {
       return wp;
     }
     return [`v${r1(dy + stagger)}`, `h${r1(dx)}`, `v${r1(-stagger)}`];
+  };
+  // ============================================================
+  // T3.5 板脚落点侧偏包装器（条件触发）：走廊分支以 '@drop' 哨兵声明
+  // 「末段直落板脚」；同一板脚的第 2+ 条线及与相邻有线脚冲突时，从候选序列
+  // （左7/右7/左14/右14/左21/右21/左28/右28）选首个不撞「其他有线脚列(±15)」
+  // 且不撞「已用落点列(±3)」的侧偏入脚列（消同脚落点竖段共线/端点近触）。
+  // ============================================================
+  const routeWp = (fid, fpin, a, b, stagger, toId, toPin) => {
+    const rr1 = v => Math.round(v * 10) / 10;
+    const wps = routeWpRaw(fid, fpin, a, b, stagger, toId, toPin);
+    const i = wps.indexOf('@drop');
+    if (i < 0) return wps;
+    const rest = wps.slice(0, i);
+    if (toId !== board.id) return rest;
+    // 仅「同板脚 ≥2 条走廊线」才侧偏（单线板脚保持原样, golden 逐字节不变）
+    if (!dropMulti.has(toPin)) return rest;
+    const others = boardDropCols.filter(cx => Math.abs(cx - b.x) > 0.5);
+    const free = (cd) => !others.some(cx => Math.abs(cx - cd) < 2.3) &&
+                         !usedDropCols.some(ux => Math.abs(ux - cd) < 3);
+    // 侧向：首选躲开有线脚聚集的一侧；同脚第 2 条线强制换边（消同脚入脚段嵌套共线）
+    const leftCrowd = others.some(cx => cx < b.x && b.x - cx < 12);
+    const rightCrowd = others.some(cx => cx > b.x && cx - b.x < 12);
+    const dk = toId + '@' + rr1(b.x);
+    const sgn = sideByPin[dk] != null ? -sideByPin[dk]
+      : ((leftCrowd && !rightCrowd) ? 1 : -1);
+    sideByPin[dk] = sgn;
+    let dropX = null;
+    for (const m of [7, 14, 21, 28]) {
+      const cd = b.x + sgn * m;
+      if (free(cd)) { dropX = rr1(cd); break; }
+    }
+    if (dropX == null) dropX = rr1(b.x + sgn * 7);
+    usedDropCols.push(dropX);
+    if (Math.abs(dropX - b.x) <= 0.05) return rest;
+    const mv = /^v(-?[\d.]+)$/.exec(wps[i - 1]);
+    const dy = mv ? parseFloat(mv[1]) : 0;
+    const out = wps.slice(0, i - 1);
+    out.push(`h${rr1(dropX - b.x)}`, `v${dy}`, `h${rr1(b.x - dropX)}`);
+    return out;
   };
 
   // ============================================================
@@ -769,6 +978,10 @@ function main() {
     const chipList = parts.filter(p => p.type && p.type.startsWith('chip-'));
     chipBase = chipList.length ? Math.min(...chipList.map(p => p.top), board.top) - 8 : board.top - 8;
 
+    // T3.5 Fix A 前置：共列引脚登记 + 逃逸行计数复位（放置完成后才有 pinPos）
+    scanDupPinCols();
+    for (const k in escRowCount) delete escRowCount[k];
+
     // $bb 元件锚点孔所在行 x = 其可见出线列。轨位选择时回避其他线的出线列(±4),
     // 避免落点贴着别的出线竖段(如 dht VCC 落 tp.5 与 SDA 出线 0.4 单位近触)。
     const anchorCols = new Set();
@@ -843,6 +1056,21 @@ function main() {
     // 就近选轨位（railTarget 与 A3 part↔part daisy 改写共用）：
     // 扫描 1..25 找离源 x 最近的空闲位置（一孔一接；跨轨同 x 冲突则跳过）。
     // 回避其他线的出线列(anchorCols ±4)，但不回避自己的出线列(ownCol 豁免——自己落自己列是理想落点)
+    // T3.5（条件触发）：落轨竖段避元件足迹——轨位 x 的「下探竖段」(轨 y → 板底走廊)
+    // 若穿过其他元件的引脚足迹矩形(本体宽与引脚最大 x 取大者, 外扩 8) → 跳过该轨位。
+    // 元件不在下探 y 带(轨 y 以下)时不影响轨位选择 → 现行干净场景逐字节不变。
+    const railDropBlock = (x, rail) => parts.some(q => {
+      if (!q || q.left == null) return false;
+      // 仅直放且位于面包板下缘以下的元件才会被「轨位下探竖段」穿过（插面板件
+      // 骑在 bb 上, 其覆盖区不参与避让, 保持现行轨位选择逐字节不变）
+      if ((q.placement || 'bb') === 'bb') return false;
+      if (q.top <= bb.top + BB_H) return false;
+      if (!((q.top + q.h) > railY[rail] - 2 && q.top < BELOW_BASE)) return false;
+      let right = q.left + (q.w || 0);
+      const pd = pins[q.type];
+      if (pd) for (const k in pd) if (Array.isArray(pd[k]) && q.left + pd[k][0] > right) right = q.left + pd[k][0];
+      return x >= q.left - 8 && x <= right + 8;
+    });
     const pickRail = (rail, srcX, ownCol) => {
       const used = railUsed[rail];
       let best = 1, bestDist = Infinity;
@@ -854,8 +1082,9 @@ function main() {
         for (const c of anchorCols) {
           if (Math.abs(c - x) <= 4 && (ownCol == null || Math.abs(ownCol - c) > 4)) { nearOther = true; break; }
         }
-        if (d < bestDist && !used.has(n) && !railXCross[xKey] && !nearOther) { bestDist = d; best = n; }
+        if (d < bestDist && !used.has(n) && !railXCross[xKey] && !nearOther && !railDropBlock(x, rail)) { bestDist = d; best = n; }
       }
+      if (process.env.DBGRAIL) console.error('DBG rail', rail, 'srcX', srcX, '->', best);
       used.add(best);
       railXCross[Math.round(railX(best) * 10)] = true;
       return best;
@@ -1397,6 +1626,8 @@ function main() {
   // ============================================================
   const wireConns = [];
   wirePaths = [];   // 重置折线采集（main 级数组，routeWp 智能直连判定共用）
+  scanDupPinCols();   // T3.5 Fix A 前置：共列引脚登记（放置完成后才有 pinPos）
+  for (const k in escRowCount) delete escRowCount[k];
   const edgeLane = { top: 0, bottom: 0 };
   const targetLane = { top: 0, bottom: 0 };
   const finalTargetSeen = {};

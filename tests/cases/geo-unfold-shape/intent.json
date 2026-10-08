@@ -1,0 +1,27 @@
+{
+  "board": "wokwi-arduino-uno",
+  "breadboard": "wokwi-breadboard-half",
+  "parts": [
+    { "id": "ring", "type": "wokwi-led-ring", "attrs": { "pixels": "16" }, "placement": "board" },
+    { "id": "haptic", "type": "wokwi-led", "attrs": { "color": "orange" }, "placement": "board" },
+    { "id": "tap", "type": "wokwi-pushbutton", "attrs": { "color": "green" }, "placement": "board" },
+    { "id": "emg", "type": "wokwi-potentiometer", "placement": "board" },
+    { "id": "imu", "type": "wokwi-mpu6050", "placement": "board" }
+  ],
+  "groups": [
+    { "name": "top-out", "parts": ["ring", "haptic"], "zone": "output" },
+    { "name": "top-in", "parts": ["tap"], "zone": "input" },
+    { "name": "right-sensors", "parts": ["emg", "imu"], "zone": "sensor" }
+  ],
+  "connections": [
+    { "from": "uno:2", "to": "tap:1.l", "color": "yellow" },
+    { "from": "tap:2.r", "to": "uno:GND.1", "color": "black" },
+    { "from": "uno:6", "to": "ring:DIN", "color": "green" },
+    { "from": "uno:A0", "to": "emg:SIG", "color": "green" },
+    { "from": "emg:VCC", "to": "uno:5V", "color": "red" },
+    { "from": "emg:GND", "to": "uno:GND.2", "color": "black" },
+    { "from": "imu:VCC", "to": "uno:5V", "color": "red" },
+    { "from": "imu:GND", "to": "uno:GND.2", "color": "black" }
+  ],
+  "constraints": []
+}
