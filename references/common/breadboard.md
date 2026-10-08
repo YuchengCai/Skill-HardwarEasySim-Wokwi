@@ -173,7 +173,7 @@ $bb 适用于：按钮、传感器（DHT 等）、电阻（跨槽）
 
 ```
 尺寸选择：
-  wokwi-breadboard-half → 元件 ≤ 8（多数场景）
+  wokwi-breadboard-half → 容量约 8 元件（容量参考；布线判据见 layout-rules.md Rule 1）
   wokwi-breadboard     → 元件多/需要大区域
 
 旋转：

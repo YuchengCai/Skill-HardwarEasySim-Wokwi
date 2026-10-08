@@ -33,22 +33,14 @@
 
 ## Rule 1: Choose wiring style
 
-**By component count:**
+**主判据 = 电源拓扑 fanout**（与 `layout-generator.js` 一致）：
 
-| Component count | Style | Notes |
-|-----------------|-------|-------|
-| ≤ 6 parts | Direct (直连) | Parts around board, visible wires |
-| > 8 parts | Breadboard (面包板) | Use breadboard to organize (see `breadboard.md`) |
-| 6-8 | Either | Judge by complexity |
+> 任一电源家族（GND / 5V / 3.3V / VIN）的板脚**需求 > 可用脚数**（Uno：GND×2、5V×1、3.3V×1、VIN×1，`boards.json powerPinCounts`）→ 声明面包板，电源走轨分发（生成器自动检测并输出 `[INFO] 电源 fanout:…`）。
+> 需求 = 引用该家族板脚的连接数 + 面包板主线 1 条。例：5 个模块 VCC 全接 `uno:5V` → 需求 6 > 脚 1 → 走轨。
 
-**Also use breadboard when any bus/consolidation need exists** (even with few parts):
+**面包板定位**：主用法是**离散元件插接**（电阻/LED/按钮 $bb 插孔、跨槽、同列配对），轨分发是次要收益——只走轨不插件 = 空面包板（生成器 WARN：轨连接 < 2）。离散元件直连须在 intent 写 `reason`（一句话理由），缺失即 WARN。
 
-- Multiple components share the same GND (only a few GND pins on board)
-- Multiple components share VCC/power rail
-- Signal bus consolidation (multiple lines to one function)
-- GND pins run out (board has limited GND.1/.2/.3)
-
-Rationale: breadboard rails provide a "bus" for shared GND/power — cleaner than many wires converging on one board pin (causes overlap/confusion).
+元件数量**不是判据**（弱参考：≤4 且电源各自独立，通常直连即可）。
 
 ## Rule 2: Functional grouping + position (layout planning)
 

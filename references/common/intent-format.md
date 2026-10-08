@@ -30,9 +30,10 @@
 |------|------|:----:|------|------|
 | id | string | ✅ | 唯一 id（led1、btn2…） | — |
 | type | string | ✅ | `wokwi-led` 等 | — |
-| placement | string | ❌ | `"bb"` = 插面包板 / `"board"` = 直连板子旁 | 有面包板时 `"bb"` |
+| placement | string | ❌ | 通常**省略**（缺省即 bb）；`"board"` 仅限模块类大元件直连板旁；离散元件（电阻/LED/按钮）写 board 须附 `reason` | 有面包板时 `"bb"` |
 | attrs | object | ❌ | 元件属性（color/value/i2cAddress…） | {} |
 | hint | object | ❌ | 灰度覆盖（见下，🆕） | {} |
+| reason | string | 条件 | 直连理由一句话；离散元件 `placement:"board"` 时必填，缺失生成器 WARN | — |
 
 ## groups[] + 分区语义（核心）
 
@@ -43,7 +44,7 @@
 | name | string | 功能组名（自由文本，如"指示区"/"输入区"） |
 | parts | array | 组内元件 id |
 | zone | string | 🆕 语义分区：`output` / `input` / `sensor` / `display` / `misc` |
-| region | string | 物理落位（可选覆盖）：直连 `top/right/bottom/left`；面包板 `left/middle/right` |
+| region | string | 物理落位（可选覆盖）：直连 `top/right/bottom/left`；面包板 `left/middle/right/bb`（bb=插面板本体） |
 | relation | string | 组内关系（"together" 等，历史字段） |
 
 ### zone vs region
@@ -118,10 +119,10 @@
   "board": "wokwi-arduino-uno",
   "breadboard": "wokwi-breadboard-half",
   "parts": [
-    { "id": "led1", "type": "wokwi-led", "placement": "bb", "attrs": { "color": "red" } },
-    { "id": "r1", "type": "wokwi-resistor", "placement": "bb", "attrs": { "value": "220" } },
-    { "id": "btn1", "type": "wokwi-pushbutton", "placement": "bb", "hint": { "order": "left" } },
-    { "id": "btn2", "type": "wokwi-pushbutton", "placement": "bb", "hint": { "order": "right" } },
+    { "id": "led1", "type": "wokwi-led", "attrs": { "color": "red" } },
+    { "id": "r1", "type": "wokwi-resistor", "attrs": { "value": "220" } },
+    { "id": "btn1", "type": "wokwi-pushbutton", "hint": { "order": "left" } },
+    { "id": "btn2", "type": "wokwi-pushbutton", "hint": { "order": "right" } },
     { "id": "dht1", "type": "wokwi-dht22", "placement": "board" }
   ],
   "groups": [
