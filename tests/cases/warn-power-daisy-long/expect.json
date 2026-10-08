@@ -1,0 +1,4 @@
+{
+  "stdoutMustInclude": ["电源菊花链超长", "跨度 406"],
+  "stdoutMustNotInclude": ["面包板空置", "离散元件未插接且无 reason"]
+}

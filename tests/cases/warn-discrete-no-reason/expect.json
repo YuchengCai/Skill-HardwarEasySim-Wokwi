@@ -1,0 +1,4 @@
+{
+  "stdoutMustInclude": ["离散元件未插接且无 reason:led1,r1,btn1"],
+  "stdoutMustNotInclude": ["面包板空置"]
+}

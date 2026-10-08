@@ -24,6 +24,19 @@ const MM2PX = 96 / 25.4;
 let MIN_SPACING = 30; // 元件间距（--spacing 可覆盖，迭代骨架用）
 const GROUP_SPACING = 80; // 组间距
 
+// 电源拓扑判据常量（T3 改造，见 results/T3/plan.md 常量表）
+const POWER_DAISY_WARN_PX = 400;   // N12:菊花链单线告警阈值(可调;分发线豁免——T1 校准实证 golden 分发线天然 855px+)
+const POWER_DIRECT_KEEP_PX = 150;  // A2 例外:短线直连更优的跨度上限(可调)
+const DISCRETE_TYPES = ['wokwi-resistor', 'wokwi-led', 'wokwi-rgb-led', 'wokwi-pushbutton', 'wokwi-pushbutton-6mm'];
+const DEFAULT_POWER_PIN_COUNTS = { GND: 2, '5V': 1, '3.3V': 1, VIN: 1 };  // boards.json 未配置时的兜底(Uno 假设)
+// part 引脚名 → 电源家族（A3/A4 判 daisy 用）：GND 家族（bn/tn 负轨）/ 5V 家族（tp 正轨）/
+// null = 3.3V/VIN/VBAT/VBUS 等无专属轨家族 → 保持直连不改写
+const daisyFamOf = (pin) => {
+  if (/^(GND|VSS|V-)$/i.test(pin)) return 'GND';
+  if (/^(VCC|VDD|5V|3V3|V\+)$/i.test(pin)) return '5V';
+  return null;
+};
+
 // 元件尺寸（从 sizes.json 加载）
 function loadSizes() {
   const p = path.join(__dirname, '..', 'references', 'common', 'sizes.json');
@@ -144,10 +157,19 @@ function main() {
   }
   const sizesData = loadSizes();
 
+  // 未知类型收集（A6 不静默）：sizes 表未收录的 type 在尺寸查询兜底处收集，
+  // [OK] 摘要前统一输出 UNKNOWN_TYPES。chip- 占位符有 chip-geometry 实例几何，不算未知。
+  const unknownTypes = new Set();
+  const sizeOf = (type) => {
+    const s = sizesData.sizes[type];
+    if (!s) { if (type && !type.startsWith('chip-')) unknownTypes.add(type); return sizesData.default; }
+    return s;
+  };
+
   // 板子位置（面包板模式：板子右侧；直连：下方居中）
   let useBB = !!intent.breadboard;
   const board = { type: intent.board || 'wokwi-arduino-uno', left: useBB ? 400 : 40, top: useBB ? 310 : 200 };
-  const boardSize = sizesData.sizes[board.type] || sizesData.default;
+  const boardSize = sizeOf(board.type);
   board.w = boardSize.width;
   board.h = boardSize.height;
   // 板型配置（id、分侧阈值、电源脚）——Uno 假设抽到这里，多板型加配置即可
@@ -160,29 +182,44 @@ function main() {
   board.railGnd = bp.railGnd || 'GND.2';
   board.railVcc = bp.railVcc || '5V';
   // ============================================================
-  // bus 场景兜底：模型没配面包板，但多元件共用电源/GND（轨分发的典型场景）
-  // 判据：某个电源脚被 ≥3 条连接引用（多线汇聚一个板脚 → 串接/混乱）
+  // 电源 fanout 判据（T3 常驻化改造）：
+  //   无论是否声明面包板，每次生成都按「电源家族」盘点板脚供需：
+  //   家族 = GND / 5V / 3.3V / VIN（按 board.powerPins 前缀归类，不再按单脚）
+  //   demand(家族) = intent.connections 中任一端引用该家族板脚的连接数
+  //                + (useBB ? 1 : 0)（bb 主线预留）
+  //   available(家族) = powerPinCounts[家族]（boards.json，未配置用 Uno 兜底）
+  //   任一 demand > available → 输出 FANOUT_INFO（每个超限家族一条）；
+  //   未声明面包板时维持自动配板兜底（useBB=true / breadboard / board 位置）。
+  //   （旧「某脚被 ≥3 条连接共用」的 bus 检测语义已被 demand 口径覆盖并取代）
   // ============================================================
-  if (!useBB) {
-    const fanout = {};   // 电源脚 → 被引用的连接数
-    const isPowerPin = (pin) => board.powerPins.some(p => pin === p || pin.startsWith(p + '.'));
-    const boardRef = new RegExp('^' + board.id + ':(.+)$');
+  const powerPinCounts = bp.powerPinCounts || DEFAULT_POWER_PIN_COUNTS;
+  {
+    const boardRef0 = new RegExp('^' + board.id + ':(.+)$');
+    const famOfBoardPin = (pin) => board.powerPins.find(p => pin === p || pin.startsWith(p + '.'));
+    const famDemand = {};
+    const famOrder = ['GND', '5V', '3.3V', 'VIN'];
     (intent.connections || []).forEach(c => {
+      const fams = new Set();   // 一条连接的同一家族端点只计一次（按家族计数）
       [c.from, c.to].forEach(ref => {
-        const m = ref.match(boardRef);
-        if (m && isPowerPin(m[1])) {
-          fanout[m[1]] = (fanout[m[1]] || 0) + 1;
-        }
+        const m = ref.match(boardRef0);
+        if (m) { const f = famOfBoardPin(m[1]); if (f) fams.add(f); }
       });
+      fams.forEach(f => { famDemand[f] = (famDemand[f] || 0) + 1; });
     });
-    const busPins = Object.keys(fanout).filter(p => fanout[p] >= 3);
-    if (busPins.length > 0) {
-      useBB = true;
-      intent.breadboard = 'wokwi-breadboard-half';
-      board.left = 400;
-      board.top = 310;
-      const maxFan = Math.max(...busPins.map(p => fanout[p]));
-      console.log(`[INFO] 检测到 bus 场景（${busPins.join('/')} 各被 ${maxFan} 条连接共用），自动配面包板 ${intent.breadboard}`);
+    famOrder.forEach(f => { famDemand[f] = (famDemand[f] || 0) + (useBB ? 1 : 0); });
+    const over = famOrder.filter(f => famDemand[f] > powerPinCounts[f]);
+    if (over.length > 0) {
+      const wasBB = useBB;
+      if (!useBB) {
+        useBB = true;
+        intent.breadboard = 'wokwi-breadboard-half';
+        board.left = 400;
+        board.top = 310;
+      }
+      over.forEach(f => {
+        const bbNote = wasBB ? '(面包板轨分发中)' : `,已自动配面包板 ${intent.breadboard}`;
+        console.log(`[INFO] 电源 fanout:${f} 需求 ${famDemand[f]} > 板脚 ${powerPinCounts[f]}。多线汇聚板脚易串接混乱,走轨分发更稳${bbNote}。`);
+      });
     }
   }
   // 预编译板子引用正则（id 来自板型配置，避免散落 'uno' 字面量）
@@ -208,7 +245,7 @@ function main() {
   });
   const parts = intent.parts.map(p => {
     const cb = customBoardOf[p.id];
-    const size = cb || sizesData.sizes[p.type] || sizesData.default;
+    const size = cb || sizeOf(p.type);
     return { ...p, w: size.w || size.width, h: size.h || size.height, left: 0, top: 0 };
   });
   const partById = {};
@@ -289,6 +326,21 @@ function main() {
   // 绝对折线采集(重叠检测用)。main 级声明：routeWp（智能直连判定）与两分支共用同一数组，
   // 分支内只做重置/追加，不重复声明（避免 routeWp 引用 TDZ/块级遮蔽）。
   let wirePaths = [];
+
+  // 绝对折线构建（两个模式的主循环共用）：wps 相对折线 + 终点 → pts 点列
+  const ptsOfWps = (a, b, wps) => {
+    const pts = [[a.x, a.y]];
+    let cx = a.x, cy = a.y;
+    for (const m of wps) {
+      const mm = /^([hv])(-?[\d.]+)$/.exec(m);
+      if (!mm) continue;
+      const d = parseFloat(mm[2]);
+      if (mm[1] === 'h') cx += d; else cy += d;
+      pts.push([cx, cy]);
+    }
+    pts.push([b.x, b.y]);
+    return pts;
+  };
 
   const routeWp = (fid, fpin, a, b, stagger, toId, toPin) => {
     const r1 = v => Math.round(v * 10) / 10;   // 1 位小数
@@ -788,6 +840,26 @@ function main() {
     // 识别电源连线（目标 = uno:GND/5V/3V3/VIN）→ 连对应轨
     const railUsed = { bn: new Set(), bp: new Set(), tn: new Set(), tp: new Set() };
     const railXCross = {};   // 已被任一轨占用的 x（防同 x 跨轨电源线共线）
+    // 就近选轨位（railTarget 与 A3 part↔part daisy 改写共用）：
+    // 扫描 1..25 找离源 x 最近的空闲位置（一孔一接；跨轨同 x 冲突则跳过）。
+    // 回避其他线的出线列(anchorCols ±4)，但不回避自己的出线列(ownCol 豁免——自己落自己列是理想落点)
+    const pickRail = (rail, srcX, ownCol) => {
+      const used = railUsed[rail];
+      let best = 1, bestDist = Infinity;
+      for (let n = 1; n <= RAIL_MAX; n++) {
+        const x = railX(n);
+        const d = Math.abs(x - srcX);
+        const xKey = Math.round(x * 10);
+        let nearOther = false;
+        for (const c of anchorCols) {
+          if (Math.abs(c - x) <= 4 && (ownCol == null || Math.abs(ownCol - c) > 4)) { nearOther = true; break; }
+        }
+        if (d < bestDist && !used.has(n) && !railXCross[xKey] && !nearOther) { bestDist = d; best = n; }
+      }
+      used.add(best);
+      railXCross[Math.round(railX(best) * 10)] = true;
+      return best;
+    };
     const railTarget = (toRef, src, ownCol) => {
       const [rid, rpin] = toRef.split(':');
       if (rid !== board.id || !rpin) return null;
@@ -799,23 +871,32 @@ function main() {
       // GND 就近选负轨（bn 视觉顶部 / tn 视觉底部；两轨经跳线互通、都连板子 GND）：
       // 元件带（面包板顶部）用 bn，直连/芯片等靠近板子的用 tn，避免绕大圈
       const rail = isGND ? (Math.abs(src.y - railY.bn) <= Math.abs(railY.tn - src.y) ? 'bn' : 'tn') : 'tp';
-      // 就近：扫描 1..25 找离源 x 最近的空闲位置（一孔一接；跨轨同 x 冲突则跳过）。
-      // 回避其他线的出线列(anchorCols ±4)，但不回避自己的出线列(ownCol 豁免——自己落自己列是理想落点)
-      const used = railUsed[rail];
-      let best = 1, bestDist = Infinity;
-      for (let n = 1; n <= RAIL_MAX; n++) {
-        const x = railX(n);
-        const d = Math.abs(x - src.x);
-        const xKey = Math.round(x * 10);
-        let nearOther = false;
-        for (const c of anchorCols) {
-          if (Math.abs(c - x) <= 4 && (ownCol == null || Math.abs(ownCol - c) > 4)) { nearOther = true; break; }
-        }
-        if (d < bestDist && !used.has(n) && !railXCross[xKey] && !nearOther) { bestDist = d; best = n; }
-      }
-      used.add(best);
-      railXCross[Math.round(railX(best) * 10)] = true;
-      return { rail, n: best, ref: `bb1:${rail}.${best}` };
+      const n = pickRail(rail, src.x, ownCol);
+      return { rail, n, ref: `bb1:${rail}.${n}` };
+    };
+
+    // ============================================================
+    // A3 part↔part 电源 daisy 走轨发射器（A2 扩展）：
+    // 模型写的 pA:VCC → pB:VCC / pA:GND → pB:GND 菊花链，bb 在场时改写为
+    // 两条「元件 → 电源轨」接线（各自就近选轨位），复用主循环同款：
+    // 配色(paletteColor) / 车道错开(finalTargetSeen) / routeWp 走板底走廊带 / pts 折线构建。
+    // ============================================================
+    const emitDaisyRail = (pid, pin, fam, modelCol) => {
+      const src = pinPos(pid, pin);
+      if (!src) return false;
+      // GND 家族就近选负轨（与 railTarget 同款规则）；5V 家族走 tp
+      const rail = fam === 'GND' ? (Math.abs(src.y - railY.bn) <= Math.abs(railY.tn - src.y) ? 'bn' : 'tn') : 'tp';
+      const n = pickRail(rail, src.x, null);
+      const fromRefD = `${pid}:${pin}`;
+      const toRefD = `bb1:${rail}.${n}`;
+      const posD = railPos(rail, n);
+      const seen = finalTargetSeen[toRefD] || 0;
+      finalTargetSeen[toRefD] = seen + 1;
+      const colD = paletteColor(fromRefD, toRefD) || modelCol || (fam === 'GND' ? 'black' : 'red');
+      const wps = routeWp(pid, pin, src, posD, seen * 10, 'bb1', `${rail}.${n}`);
+      wireConns.push([fromRefD, toRefD, colD, wps]);
+      wirePaths.push({ from: fromRefD, to: toRefD, pts: ptsOfWps(src, posD, wps) });
+      return true;
     };
 
     // 共线错开：
@@ -974,6 +1055,21 @@ function main() {
         return;
       }
 
+      // A2 扩展（A3）：part↔part 电源菊花链，bb 在场时默认走轨分发。
+      // 条件：两端都是非板/非 bb 元件，且两端引脚名都匹配电源家族
+      //（任一端无家族——如 3.3V/VIN/VBAT/VBUS 或信号脚——保持直连不改写）。
+      // 短线例外：pinPos 曼哈顿跨距 ≤ POWER_DIRECT_KEEP_PX → 保持直连（贴轨直连本就干净）。
+      const fId0 = fromRef0.split(':')[0], tId0 = toRef0.split(':')[0];
+      const noBb = (id) => id !== board.id && id !== 'bb1';
+      if (noBb(fId0) && noBb(tId0)) {
+        const fFam = daisyFamOf(fpin), tFam = daisyFamOf(toRef0.split(':')[1]);
+        const spanD = Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+        if (fFam && tFam && spanD > POWER_DIRECT_KEEP_PX) {
+          if (emitDaisyRail(fId0, fpin, fFam) && emitDaisyRail(tId0, toRef0.split(':')[1], tFam)) return;
+          // 任一端造轨失败（引脚坐标缺失等）→ 回落原直连路径发射（不静默丢线）
+        }
+      }
+
       // ① 电源连线（目标 = GND/5V/3V3/VIN）→ 连电源轨（就近走轨，不穿板）
       // 就近基准: $bb 元件实际从「锚点孔列」出线, 按锚点孔位置就近选轨位
       // (避免按引脚位置选位导致落点贴着相邻孔出线, 如 dht VCC 落 tp.5 与 SDA 出线 0.4 单位近触)
@@ -1034,17 +1130,23 @@ function main() {
       const wps = routeWp(fid, fpin, a, b, stagger, toRef.split(':')[0], toRef.split(':')[1]);
       wireConns.push([fromRef, toRef, col, wps]);
       {
-        const pts = [[a.x, a.y]];
-        let cx = a.x, cy = a.y;
-        for (const m of wps) {
-          const mm = /^([hv])(-?[\d.]+)$/.exec(m);
-          if (!mm) continue;
-          const d = parseFloat(mm[2]);
-          if (mm[1] === 'h') cx += d; else cy += d;
-          pts.push([cx, cy]);
-        }
-        pts.push([b.x, b.y]);
+        const pts = ptsOfWps(a, b, wps);
         wirePaths.push({ from: fromRef, to: toRef, pts });
+        // A4 长线告警：part↔part 电源线（两端都非板/非 bb1 → daisy）按折线段长求和，
+        // 超 POWER_DAISY_WARN_PX → POWER_DAISY_LONG。板腿线（目标=板脚）与轨馈线
+        // （目标=bb1 轨）天然不进此分支，自动豁免（N12 口径：只罚菊花链单线）。
+        const fIdE = fromRef.split(':')[0], tIdE = toRef.split(':')[0];
+        if (fIdE !== board.id && fIdE !== 'bb1' && tIdE !== board.id && tIdE !== 'bb1' &&
+            (daisyFamOf(fromRef.split(':')[1]) || daisyFamOf(toRef.split(':')[1]))) {
+          let spanP = 0;
+          for (let i = 0; i + 1 < pts.length; i++) {
+            spanP += Math.abs(pts[i + 1][0] - pts[i][0]) + Math.abs(pts[i + 1][1] - pts[i][1]);
+          }
+          spanP = Math.round(spanP * 10) / 10;
+          if (spanP > POWER_DAISY_WARN_PX) {
+            console.log(`[WARN] 电源菊花链超长:${fromRef}→${toRef} 跨度 ${spanP}px > ${POWER_DAISY_WARN_PX}px。元件↔元件电源直连长线绕远。走面包板轨分发或缩短元件间距。`);
+          }
+        }
       }
     });
 
@@ -1120,6 +1222,26 @@ function main() {
     allConns.forEach((c, i) => lines.push('    ' + JSON.stringify(c) + (i < allConns.length - 1 ? ',' : '')));
     lines.push('  ]', '}');
     fs.writeFileSync(path.join(OUT_DIR, 'diagram.json'), lines.join('\n'));
+    // ============================================================
+    // A5 面包板最低使用检查（bb 模式，[OK] 前）：
+    //   ① bb 空置：allConns(bbConns+wireConns) 中任一端是轨孔（bn/bp/tn/tp.N）的
+    //      条数 < 2 → BB_VACANT（面包板在场却几乎不走轨，白占布局位）
+    //   ② 离散元件未插接且无 reason → DISCRETE_NO_REASON（placement !== 'bb' 即直连）
+    // A6 未知类型：sizes 未收录 → UNKNOWN_TYPES（去重列 type 名，消除盲区信号效应）
+    // ============================================================
+    const RAIL_PIN_PAT = /^bb1:(bn|bp|tn|tp)\.\d+$/;
+    const railConnCount = allConns.filter(cv => RAIL_PIN_PAT.test(cv[0]) || RAIL_PIN_PAT.test(cv[1])).length;
+    if (railConnCount < 2) {
+      console.log(`[WARN] 面包板空置:轨连接 ${railConnCount} < 2。面包板在场却几乎不走轨,白占布局位。走轨分发电源,或撤板改直连并写明 reason。`);
+    }
+    const bbDiscreteNoReason = parts.filter(p =>
+      DISCRETE_TYPES.includes(p.type) && (p.placement || 'bb') !== 'bb' && !p.reason).map(p => p.id);
+    if (bbDiscreteNoReason.length) {
+      console.log(`[WARN] 离散元件未插接且无 reason:${bbDiscreteNoReason.join(',')}。电阻/LED/按钮直连悬空线多且无锚固。写 placement:"bb" 插面包板,或加 reason:"一句话" 说明直连理由。`);
+    }
+    if (unknownTypes.size) {
+      console.log(`[INFO] 未知元件类型(回退默认尺寸/直连):${[...unknownTypes].join('、')}。尺寸表未收录。补录 references/common/sizes.json 或显式声明尺寸。`);
+    }
     console.log(`[OK] 面包板布局：${bbParts.length} 插面板 + ${boardParts.length} 直连 + ${bbConns.length} 条 $bb + ${wireConns.length} 条可见线`);
     console.log('[INFO] 输出:', path.join(OUT_DIR, 'diagram.json'));
     return;
@@ -1316,17 +1438,24 @@ function main() {
     const wps = routeWp(fid, fpin, a, b, stagger, toId, toPin);
     wireConns.push([c.from, toRef, c.color || 'green', wps]);
     {
-      const pts = [[a.x, a.y]];
-      let cx = a.x, cy = a.y;
-      for (const m of wps) {
-        const mm = /^([hv])(-?[\d.]+)$/.exec(m);
-        if (!mm) continue;
-        const d = parseFloat(mm[2]);
-        if (mm[1] === 'h') cx += d; else cy += d;
-        pts.push([cx, cy]);
-      }
-      pts.push([b.x, b.y]);
+      const pts = ptsOfWps(a, b, wps);
       wirePaths.push({ from: c.from, to: toRef, pts });
+      // A4 长线告警（直连模式）：part↔part 电源线（两端都非板 → daisy）跨度求和
+      // 超 POWER_DAISY_WARN_PX → POWER_DAISY_LONG（无 bb 时 daisy 是唯一电源
+      // 分布形态，正是 N12 治理对象）。板腿线（目标=板脚 GND/其他）在下方改写/
+      // 检测排除，自动豁免。
+      const tIdE = toRef.split(':')[0];
+      if (fid !== board.id && tIdE !== board.id &&
+          (daisyFamOf(c.from.split(':')[1]) || daisyFamOf(toRef.split(':')[1]))) {
+        let spanP = 0;
+        for (let i = 0; i + 1 < pts.length; i++) {
+          spanP += Math.abs(pts[i + 1][0] - pts[i][0]) + Math.abs(pts[i + 1][1] - pts[i][1]);
+        }
+        spanP = Math.round(spanP * 10) / 10;
+        if (spanP > POWER_DAISY_WARN_PX) {
+          console.log(`[WARN] 电源菊花链超长:${c.from}→${toRef} 跨度 ${spanP}px > ${POWER_DAISY_WARN_PX}px。元件↔元件电源直连长线绕远。走面包板轨分发或缩短元件间距。`);
+        }
+      }
     }
   });
   const ovCount = detectOverlaps(wirePaths);
@@ -1349,6 +1478,19 @@ function main() {
   wireConns.forEach((c, i) => lines.push('    ' + JSON.stringify(c) + (i < wireConns.length - 1 ? ',' : '')));
   lines.push('  ]', '}');
   fs.writeFileSync(path.join(OUT_DIR, 'diagram.json'), lines.join('\n'));
+  // ============================================================
+  // A5 离散元件检查（直连模式，[OK] 前）：直连模式一律视为未插接，
+  //   DISCRETE_TYPES 且无 reason → DISCRETE_NO_REASON（逼模型过脑子，不禁止判断）
+  // A6 未知类型：sizes 未收录 → UNKNOWN_TYPES（去重列 type 名）
+  // ============================================================
+  const dDiscreteNoReason = parts.filter(p =>
+    DISCRETE_TYPES.includes(p.type) && !p.reason).map(p => p.id);
+  if (dDiscreteNoReason.length) {
+    console.log(`[WARN] 离散元件未插接且无 reason:${dDiscreteNoReason.join(',')}。电阻/LED/按钮直连悬空线多且无锚固。写 placement:"bb" 插面包板,或加 reason:"一句话" 说明直连理由。`);
+  }
+  if (unknownTypes.size) {
+    console.log(`[INFO] 未知元件类型(回退默认尺寸/直连):${[...unknownTypes].join('、')}。尺寸表未收录。补录 references/common/sizes.json 或显式声明尺寸。`);
+  }
   console.log(`[OK] 直连布局：${parts.length} 元件 + ${wireConns.length} 条可见线`);
   if (issues.length) {
     console.log(`[WARN] 硬约束修复 ${issues.length} 处:`);

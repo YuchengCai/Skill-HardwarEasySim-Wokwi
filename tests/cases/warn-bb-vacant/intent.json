@@ -1,0 +1,18 @@
+{
+  "board": "wokwi-arduino-uno",
+  "breadboard": "wokwi-breadboard-half",
+  "parts": [
+    { "id": "pot1", "type": "wokwi-potentiometer", "placement": "board" },
+    { "id": "pot2", "type": "wokwi-potentiometer", "placement": "board" },
+    { "id": "lcd1", "type": "wokwi-lcd1602", "placement": "board" }
+  ],
+  "groups": [
+    { "name": "调节区", "parts": ["pot1", "pot2"], "region": "bottom", "relation": "together" },
+    { "name": "显示区", "parts": ["lcd1"], "region": "right", "relation": "" }
+  ],
+  "connections": [
+    { "from": "uno:A0", "to": "pot1:SIG", "color": "blue" },
+    { "from": "uno:A1", "to": "pot2:SIG", "color": "blue" }
+  ],
+  "constraints": []
+}

@@ -54,11 +54,25 @@ for (const name of names) {
     if (hit) { console.log(`  [invariant] ${name} 输出含「${hit}」`); ok = false; }
   }
 
+  // ②′ expect.json 校验（可选）：锚子串必须出现/不得出现
+  const expectPath = path.join(dir, 'expect.json');
+  if (ok && fs.existsSync(expectPath)) {
+    let expect = {};
+    try { expect = JSON.parse(fs.readFileSync(expectPath, 'utf8')); }
+    catch (e) { console.log(`  [expect] ${name} expect.json 解析失败：${e.message}`); ok = false; }
+    for (const s of expect.stdoutMustInclude || []) {
+      if (!out.includes(s)) { console.log(`  [expect] ${name} 输出缺少「${s}」`); ok = false; }
+    }
+    for (const s of expect.stdoutMustNotInclude || []) {
+      if (out.includes(s)) { console.log(`  [expect] ${name} 输出不应含「${s}」`); ok = false; }
+    }
+  }
+
   // ③ 冲突检查（--dry-run）：线交叉是接受形态（X 形可读），仅当存在
   //    不含「线交叉」字样的冲突行（元件遮挡/重叠等）才 fail。
   const cr = spawnSync('node', [OPT, outDir, '--dry-run'], { encoding: 'utf8' });
   const cOut = (cr.stdout || '') + (cr.stderr || '');
-  const conflictLines = cOut.split('\n').filter(l => /^\s*- /.test(l) && !/建议|根因|规则卡/.test(l));
+  const conflictLines = cOut.split('\n').filter(l => /^\s*- /.test(l) && !/事实|建议|根因|规则卡/.test(l));
   if (conflictLines.length > 0) {
     const nonCross = conflictLines.filter(l => !l.includes('线交叉'));
     if (nonCross.length > 0) {

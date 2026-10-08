@@ -1,0 +1,16 @@
+{
+  "board": "wokwi-arduino-uno",
+  "parts": [
+    { "id": "imu1", "type": "wokwi-mpu6050" },
+    { "id": "lcd1", "type": "wokwi-lcd1602" }
+  ],
+  "groups": [
+    { "name": "左传感", "parts": ["imu1"], "region": "left", "relation": "" },
+    { "name": "下显示", "parts": ["lcd1"], "region": "bottom", "relation": "" }
+  ],
+  "connections": [
+    { "from": "imu1:VCC", "to": "lcd1:VCC", "color": "red" },
+    { "from": "imu1:GND", "to": "lcd1:GND", "color": "black" }
+  ],
+  "constraints": []
+}

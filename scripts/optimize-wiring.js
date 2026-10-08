@@ -621,18 +621,19 @@ function main() {
     'bb-misaligned': '引脚未对齐孔位',
     'cross-i2c': '线交叉(I2C反序)'
   };
-  // Phase 3：suggest 层 —— 冲突类型 → 「根因 + 建议动作 + 对应规则卡」
-  // 模型读建议后按泛化闸门 record-back（见 generic-wiring.md），而非照抄实例
+  // Phase 3：suggest 层 —— 冲突类型 → 「事实 + 根因 + 建议动作 + 对应规则卡」
+  // 模型读建议后按泛化闸门 record-back（见 generic-wiring.md），而非照抄实例。
+  // T3-A7 advisor 对齐：事实 = 现象陈述（检测器实证输出，不再是结论）；根因 = 机制性描述。
   const TYPE_SUGGEST = {
-    'hits-part':          { 根因: '线从元件本体中间穿过', 建议: '移元件到通道 / 加 waypoint 绕行', 规则: 'layout-rules.md 车道规则' },
-    'cross':              { 根因: '两条线交叉', 建议: '车道错开（stagger）', 规则: 'waypoints.md' },
-    'overlap':            { 根因: '多线共线重叠', 建议: '车道错开（stagger）', 规则: 'waypoints.md' },
-    'wire-through-board': { 根因: '线从板子中间穿过', 建议: '分侧出线 v±N', 规则: 'layout-rules.md 走线规则' },
-    'part-on-board':      { 根因: '元件压在板子上', 建议: '移回目标 zone（output→top / input→bottom…）', 规则: 'intent-format.md zone 映射' },
-    'part-on-breadboard': { 根因: '元件压面包板且未插接', 建议: '改 placement=bb 或移开', 规则: 'intent-format.md placement' },
-    'parts-overlap':      { 根因: '元件互相重叠', 建议: '错开间距 ≥30', 规则: 'layout-rules.md 间距规则' },
-    'bb-misaligned':      { 根因: '元件引脚坐标与孔位偏差 >0.5px（取整导致亚像素偏差）', 建议: '用 2 位小数精确对齐（r2），勿 Math.round 取整', 规则: 'breadboard.md $bb 对齐' },
-    'cross-i2c':         { 根因: 'I2C 总线 SDA/SCL 引脚顺序相反（拓扑必然交叉）', 建议: '可豁免：单独列出、不计入软伤', 规则: 'layout-rules.md 约束分级' }
+    'hits-part':          { 事实: '线从元件本体中间穿过', 根因: '车道规划缺失，直连路径撞上互连元件', 建议: '移元件到通道 / 加 waypoint 绕行', 规则: 'layout-rules.md 车道规则' },
+    'cross':              { 事实: '两条线交叉', 根因: '出口/入口车道未错开，路径平面撞点', 建议: '车道错开（stagger）', 规则: 'waypoints.md' },
+    'overlap':            { 事实: '多线共线重叠', 根因: '同目标多条线未做车道错开', 建议: '车道错开（stagger）', 规则: 'waypoints.md' },
+    'wire-through-board': { 事实: '线从板子中间穿过', 根因: '出线未按板缘分侧绕行', 建议: '分侧出线 v±N', 规则: 'layout-rules.md 走线规则' },
+    'part-on-board':      { 事实: '元件压在板子上', 根因: '放置坐标落入板子包围盒', 建议: '移回目标 zone（output→top / input→bottom…）', 规则: 'intent-format.md zone 映射' },
+    'part-on-breadboard': { 事实: '元件压面包板且未插接', 根因: 'placement 缺失或与坐标不一致', 建议: '改 placement=bb 或移开', 规则: 'intent-format.md placement' },
+    'parts-overlap':      { 事实: '元件互相重叠', 根因: '间距 <30 未做绝对化错开', 建议: '错开间距 ≥30', 规则: 'layout-rules.md 间距规则' },
+    'bb-misaligned':      { 事实: '元件引脚坐标与孔位偏差 >0.5px', 根因: '坐标取整丢失亚像素精度', 建议: '用 2 位小数精确对齐（r2），勿 Math.round 取整', 规则: 'breadboard.md $bb 对齐' },
+    'cross-i2c':          { 事实: 'I2C 总线 SDA/SCL 引脚顺序相反', 根因: '拓扑必然交叉，非错误布线', 建议: '可豁免：单独列出、不计入软伤', 规则: 'layout-rules.md 约束分级' }
   };
   for (const c of conflicts.slice(0, 15)) {
     const label = TYPE_LABEL[c.type] || c.type;
@@ -641,7 +642,7 @@ function main() {
       : c.type === 'parts-overlap' ? `(${c.connStr})`
       : `(连接 #${c.conn}${c.part ? ' 穿 ' + c.part : ''}): ${c.connStr}`;
     console.log(`  - ${label} ${detail}`);
-    if (s) console.log(`      建议：${s.建议} ｜ 根因：${s.根因} ｜ 规则卡：${s.规则}`);
+    if (s) console.log(`      事实：${s.事实} ｜ 根因：${s.根因} ｜ 建议：${s.建议} ｜ 规则卡：${s.规则}`);
   }
   if (conflicts.length > 15) console.log(`  ... 等 ${conflicts.length} 处`);
 

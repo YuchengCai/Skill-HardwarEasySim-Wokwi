@@ -1,0 +1,4 @@
+{
+  "stdoutMustInclude": [],
+  "stdoutMustNotInclude": ["离散元件未插接且无 reason"]
+}
