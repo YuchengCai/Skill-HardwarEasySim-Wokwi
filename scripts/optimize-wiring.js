@@ -609,7 +609,13 @@ function main() {
 
   // 报告
   console.log(`[INFO] 元件 ${parts.length} 个, 连接 ${(diagram.connections || []).length} 条`);
-  console.log(`[INFO] 检测到冲突 ${conflicts.length} 处:`);
+  // T8/C8 修复:报告分级——硬冲突全量优先,软冲突补足剩余行数。
+  // 原 slice(0,15) 按数组序截断,重复计数的软交叉(bb/交叉在前)会把 hits-part 等硬伤
+  // 挤出报告窗口(实测 arm-VC:88 处冲突只打印前 15,10 条线穿元件一条都没露出)。
+  const HARD_TYPES = new Set(['hits-part', 'part-on-board', 'part-on-breadboard', 'parts-overlap', 'wire-through-board', 'bb-misaligned']);
+  const hardList = conflicts.filter(c => HARD_TYPES.has(c.type));
+  const softList = conflicts.filter(c => !HARD_TYPES.has(c.type));
+  console.log(`[INFO] 检测到冲突 ${conflicts.length} 处(硬 ${hardList.length} / 软 ${softList.length}):`);
   const TYPE_LABEL = {
     'hits-part': '线穿元件',
     'cross': '线交叉',
@@ -635,7 +641,9 @@ function main() {
     'bb-misaligned':      { 事实: '元件引脚坐标与孔位偏差 >0.5px', 根因: '坐标取整丢失亚像素精度', 建议: '用 2 位小数精确对齐（r2），勿 Math.round 取整', 规则: 'breadboard.md $bb 对齐' },
     'cross-i2c':          { 事实: 'I2C 总线 SDA/SCL 引脚顺序相反', 根因: '拓扑必然交叉，非错误布线', 建议: '可豁免：单独列出、不计入软伤', 规则: 'layout-rules.md 约束分级' }
   };
-  for (const c of conflicts.slice(0, 15)) {
+  const REPORT_CAP = 15;
+  const shown = [...hardList, ...softList].slice(0, Math.max(REPORT_CAP, hardList.length));
+  for (const c of shown) {
     const label = TYPE_LABEL[c.type] || c.type;
     const s = TYPE_SUGGEST[c.type];
     const detail = c.type === 'part-on-board' ? `(${c.part}: ${c.connStr})`
@@ -644,7 +652,7 @@ function main() {
     console.log(`  - ${label} ${detail}`);
     if (s) console.log(`      事实：${s.事实} ｜ 根因：${s.根因} ｜ 建议：${s.建议} ｜ 规则卡：${s.规则}`);
   }
-  if (conflicts.length > 15) console.log(`  ... 等 ${conflicts.length} 处`);
+  if (conflicts.length > shown.length) console.log(`  ... 等共 ${conflicts.length} 处(硬 ${hardList.length} 已全列 / 软 ${softList.length} 截断至 ${shown.length - hardList.length})`);
 
   // Phase 3：默认只检测 + 报告 + 建议，不写图；--fix 才自动修正（脚本兜底不越权）
   if (!FIX) {
