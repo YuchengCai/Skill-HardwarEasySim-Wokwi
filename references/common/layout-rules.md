@@ -65,6 +65,7 @@
 - Minimum part spacing: ≥ 30 units (prevent overlap)
 - Leave "wire channels" between parts (parallel lines need space)
 - Pre-judge: would a wire from A to B cross another part? Adjust position early
+- Large parts (LED ring / LCD / any module ≥ 60×60): keep ≥ 150 units clearance from other parts and from power-return corridors; a long rail/power line must never cross a large part's body — if it happens, move that group's `region` and regenerate
 
 ## Rule 3: Clean waypoint pattern + routing discipline
 

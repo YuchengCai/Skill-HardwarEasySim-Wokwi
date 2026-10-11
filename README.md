@@ -20,6 +20,14 @@
 
 **小版本更新历程**
 
+- **v0.5.7** — Criteria-Driven Layout & Honest Verification / 判据驱动布局与诚实验证：
+  - 面包板判据改造：元件数量条款退役，主判据改为**电源拓扑 fanout**（任一电源家族板脚需求 > 可用脚数 → 走轨分发，脚数读 `boards.json powerPinCounts`）；生成器常驻输出 advisor 三段式提示（事实/原因/建议，不再无声）
+  - 新告警族：电源菊花链单线 >400px（分发线豁免）、面包板空置（轨连接 <2）、离散元件直连未写 `reason`（`intent.parts[].reason` 新增条件必填）、未知元件类型不静默
+  - 规则文本与代码逐字对齐：Rule 1 重写为 fanout 判据、placement 改「通常省略（默认 bb）」、region 面包板取值补 `bb`；文本↔代码一致性对照 10/10 grep 实证
+  - 流程层：仿真节改**工具面检测降级树**（VS Code 插件 / Playwright MCP / node 脚本 / 内置浏览器 / 手动导入五分支，无死路）；**Mode C 一等化**（`web-import/` 三件套为标准交付物 + 五步手动导入）；**验证门硬边界**（视觉验证只能由 Wokwi 本体满足，自绘图禁入验证结论，门不可达 → 如实交付 UNVERIFIED）
+  - 走线几何治理：走廊逃逸避板盒、贴轨直连避元件、同元件双轨线错列、顶区元件回轨上路；大件净空规则（≥150 units，回轨长线禁穿大件本体——实测硬冲突 −60%）
+  - 检测器修复：led 系检测尺寸精确匹配（led-ring/bar-graph 走真实尺寸，堵线穿元件漏检）；冲突**报告分级**——硬冲突全量优先打印，不再被重复计数的软交叉挤出报告窗口（截断 bug 实测曾把 10 条线穿元件全部隐藏）
+  - compile.sh 沙箱兼容：`--build-path` 收编中间产物到项目内（受限沙箱 exit 1→0，hex 不变）
 - **v0.5.6** — Unknown Parts & Wiring Governance / 未知元件占位符与走线治理：
   - 未知元件占位符：custom chip（chip.json + 通用空 wasm），`chip-<name>` 自动几何重建（横向 PCB 模型 + 实测校准常量），无仿真仅接线展示；`generate-part-placeholder.js` 一条龙生成
   - 布线方向推导层：`pin-semantics.json` 数据驱动（电阻 swapPair 自动换向、按钮 terminalPairs 对侧默认 + `hint.sameSide` 显式省线）
@@ -51,7 +59,7 @@
 <a id="english"></a>
 ## 📘 English
 
-**Wokwi Arduino Simulation Skill** — v0.5.6 — A portable skill package for AI coding agents (DeepCode, WorkBuddy, Claude Code, Cursor) that enables automated Arduino hardware prototyping, **auto browser simulation**, circuit compilation, and firmware upload.
+**Wokwi Arduino Simulation Skill** — v0.5.7 — A portable skill package for AI coding agents (DeepCode, WorkBuddy, Claude Code, Cursor) that enables automated Arduino hardware prototyping, **auto browser simulation**, circuit compilation, and firmware upload.
 
 ### Features
 
@@ -173,7 +181,7 @@ The agent reads `components.md` for correct pin names, generates the project, co
 <a id="chinese"></a>
 ## 📘 中文
 
-**Wokwi Arduino 仿真 Skill** — v0.5.6 — 一个可移植的技能包，专为 AI 编程助手（DeepCode、WorkBuddy、Claude Code、Cursor）设计，实现自动化硬件原型设计、**自动浏览器仿真**、代码编译和固件上传。
+**Wokwi Arduino 仿真 Skill** — v0.5.7 — 一个可移植的技能包，专为 AI 编程助手（DeepCode、WorkBuddy、Claude Code、Cursor）设计，实现自动化硬件原型设计、**自动浏览器仿真**、代码编译和固件上传。
 
 ### 功能
 
