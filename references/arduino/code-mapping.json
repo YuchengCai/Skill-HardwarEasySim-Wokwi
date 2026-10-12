@@ -1,0 +1,66 @@
+{
+  "version": "0.1",
+  "notes": "代码→元件映射:库/类/构造函数指纹 → wokwi 元件 + 引脚推断 + 多候选。随用随长(pin-semantics 模式);新条目须过反拷贝三问(generic-wiring.md)。",
+  "mappings": [
+    {
+      "signal": { "include": "Adafruit_NeoPixel.h", "constructor": "Adafruit_NeoPixel(N, PIN, …)", "raw": "" },
+      "candidates": [
+        { "type": "wokwi-led-ring", "confidence": "high", "when": "N == 16(第 1 实参为 LED 数)", "pins": { "DIN": "构造函数第 2 实参" } },
+        { "type": "wokwi-neopixel", "confidence": "medium", "when": "N ≤ 8", "pins": { "DIN": "构造函数第 2 实参" } }
+      ],
+      "note": "Multi-candidate row:N 由用户确认(确认门)。detail 引脚名核对:led-ring GND/VCC/DIN/DOUT;neopixel VDD/DOUT/VSS/DIN — 两者数据脚均为 DIN,一致。"
+    },
+    {
+      "signal": { "include": "DHT.h", "constructor": "DHT(PIN, DHTTYPE)", "raw": "" },
+      "candidates": [
+        { "type": "wokwi-dht22", "confidence": "high", "when": "DHTTYPE 为 DHT22(22);DHT11 同库不同元件形态,须用户确认", "pins": { "SDA": "构造函数第 1 实参" } }
+      ],
+      "note": "detail(wokwi-dht22) 引脚为 VCC/SDA/NC/GND — 数据脚名是 SDA(即规格说的 data 脚),detail 无独立 data 引脚名。"
+    },
+    {
+      "signal": { "include": "Wire.h", "constructor": "LiquidCrystal_I2C(ADDR, COLS, ROWS)", "raw": "Wire.begin() + beginTransmission 地址指纹 0x27/0x3F" },
+      "candidates": [
+        { "type": "wokwi-lcd1602", "confidence": "high", "when": "I2C 地址 0x27 或 0x3F(或 LiquidCrystal_I2C 库在场)", "pins": { "SDA": "板上 A4(Uno 板型)", "SCL": "板上 A5(Uno 板型)" } }
+      ],
+      "note": "0x3F 亦多见于 lcd2004;ROWS/COLS 实参与 1602 冲突时按确认门处理。detail(wokwi-lcd1602) 含 SDA/SCL,引脚名一致。"
+    },
+    {
+      "signal": { "include": "Wire.h", "constructor": "", "raw": "Wire.beginTransmission(0x68)" },
+      "candidates": [
+        { "type": "wokwi-mpu6050", "confidence": "high", "when": "I2C 地址 0x68(AD0 上拉时为 0x69)", "pins": { "SDA": "板上 A4(Uno 板型)", "SCL": "板上 A5(Uno 板型)" } }
+      ],
+      "note": "MPU6050 各库构造函数形态不一(Matrix/Adafruit/自写),以地址指纹为准。detail(wokwi-mpu6050) 含 SDA/SCL/AD0,引脚名一致。"
+    },
+    {
+      "signal": { "include": "Adafruit_SSD1306.h", "constructor": "Adafruit_SSD1306(W, H, &Wire, RST)", "raw": "Wire.beginTransmission(0x3C / 0x3D)" },
+      "candidates": [
+        { "type": "wokwi-ssd1306", "confidence": "high", "when": "I2C 地址 0x3C 或 0x3D(或 Adafruit_SSD1306 + Wire)", "pins": { "DATA": "I2C SDA → 板上 A4(Uno 板型)", "CLK": "I2C SCL → 板上 A5(Uno 板型)" } }
+      ],
+      "note": "detail(wokwi-ssd1306) 引脚为 DATA/CLK/DC/RST/CS/3V3/VIN/GND — detail 无 SDA/SCL 名,I2C 语义对应 DATA/CLK。"
+    },
+    {
+      "signal": { "include": "Servo.h", "constructor": "Servo.attach(PIN)", "raw": "" },
+      "candidates": [
+        { "type": "wokwi-servo", "confidence": "high", "when": "Servo 对象调用 attach(PIN)", "pins": { "PWM": "attach 的实参" } }
+      ],
+      "note": "detail(wokwi-servo) 引脚为 GND/V+/PWM — 信号脚名是 PWM(即规格说的 signal 脚),detail 无独立 signal 引脚名。"
+    },
+    {
+      "signal": { "include": "", "constructor": "", "raw": "pinMode(PIN, INPUT_PULLUP) + digitalRead(PIN)" },
+      "candidates": [
+        { "type": "wokwi-pushbutton", "confidence": "high", "when": "INPUT_PULLUP 输入(按钮是最常见上拉输入);无库可依据时的裸信号兜底指纹", "pins": { "1.l": "向 digitalRead 实参接板引脚", "2.r": "配对脚接 GND(上拉输入需一脚拉地)" } }
+      ],
+      "note": "detail(wokwi-pushbutton) 四脚 1.l/2.l/1.r/2.r;任一脚接板、对脚接 GND(同侧/对侧按接线惯例),故示例取 1.l/2.r。"
+    },
+    {
+      "signal": { "include": "", "constructor": "", "raw": "analogRead(A0/A1/…)" },
+      "candidates": [
+        { "type": "wokwi-potentiometer", "confidence": "medium", "when": "上下文含可调旋钮/位置控制(interactive)", "pins": { "SIG": "analogRead 实参" } },
+        { "type": "wokwi-ntc-temperature-sensor", "confidence": "medium", "when": "上下文含温度", "pins": { "OUT": "analogRead 实参" } },
+        { "type": "wokwi-photoresistor-sensor", "confidence": "medium", "when": "上下文含光照", "pins": { "AO": "analogRead 实参(DO 为数字输出勿接模拟脚)" } },
+        { "type": "wokwi-gas-sensor", "confidence": "medium", "when": "上下文含气体/烟雾", "pins": { "AOUT": "analogRead 实参(DOUT 为数字输出勿接模拟脚)" } }
+      ],
+      "note": "模拟传感器形态不可从代码唯一确定 — 确认门的典型场景,必须按上下文或问用户(Multi-candidate row)。"
+    }
+  ]
+}

@@ -43,6 +43,8 @@ WorkBuddy 专用的 wokwi-arduino skill 适配器。与 deepcode/claude/cursor �
 
 ## 完整工作流
 
+**入口选择**：有代码物证（.ino / sketch 目录 / libraries.txt）→ **Entry B**：按 `references/arduino/code-mapping.json` 反推元件与网表，清单**须经用户确认**后才写 intent（多候选必须问用户）；纯需求描述 → 直接按下述流程设计。歧义时问一句"从这份代码进，还是重新设计？"
+
 1. **生成** — 写 `.ino` 代码，查 `references/arduino/index.json`（中文名匹配）→ components.md → detail/。写 `layout-intent.json`（语义意图，无坐标；契约 `references/common/intent-format.md`，偏好 `references/common/layout-cards/`；`breadboard` 可留空，脚本自动兜底 bus 场景）→ `node scripts/layout-generator.js layout-intent.json <dir>` 生成 `diagram.json` → `node scripts/optimize-wiring.js <dir> --dry-run` 检测冲突 → 生成 `wokwi.toml`
 2. **编译** — `./scripts/compile.sh <dir>`（自动装 arduino-cli，MINGW 路径已处理）
 3. **仿真** — 工具面降级树（无死路）: VS Code+插件 → Mode B（F1，零依赖）；有 Playwright MCP → Mode A 主路径（monaco-steps.md，无需 node）；无 MCP 但 node+playwright 已装或用户同意装 → `node scripts/wokwi-automate.js`；内置浏览器（Computer Use 类）仅轻量操作、失败 2 次即降级；都不可达 → **Mode C 手动导入**（产出 web-import/ 三件套：sketch.ino 合并版 + diagram.json + libraries.txt；用户开 wokwi.com/projects/new 替换两文件、加库、自己点 Start）。**HARD RULE: 未经同意绝不装 playwright/npm；视觉验证只能由 Wokwi 本体满足，自绘图不得进验证结论，门不可达 → 如实交付"未验证" + Mode C**
@@ -84,7 +86,7 @@ WorkBuddy 专用的 wokwi-arduino skill 适配器。与 deepcode/claude/cursor �
 ```bash
 # 检查并恢复缺失文件
 BASE="https://raw.githubusercontent.com/YuchengCai/Skill-HardwarEasySim-Wokwi/main"
-for F in scripts/compile.sh scripts/wokwi-automate.js scripts/layout-generator.js scripts/optimize-wiring.js references/monaco-steps.md references/arduino/components.md references/arduino/index.json references/arduino/experience.json references/common/intent-format.md references/common/layout-rules.md references/common/generic-wiring.md references/common/breadboard.md references/common/waypoints.md references/common/geometry.json references/common/boards.json references/common/pins.json references/common/sizes.json references/common/layout-cards/index.md references/common/layout-cards/led.md references/common/layout-cards/resistor.md references/common/layout-cards/pushbutton.md references/common/layout-cards/dht22.md references/common/layout-cards/oled.md references/common/layout-cards/buzzer.md; do
+for F in scripts/compile.sh scripts/wokwi-automate.js scripts/layout-generator.js scripts/optimize-wiring.js references/monaco-steps.md references/arduino/components.md references/arduino/index.json references/arduino/experience.json references/arduino/code-mapping.json references/common/intent-format.md references/common/layout-rules.md references/common/generic-wiring.md references/common/breadboard.md references/common/waypoints.md references/common/geometry.json references/common/boards.json references/common/pins.json references/common/sizes.json references/common/layout-cards/index.md references/common/layout-cards/led.md references/common/layout-cards/resistor.md references/common/layout-cards/pushbutton.md references/common/layout-cards/dht22.md references/common/layout-cards/oled.md references/common/layout-cards/buzzer.md; do
   if [ ! -f "$F" ]; then
     echo "缺失 $F，正在从 GitHub 恢复..."
     mkdir -p "$(dirname "$F")"

@@ -53,6 +53,18 @@ arduino-cli lib install "DHT sensor library" "Adafruit SSD1306"
 
 ## Full Workflow (Generate → Compile → Simulate → Upload)
 
+**Entry selection (material-driven — no keyword triggers):**
+
+- User brings code artifacts (`.ino` / sketch folder / `libraries.txt`) → **Entry B (existing code)**: analyze the code first (see below), reconstruct the circuit, get user confirmation, then join the main flow. New requirements on top of existing code → reverse the base, then apply the changes as deltas.
+- Description only, no code artifacts → **Entry A (new project)**: design parts & netlist from the requirement (unchanged).
+- Ambiguous signals → one opening question: "I see X.ino — simulate from this code, or design fresh?"
+
+**Entry B — code → intent (three steps):**
+
+1. **Analyze**: scan `#include` library deps + pin usage (`pinMode` / `digitalWrite` / `analogRead` / `Wire` addresses / library constructor args) → component types + pin netlist, using `references/arduino/code-mapping.json` (library/class/constructor fingerprints → wokwi part + pin inference + ranked candidates).
+2. **Confirmation gate (mandatory)**: present the reconstructed parts list + netlist to the user for approval before writing any intent — reverse inference is uncertain (one library may map to several parts; off-library parts may need placeholders). Multi-candidate rows MUST be resolved by the user.
+3. **Reconstruct**: write `layout-intent.json` from the approved list (grouping/zones decided as usual), then continue with step 1 of the main flow.
+
 ### 1. Generate Code & Circuit
 
 1. Write the `.ino` sketch code (include a 3x blink in setup() as upload success indicator)
@@ -152,7 +164,14 @@ Rules for the summary:
 - Purpose: user verifies simulation AND uses it to wire physical hardware
   (compensates until wire-routing aesthetics are optimized)
 
-Then ask: "Does the simulation show the expected behavior?"
+**② Expected behavior (in conversation — tell the user what "correct" looks like BEFORE asking):**
+
+- Depth by verification reachability: simulation reachable & observable → key points only (a few lines); partial (placeholder parts / timing-dependent / physical quantities) → applicable sections only; unreachable (Mode C / UNVERIFIED) or physical upload → all four sections.
+- Sections (pick applicable): **power-on** (first N seconds: LED heartbeat / serial banner / screen init) · **steady state** · **interaction table** (input → expected output) · **troubleshooting** (no X → check Y).
+- Present directly in the conversation with markdown formatting — the user must never open a file to learn what to expect.
+- **Silent archive**: write the same content to `BEHAVIOR.md` (project dir, and `web-import/` when delivered) without mentioning it. At task completion / archive, mention it as freshly saved ("行为说明已保存:BEHAVIOR.md"). Content must be real and already shown — this is presentation timing, not fabrication. Delete on user request. Language: follow the conversation language.
+
+Then ask: "Does the simulation (or hardware) show the expected behavior ② above?"
 
 - **Yes** → proceed to upload
 - **No** → fix code/diagram, recompile, re-simulate
@@ -218,7 +237,7 @@ If any of these files are missing (e.g. skill was installed from a marketplace t
 BASE="https://raw.githubusercontent.com/YuchengCai/Skill-HardwarEasySim-Wokwi/main"
 # Remove stale old-structure dirs (uno renamed to arduino in v0.5)
 if [ -d "references/uno" ]; then rm -rf references/uno; fi
-for F in scripts/compile.sh scripts/wokwi-automate.js scripts/run-tests.js references/monaco-steps.md references/common/layout-rules.md references/common/generic-wiring.md references/common/layout-cards/index.md references/common/layout-cards/led.md references/common/layout-cards/resistor.md references/common/layout-cards/pushbutton.md references/common/layout-cards/dht22.md references/common/layout-cards/oled.md references/common/layout-cards/buzzer.md references/common/breadboard.md references/common/waypoints.md references/common/intent-format.md references/common/geometry.json references/common/boards.json references/common/sizes.json references/common/pins.json references/arduino/components.md references/arduino/index.json references/arduino/experience.json; do
+for F in scripts/compile.sh scripts/wokwi-automate.js scripts/run-tests.js references/monaco-steps.md references/common/layout-rules.md references/common/generic-wiring.md references/common/layout-cards/index.md references/common/layout-cards/led.md references/common/layout-cards/resistor.md references/common/layout-cards/pushbutton.md references/common/layout-cards/dht22.md references/common/layout-cards/oled.md references/common/layout-cards/buzzer.md references/common/breadboard.md references/common/waypoints.md references/common/intent-format.md references/common/geometry.json references/common/boards.json references/common/sizes.json references/common/pins.json references/arduino/components.md references/arduino/index.json references/arduino/experience.json references/arduino/code-mapping.json; do
   if [ ! -f "$F" ]; then
     echo "缺失 $F，正在从 GitHub 恢复..."
     mkdir -p "$(dirname "$F")"
