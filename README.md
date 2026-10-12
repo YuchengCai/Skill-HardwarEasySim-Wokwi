@@ -20,6 +20,12 @@
 
 **小版本更新历程**
 
+- **v0.5.8** — Existing-Code Entry & Behavior Spec / 存量代码入口与行为说明：
+  - 存量代码入口（Entry B）：材料驱动触发（有 `.ino` / sketch / libraries.txt 物证即走 Entry B，纯描述走 Entry A，歧义一句双向确认——零关键词）；代码分析（`#include` 库指纹 + 引脚扫描）→ **确认门**（反推清单必须用户确认，多候选必问）→ 写 intent 并入主线——主线流程零改动，0.5.7 的判据/告警/降级树自动覆盖存量项目
+  - 新增 `references/arduino/code-mapping.json`（代码→元件映射，初版 8 条指纹：NeoPixel/DHT/I2C×3/Servo/按钮上拉/模拟输入多候选；引脚名与 detail 逐条核对；数据驱动随用随长）
+  - 行为说明（呈现即对话）：交付时在**对话中**给出「正常工作状态说明」——深度随验证可达性分级（模拟可观测→要点 / 部分可达→适用节 / Mode C·烧录→全节：上电/稳态/交互响应表/故障速查）；同一内容静默归档 `BEHAVIOR.md`（web-import 同步一份），任务收尾时提示已保存，对话内可删，语言随会话——用户无需打开任何文件就知道"对了长什么样"
+  - 四适配器同步入口选择行；全部自愈清单补 code-mapping.json（GitHub 拉取安装即用不缺文件）
+  - 端到端验证：仅凭一份 .ino（无 intent、无模拟工具环境）→ 反推 8 元件 BOM 全部命中 → 生成硬冲突 0（bench 复核）→ 本地编译通过 → Mode C 三件套 + 行为说明五节齐交付，状态如实 UNVERIFIED
 - **v0.5.7** — Criteria-Driven Layout & Honest Verification / 判据驱动布局与诚实验证：
   - 面包板判据改造：元件数量条款退役，主判据改为**电源拓扑 fanout**（任一电源家族板脚需求 > 可用脚数 → 走轨分发，脚数读 `boards.json powerPinCounts`）；生成器常驻输出 advisor 三段式提示（事实/原因/建议，不再无声）
   - 新告警族：电源菊花链单线 >400px（分发线豁免）、面包板空置（轨连接 <2）、离散元件直连未写 `reason`（`intent.parts[].reason` 新增条件必填）、未知元件类型不静默
@@ -59,7 +65,7 @@
 <a id="english"></a>
 ## 📘 English
 
-**Wokwi Arduino Simulation Skill** — v0.5.7 — A portable skill package for AI coding agents (DeepCode, WorkBuddy, Claude Code, Cursor) that enables automated Arduino hardware prototyping, **auto browser simulation**, circuit compilation, and firmware upload.
+**Wokwi Arduino Simulation Skill** — v0.5.8 — A portable skill package for AI coding agents (DeepCode, WorkBuddy, Claude Code, Cursor) that enables automated Arduino hardware prototyping, **auto browser simulation**, circuit compilation, and firmware upload.
 
 ### Features
 
@@ -181,7 +187,7 @@ The agent reads `components.md` for correct pin names, generates the project, co
 <a id="chinese"></a>
 ## 📘 中文
 
-**Wokwi Arduino 仿真 Skill** — v0.5.7 — 一个可移植的技能包，专为 AI 编程助手（DeepCode、WorkBuddy、Claude Code、Cursor）设计，实现自动化硬件原型设计、**自动浏览器仿真**、代码编译和固件上传。
+**Wokwi Arduino 仿真 Skill** — v0.5.8 — 一个可移植的技能包，专为 AI 编程助手（DeepCode、WorkBuddy、Claude Code、Cursor）设计，实现自动化硬件原型设计、**自动浏览器仿真**、代码编译和固件上传。
 
 ### 功能
 
