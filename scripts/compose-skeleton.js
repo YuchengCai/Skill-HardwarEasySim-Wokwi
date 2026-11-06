@@ -93,20 +93,40 @@ const y0_mod = 0;
 const y1_mod = y0_mod + H_mod;
 const y0_corridor = y1_mod + 20;
 const y1_corridor = y0_corridor + MOD_GAP;
-const y0_bb = y1_corridor;
-const y1_bb = y0_bb + bbSize.h;
-const y0_board = y1_bb + BOARD_GAP;
-const y1_board = y0_board + boardSize.height;
 
-// 宽度：以「模块行」与「面包板」的较大者为画布宽，二者居中对齐
-const W = Math.max(W_mod, bbSize.w, boardSize.width);
-const cx = W / 2;
-const bands = {
-  moduleRow: { x0: Math.max(0, Math.round(cx - W_mod / 2)), x1: Math.round(cx + W_mod / 2), y0: y0_mod, y1: y1_mod },
-  corridor: { x0: 0, x1: Math.round(W), y0: y0_corridor, y1: y1_corridor },
-  breadboard: { x0: Math.round(cx - bbSize.w / 2), x1: Math.round(cx + bbSize.w / 2), y0: y0_bb, y1: y1_bb },
-  board: { x0: Math.round(cx - boardSize.width / 2), x1: Math.round(cx + boardSize.width / 2), y0: y0_board, y1: y1_board },
-};
+// 按所选模板推导 band 坐标（T1 纵向三层 / T2 L 形）
+let W, bands;
+if (chosen.name.startsWith('T2')) {
+  // T2 L 形（手绘 ref1 形态）：UNO 左、面包板右，两者共用同一 y 带；模块行在上方横跨
+  const y0_pair = y1_corridor;
+  const y1_pair = y0_pair + Math.max(bbSize.h, boardSize.height);
+  const y1_board = y1_pair;
+  const boardX0 = 0, boardX1 = Math.round(boardSize.width);
+  const bbX0 = boardX1 + 40, bbX1 = Math.round(bbX0 + bbSize.w);
+  W = Math.max(bbX1, W_mod);
+  bands = {
+    moduleRow: { x0: 0, x1: Math.round(W_mod), y0: y0_mod, y1: y1_mod },
+    corridor: { x0: 0, x1: Math.round(W), y0: y0_corridor, y1: y1_corridor },
+    breadboard: { x0: bbX0, x1: bbX1, y0: y0_pair, y1: Math.round(y0_pair + bbSize.h) },
+    board: { x0: boardX0, x1: boardX1, y0: y0_pair, y1: Math.round(y0_pair + boardSize.height) },
+  };
+  bands._y1 = Math.round(y1_pair);
+} else {
+  // T1 纵向三层：模块 / 过渡 / 面包板 / UNO 自上而下，水平居中对齐
+  const y0_bb = y1_corridor;
+  const y1_bb = y0_bb + bbSize.h;
+  const y0_board = y1_bb + BOARD_GAP;
+  const y1_board = y0_board + boardSize.height;
+  W = Math.max(W_mod, bbSize.w, boardSize.width);
+  const cx = W / 2;
+  bands = {
+    moduleRow: { x0: Math.max(0, Math.round(cx - W_mod / 2)), x1: Math.round(cx + W_mod / 2), y0: y0_mod, y1: y1_mod },
+    corridor: { x0: 0, x1: Math.round(W), y0: y0_corridor, y1: y1_corridor },
+    breadboard: { x0: Math.round(cx - bbSize.w / 2), x1: Math.round(cx + bbSize.w / 2), y0: y0_bb, y1: y1_bb },
+    board: { x0: Math.round(cx - boardSize.width / 2), x1: Math.round(cx + boardSize.width / 2), y0: y0_board, y1: y1_board },
+  };
+  bands._y1 = Math.round(y1_board);
+}
 
 // ── 走线策略（由骨架几何直接推出）──────────────────────────
 const modPinsDown = mods.length > 0;                       // 模块引脚朝下正对面包板
@@ -125,7 +145,7 @@ const strategy = {
 const out = {
   schema: 'wokwi-layout-skeleton/1',
   input: file,
-  canvas: { width: Math.round(W), height: Math.round(y1_board) },
+  canvas: { width: Math.round(W), height: bands._y1 },
   bands,
   anchors: {
     breadboard: { left: bands.breadboard.x0, top: bands.breadboard.y0, type: bbType },
