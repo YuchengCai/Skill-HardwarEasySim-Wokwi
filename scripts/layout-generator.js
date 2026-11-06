@@ -985,11 +985,45 @@ function main() {
                 : (ZONE_DIRECT[g.zone] || 'right');
       const base = dRegions[reg];
       let x = base.x + dCursor[reg];
-      g.parts.forEach(id => {
+      // S1：同区元件「底部对齐」（top/right 两区）——把板顶走廊让出来。
+      // 旧做法所有元件 top=base.y，高的元件（如摇杆 120 高）会伸到走廊里，
+      // 邻件的横穿线只能在走廊高度走 → 直接从本体中间穿过（U1 实测 5 处硬冲突）。
+      // 对齐后所有元件下沿 = base.y，走廊 base.y..board.top 保持空，横穿线不再穿件。
+      // 仅右区做底部对齐：右区元件在板子旁边，走廊在「元件下沿 ↔ 板顶」之间；
+      // 顶区不能这么做——高位长件（如 LED ring 152 高）会向上生长，挡住从右侧横穿的长线
+      //（实测 geo-unfold-shape：ring 被顶到 y=-3 后 4 条电源线穿环）。
+      const bottomAlign = (reg === 'right');
+      // 右侧区还要多让出车道走廊：板侧同边每条线占一条 8px 车道且向上堆叠，
+      // 5 条线就要 40px，20px 走廊不够（U1 实测：对齐后仍有 10 处穿件）。
+      // 按「最多 7 条车道 + 底部留白」预留 56。
+      const lift = bottomAlign ? (reg === 'right' ? 56 : 0) : 0;
+      // S1 排序：同区元件按「其连接到的板脚平均 x」升序排（连左边脚的放左边），
+      // 这样各条线不必互相横穿；大件（≥60×60，挡住车道的祸首）推到最外端。
+      const boardPinXOf = (id) => {
+        const xs = [];
+        for (const c of (intent.connections || [])) {
+          const hits = [[c.from, c.to], [c.to, c.from]];
+          for (const [a, b] of hits) {
+            if (!String(a).startsWith(id + ':')) continue;
+            const [pid, pin] = String(b).split(':');
+            if (pid !== board.id) continue;
+            const o = (pins[board.type] || {})[pin];
+            if (Array.isArray(o)) xs.push(o[0]);
+          }
+        }
+        return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 1e9;
+      };
+      const isBig = (id) => { const p = partById[id]; return !!p && p.w * p.h >= 3600; };
+      const ordered = [...g.parts].sort((a, b) => {
+        const ba = isBig(a), bb2 = isBig(b);
+        if (ba !== bb2) return ba ? 1 : -1;      // 大件后排（最外端）
+        return boardPinXOf(a) - boardPinXOf(b);
+      });
+      ordered.forEach(id => {
         const p = partById[id];
         if (!p || p.placement === 'bb') return;
         p.left = Math.round(x);
-        p.top = Math.round(base.y);
+        p.top = Math.round(bottomAlign ? base.y - p.h - lift : base.y);
         x += p.w + MIN_SPACING;
         dCursor[reg] += p.w + MIN_SPACING;
       });
