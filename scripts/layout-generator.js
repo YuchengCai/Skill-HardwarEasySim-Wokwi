@@ -1068,8 +1068,8 @@ function main() {
     const RAIL_MAX = RAIL_G.maxPosition || 25;
     const RAIL_GRP = RAIL_G.groupSize || 5;
     const railX = (n) => bb.left + (BB_W - (RAIL_G.xLeftRot0 || 20.6)) - ((n - 1) + Math.floor((n - 1) / RAIL_GRP)) * PITCH;
-    // railY 实测校准：bn 视觉顶轨 = top+5.6（按钮线"半孔"折回 → 原 4 偏上 1.6px）
-    const RY = RAIL_G.yRot180 || { bn: 5.6, bp: 15.2, tn: 156, tp: 162 };
+    // railY：yRot180 表存「rot180 渲染偏移」→ 绝对 y = bb.top + 值（四方统一口径，2026-11-07）。
+    const RY = RAIL_G.yRot180 || { tn: 185.6, tp: 195.2, bn: 11.8, bp: 21.4 };
     const railY = { bn: bb.top + RY.bn, bp: bb.top + RY.bp, tn: bb.top + RY.tn, tp: bb.top + RY.tp };
     const railPos = (rail, n) => ({ x: railX(n), y: railY[rail] });
     // 识别电源连线（目标 = uno:GND/5V/3V3/VIN）→ 连对应轨
@@ -1117,11 +1117,13 @@ function main() {
       const prefix = board.powerPins.find(p => rpin.startsWith(p));
       if (!prefix) return null;
       const isGND = prefix.startsWith('GND');
-      // 3.3V / VIN 无专属电源轨 → 不映射到轨，直连板子对应脚（修复被错接 5V 轨）
-      if (prefix.startsWith('3.3V') || prefix.startsWith('VIN')) return null;
-      // GND 就近选负轨（bn 视觉顶部 / tn 视觉底部；两轨经跳线互通、都连板子 GND）：
-      // 元件带（面包板顶部）用 bn，直连/芯片等靠近板子的用 tn，避免绕大圈
-      const rail = isGND ? (Math.abs(src.y - railY.bn) <= Math.abs(railY.tn - src.y) ? 'bn' : 'tn') : 'tp';
+      // 电源家族 → 专属轨（一网一列）：GND=负轨（就近）、5V=tp、3.3V=bp。
+      // 3.3V 曾因「无专属轨」一律直连（U2 实测：一个 3.3V 板脚引出 3 根线，人手接线不可接受）；
+      // 仿真实验已证轨整条连通（breadboard.md 第 4 层），正轨 bp 空置 → 3.3V 独占 bp。
+      if (prefix.startsWith('VIN')) return null;
+      const rail = isGND
+        ? (Math.abs(src.y - railY.bn) <= Math.abs(railY.tn - src.y) ? 'bn' : 'tn')
+        : (prefix.startsWith('3.3V') ? 'bp' : 'tp');
       const n = pickRail(rail, src.x, ownCol);
       return { rail, n, ref: `bb1:${rail}.${n}` };
     };
@@ -1293,8 +1295,15 @@ function main() {
     };
 
     (intent.connections || []).forEach(c => {
-      const fromRef0 = pinSwap[c.from] || c.from;
-      const toRef0 = pinSwap[c.to] || c.to;
+      let fromRef0 = pinSwap[c.from] || c.from;
+      let toRef0 = pinSwap[c.to] || c.to;
+      // ── S2 方向归一（一网一列）：模型写「板→元件」与「元件→板」是同一件事，
+      // 但 railTarget 只在「to=板电源脚」时触发。把板→元件的电源连接统一交换成
+      // 元件→板，让消费者照常落轨、板子由后面的「板喂轨」块单点供电。
+      // 反例保护：对端是 bb（$bb 虚拟连接）不交换；交换后若两端都非板则无副作用。
+      if (fromRef0.split(':')[0] === board.id && toRef0.split(':')[0] !== board.id && toRef0.split(':')[0] !== 'bb1') {
+        const t = fromRef0; fromRef0 = toRef0; toRef0 = t;
+      }
       let fid = fromRef0.split(':')[0];
       const fpin = fromRef0.split(':')[1];
       let fromRef = fromRef0;
@@ -1453,6 +1462,30 @@ function main() {
         }
         pts.push([b.x, b.y]);
         wirePaths.push({ from: `${board.id}:${board.railVcc}`, to: `bb1:tp.${n}`, pts });
+      }
+    }
+    // 3.3V 板馈（一网一列）：bp 有消费者时单点喂入，与 GND/5V 主线错开 x 与深度
+    if (railUsed['bp'].size > 0) {
+      const pin33 = Object.keys(pins[board.type] || {}).find(k => k.startsWith('3.3V'));
+      if (!pin33) {
+        console.log('[WARN] 3.3V 轨有消费者但板型无 3.3V 引脚，轨将无电源（请检查供电拓扑）');
+      } else {
+        const n = RAIL_MAX - 4;                       // x 与 tn.25 / tp.23 / tp.25 错开
+        const a = pinPos(board.id, pin33), b = railPos('bp', n);
+        const cy = BELOW_BASE + 2 * BELOW_STEP;       // 比 GND/5V 主线更深一层
+        const wps = [`v${rw(cy - a.y)}`, `h${rw(b.x - a.x)}`, `v${rw(b.y - cy)}`];
+        wireConns.push([`${board.id}:${pin33}`, `bb1:bp.${n}`, 'orange', wps]);
+        const pts = [[a.x, a.y]];
+        let cx = a.x, cyy = a.y;
+        for (const m of wps) {
+          const mm = /^([hv])(-?[\d.]+)$/.exec(m);
+          if (!mm) continue;
+          const d = parseFloat(mm[2]);
+          if (mm[1] === 'h') cx += d; else cyy += d;
+          pts.push([cx, cyy]);
+        }
+        pts.push([b.x, b.y]);
+        wirePaths.push({ from: `${board.id}:${pin33}`, to: `bb1:bp.${n}`, pts });
       }
     }
 
