@@ -20,6 +20,13 @@
 
 **小版本更新历程**
 
+- **v0.5.9** — Electrical Semantics & Catalog Coverage / 电气语义检查与元件目录补齐：
+  - 电气连通性检查（`optimize-wiring.js` 新增并查集网络分析）：`rail-unpowered`（轨上有消费者、网络内却无任何电源脚）与 `netlist-broken`（同一网络被面包板沟槽切断）列为**硬冲突**，`column-halfzone-split` 降为提示；堵住「GND 根本没接却报告无冲突」的漏报（真实项目实测反馈）
+  - 元件目录补到 60 条：新增 `board-mfrc522`（RFID 读卡器）、`board-cd74hc4067`（16 路模拟复用器）、`board-ssd1306`、`wokwi-74hc165 / 74hc595 / a4988 / ds18b20 / tm1637-7segment`，附 detail 引脚表与几何（尺寸为估计值，已标注待实测校准）
+  - `code-mapping.json` 扩到 9 条（`MFRC522.h` → `board-mfrc522` 等）
+  - 网页写入方式升级：`wokwi-automate.js` 由 `setValue` 改为 Monaco `executeEdits`（`pushUndoStop` 包裹），避免 IDE 状态与 buffer 不一致；新增按 F 适配视口步骤；`monaco-steps.md` 同步可复制片段
+  - 新增零依赖 CDP 直连驱动 `scripts/wokwi-cdp.js`（attach-first：附着已开调试端口的浏览器 → 注入 diagram.json → F 键 → 截图），供无法自行拉起浏览器的受限环境使用
+  - 回归测试沙箱兼容：`run-tests.js` 改用文件重定向捕获子进程输出（受限环境管道 stdio 会 EPERM，会让 10 个用例集体假失败）；本机全套 18/18 通过
 - **v0.5.8** — Existing-Code Entry & Behavior Spec / 存量代码入口与行为说明：
   - 存量代码入口（Entry B）：材料驱动触发（有 `.ino` / sketch / libraries.txt 物证即走 Entry B，纯描述走 Entry A，歧义一句双向确认——零关键词）；代码分析（`#include` 库指纹 + 引脚扫描）→ **确认门**（反推清单必须用户确认，多候选必问）→ 写 intent 并入主线——主线流程零改动，0.5.7 的判据/告警/降级树自动覆盖存量项目
   - 新增 `references/arduino/code-mapping.json`（代码→元件映射，初版 8 条指纹：NeoPixel/DHT/I2C×3/Servo/按钮上拉/模拟输入多候选；引脚名与 detail 逐条核对；数据驱动随用随长）
@@ -65,7 +72,7 @@
 <a id="english"></a>
 ## 📘 English
 
-**Wokwi Arduino Simulation Skill** — v0.5.8 — A portable skill package for AI coding agents (DeepCode, WorkBuddy, Claude Code, Cursor) that enables automated Arduino hardware prototyping, **auto browser simulation**, circuit compilation, and firmware upload.
+**Wokwi Arduino Simulation Skill** — v0.5.9 — A portable skill package for AI coding agents (DeepCode, WorkBuddy, Claude Code, Cursor) that enables automated Arduino hardware prototyping, **auto browser simulation**, circuit compilation, and firmware upload.
 
 ### Features
 
@@ -187,7 +194,7 @@ The agent reads `components.md` for correct pin names, generates the project, co
 <a id="chinese"></a>
 ## 📘 中文
 
-**Wokwi Arduino 仿真 Skill** — v0.5.8 — 一个可移植的技能包，专为 AI 编程助手（DeepCode、WorkBuddy、Claude Code、Cursor）设计，实现自动化硬件原型设计、**自动浏览器仿真**、代码编译和固件上传。
+**Wokwi Arduino 仿真 Skill** — v0.5.9 — 一个可移植的技能包，专为 AI 编程助手（DeepCode、WorkBuddy、Claude Code、Cursor）设计，实现自动化硬件原型设计、**自动浏览器仿真**、代码编译和固件上传。
 
 ### 功能
 

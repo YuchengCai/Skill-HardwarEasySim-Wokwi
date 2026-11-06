@@ -1,0 +1,10 @@
+{
+  "board": "wokwi-arduino-uno",
+  "parts": [
+    { "id": "partA", "type": "wokwi-led", "placement": "bb" },
+    { "id": "partB", "type": "wokwi-led", "placement": "bb" }
+  ],
+  "connections": [
+    { "from": "partA:A", "to": "partB:C", "color": "blue" }
+  ]
+}

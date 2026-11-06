@@ -536,6 +536,140 @@ function detectConflicts(diagram, partRects, boardProfile) {
 }
 
 // ============================================================
+// 修正 1:电气网络模型(union-find)+ 电气语义检查
+// 内部连通规则(geometry.json 同源):同列同半区 a–e/f–j 五孔一网;每条轨全长一网
+// 外部导线:connections 每条线(含 $bb)把两端并入同一网络
+// ============================================================
+function ebFind(parent, x) {
+  if (!parent.has(x)) parent.set(x, x);
+  let r = x;
+  while (parent.get(r) !== r) r = parent.get(r);
+  while (parent.get(x) !== r) { const n = parent.get(x); parent.set(x, r); x = n; }
+  return r;
+}
+function ebUnion(parent, a, b) {
+  const ra = ebFind(parent, a), rb = ebFind(parent, b);
+  if (ra !== rb) parent.set(ra, rb);
+}
+
+/** 端点引用 → 电气节点键。面包板孔位/轨折叠到网络锚点;板子电源脚按前缀归组(GND.1/GND.2 内部同组) */
+function ebNodeKey(ref, partsById) {
+  const i = ref.indexOf(':');
+  if (i < 0) return null;
+  const pid = ref.slice(0, i), pin = ref.slice(i + 1);
+  const part = partsById.get(pid);
+  if (!part) return null;
+  if (part.type.includes('breadboard')) {
+    let m = pin.match(/^([tb])([pn])\.(\d+)$/i);           // 轨 tp/tn/bp/bn
+    if (m) return `${pid}:rail:${m[1].toLowerCase()}${m[2].toLowerCase()}`;
+    m = pin.match(/^(\d+)([tb])(?:\.([a-j]))?$/i);          // 列孔位(如 15t.b)
+    if (m) return `${pid}:col:${m[1]}:${m[2].toLowerCase()}`;
+    return null;
+  }
+  const bcfg = BOARDS.boards && BOARDS.boards[part.type];
+  if (bcfg && Array.isArray(bcfg.powerPins)) {
+    const m = pin.match(/^(.*)\.(\d+)$/); // 剥尾随数字下标(GND.2→GND);3.3V 等多点名不动
+    const base = m ? m[1] : pin;
+    const pw = bcfg.powerPins.find(p => base === p || base.startsWith(p + '.'));
+    if (pw) return `#pw:${pid}:${pw}`;                      // 电源脚:GND* 同组
+  }
+  return `pin:${ref}`;
+}
+
+/** 构建 union-find 电气网络;返回 { partsById, netOf(ref), members(root→refs) } */
+function buildElectricalNets(diagram) {
+  const partsById = new Map((diagram.parts || []).map(p => [p.id, p]));
+  const parent = new Map();
+  const refs = [];
+  for (const c of (diagram.connections || [])) {
+    const ka = ebNodeKey(c[0], partsById), kb = ebNodeKey(c[1], partsById);
+    if (ka) { ebFind(parent, ka); refs.push([c[0], ka]); }
+    if (kb) { ebFind(parent, kb); refs.push([c[1], kb]); }
+    if (ka && kb) ebUnion(parent, ka, kb);
+  }
+  const members = new Map(); // 网络根 → 成员原始引用
+  for (const [ref, k] of refs) {
+    const r = ebFind(parent, k);
+    if (!members.has(r)) members.set(r, []);
+    members.get(r).push(ref);
+  }
+  const netOf = (ref) => { const k = ebNodeKey(ref, partsById); return k ? ebFind(parent, k) : null; };
+  return { partsById, netOf, members };
+}
+
+/** 电气语义检查:rail-unpowered(硬)/ netlist-broken(硬,需 intent)/ column-halfzone-split(INFO,intent 缺场) */
+function detectElectricalConflicts(diagram, projectDir) {
+  const conflicts = [];
+  const { partsById, netOf, members } = buildElectricalNets(diagram);
+  const bbParts = (diagram.parts || []).filter(p => p.type.includes('breadboard'));
+  const isPowerRef = (ref) => { const k = ebNodeKey(ref, partsById); return k && k.startsWith('#pw:'); };
+
+  // ── 检查 A:rail-unpowered(硬)——轨网络有消费者但无任何板子电源脚
+  for (const bb of bbParts) {
+    for (const rail of ['tp', 'tn', 'bp', 'bn']) {
+      const root = netOf(`${bb.id}:${rail}.1`);
+      const ms = root ? (members.get(root) || []) : [];
+      const consumers = ms.filter(ref => {
+        const part = partsById.get(ref.split(':')[0]);
+        return part && !part.type.includes('breadboard') && !isPowerRef(ref);
+      });
+      if (consumers.length === 0) continue;
+      if (ms.some(isPowerRef)) continue; // 轨间桥/主线合并后有源即合法
+      conflicts.push({ type: 'rail-unpowered', rail: `${bb.id}:${rail}`,
+        connStr: `${bb.id}:${rail} 轨有消费者(${consumers[0]} 等 ${consumers.length} 个)但网络内无板子电源脚` });
+    }
+  }
+
+  // ── 检查 B:intent 在场 → netlist-broken(硬);intent 缺场 → column-halfzone-split(INFO)
+  // intent 自动探测:本目录,其次父目录(layout-generator 产物通常在 <case>/out,intent 在 <case>/)
+  const intentDirs = [projectDir, path.dirname(projectDir)];
+  const intentPath = intentDirs.flatMap(d => ['layout-intent.json', 'intent.json'].map(f => path.join(d, f)))
+    .find(fs.existsSync);
+  if (intentPath) {
+    let intent = null;
+    try { intent = JSON.parse(fs.readFileSync(intentPath, 'utf-8')); }
+    catch (e) { console.warn(`[WARN] intent 解析失败(${intentPath}): ${e.message}`); }
+    for (const c of ((intent && intent.connections) || [])) {
+      if (!c.from || !c.to) continue;
+      const nf = netOf(c.from), nt = netOf(c.to);
+      if (!nf || !nt || nf === nt) continue; // 端点未落图/同网 → 不判
+      conflicts.push({ type: 'netlist-broken', connStr: `intent: ${c.from} ↔ ${c.to}`,
+        detail: `两端引用分属不同电气网络(视觉同列≠电通)` });
+    }
+  } else {
+    const halfHoles = new Map(); // "bbId:列:半区" → 网络根集合(仅可见导线端点,$bb 插接不计)
+    for (const c of (diagram.connections || [])) {
+      const wp = c.length > 3 ? c[3] : [];
+      if (wp.includes('$bb')) continue;
+      for (const ref of [c[0], c[1]]) {
+        const m = ref.match(/^(.+):(\d+)([tb])(?:\.[a-j])?$/i);
+        if (!m) continue;
+        const part = partsById.get(m[1]);
+        if (!part || !part.type.includes('breadboard')) continue;
+        const key = `${m[1]}:${m[2]}:${m[3].toLowerCase()}`;
+        const n = netOf(ref);
+        if (!n) continue;
+        if (!halfHoles.has(key)) halfHoles.set(key, new Set());
+        halfHoles.get(key).add(n);
+      }
+    }
+    const cols = new Map();
+    for (const [key, roots] of halfHoles) {
+      const [pid, col, half] = key.split(':');
+      const ck = `${pid} 列${col}`;
+      if (!cols.has(ck)) cols.set(ck, { t: new Set(), b: new Set() });
+      for (const r of roots) cols.get(ck)[half].add(r);
+    }
+    for (const [ck, halves] of cols) {
+      if (halves.t.size === 0 || halves.b.size === 0) continue;
+      if ([...halves.t].some(r => halves.b.has(r))) continue;
+      conflicts.push({ type: 'column-halfzone-split', connStr: `${ck}:上下半区均有接线端点且分属不同网络(中沟隔离)` });
+    }
+  }
+  return conflicts;
+}
+
+// ============================================================
 // 主流程
 // ============================================================
 function main() {
@@ -588,10 +722,12 @@ function main() {
   // 检测冲突（函数化）
 
   const conflicts = detectConflicts(diagram, partRects, boardProfile);
+  // 修正 1:电气语义检查(增量,不改 detectConflicts 既有判定)
+  conflicts.push(...detectElectricalConflicts(diagram, PROJECT_DIR));
 
   // --summary-out <file>：写机器可读分级摘要（iterate-layout.js 用：硬伤必须修 / 软伤可妥协）
   if (SUMMARY_OUT) {
-    const HARD = ['hits-part', 'part-on-board', 'part-on-breadboard', 'parts-overlap', 'wire-through-board', 'bb-misaligned'];
+    const HARD = ['hits-part', 'part-on-board', 'part-on-breadboard', 'parts-overlap', 'wire-through-board', 'bb-misaligned', 'rail-unpowered', 'netlist-broken'];
     const EXEMPT = ['cross-i2c'];
     const hard = conflicts.filter(c => HARD.includes(c.type));
     const soft = conflicts.filter(c => !HARD.includes(c.type) && !EXEMPT.includes(c.type));
@@ -612,7 +748,7 @@ function main() {
   // T8/C8 修复:报告分级——硬冲突全量优先,软冲突补足剩余行数。
   // 原 slice(0,15) 按数组序截断,重复计数的软交叉(bb/交叉在前)会把 hits-part 等硬伤
   // 挤出报告窗口(实测 arm-VC:88 处冲突只打印前 15,10 条线穿元件一条都没露出)。
-  const HARD_TYPES = new Set(['hits-part', 'part-on-board', 'part-on-breadboard', 'parts-overlap', 'wire-through-board', 'bb-misaligned']);
+  const HARD_TYPES = new Set(['hits-part', 'part-on-board', 'part-on-breadboard', 'parts-overlap', 'wire-through-board', 'bb-misaligned', 'rail-unpowered', 'netlist-broken']);
   const hardList = conflicts.filter(c => HARD_TYPES.has(c.type));
   const softList = conflicts.filter(c => !HARD_TYPES.has(c.type));
   console.log(`[INFO] 检测到冲突 ${conflicts.length} 处(硬 ${hardList.length} / 软 ${softList.length}):`);
@@ -625,7 +761,10 @@ function main() {
     'wire-through-board': '线穿板子',
     'overlap': '线重叠',
     'bb-misaligned': '引脚未对齐孔位',
-    'cross-i2c': '线交叉(I2C反序)'
+    'cross-i2c': '线交叉(I2C反序)',
+    'rail-unpowered': '轨无供电',
+    'netlist-broken': '网表断链',
+    'column-halfzone-split': '同列跨半区'
   };
   // Phase 3：suggest 层 —— 冲突类型 → 「事实 + 根因 + 建议动作 + 对应规则卡」
   // 模型读建议后按泛化闸门 record-back（见 generic-wiring.md），而非照抄实例。
@@ -639,7 +778,10 @@ function main() {
     'part-on-breadboard': { 事实: '元件压面包板且未插接', 根因: 'placement 缺失或与坐标不一致', 建议: '改 placement=bb 或移开', 规则: 'intent-format.md placement' },
     'parts-overlap':      { 事实: '元件互相重叠', 根因: '间距 <30 未做绝对化错开', 建议: '错开间距 ≥30', 规则: 'layout-rules.md 间距规则' },
     'bb-misaligned':      { 事实: '元件引脚坐标与孔位偏差 >0.5px', 根因: '坐标取整丢失亚像素精度', 建议: '用 2 位小数精确对齐（r2），勿 Math.round 取整', 规则: 'breadboard.md $bb 对齐' },
-    'cross-i2c':          { 事实: 'I2C 总线 SDA/SCL 引脚顺序相反', 根因: '拓扑必然交叉，非错误布线', 建议: '可豁免：单独列出、不计入软伤', 规则: 'layout-rules.md 约束分级' }
+    'cross-i2c':          { 事实: 'I2C 总线 SDA/SCL 引脚顺序相反', 根因: '拓扑必然交叉，非错误布线', 建议: '可豁免：单独列出、不计入软伤', 规则: 'layout-rules.md 约束分级' },
+    'rail-unpowered':     { 事实: '轨道有消费者但网络内无任何板子电源脚', 根因: '电源只馈了一侧轨或漏了轨间桥', 建议: 'UNO GND/5V 馈入该轨，或加轨间桥线（bp.x→tp.x / bn.x→tn.x）', 规则: 'breadboard.md 电源架构' },
+    'netlist-broken':     { 事实: 'intent 声明相连的两个端点分属不同电气网络', 根因: '中沟隔离/孔位笔误/漏跳线，视觉上同列但电不通', 建议: '两端改落同半区同列，或显式加跳线', 规则: 'breadboard.md 孔位连通（中沟隔离）' },
+    'column-halfzone-split': { 事实: '同列号上下半区均有接线端点且分属不同网络', 根因: '中沟隔离使同列两半区不导通', 建议: '若意图连通：改同半区或加跨沟跳线；若本就是两个独立网络：忽略本提示', 规则: 'breadboard.md 孔位连通' }
   };
   const REPORT_CAP = 15;
   const shown = [...hardList, ...softList].slice(0, Math.max(REPORT_CAP, hardList.length));
@@ -648,6 +790,7 @@ function main() {
     const s = TYPE_SUGGEST[c.type];
     const detail = c.type === 'part-on-board' ? `(${c.part}: ${c.connStr})`
       : c.type === 'parts-overlap' ? `(${c.connStr})`
+      : c.conn === undefined ? `(${c.connStr})`
       : `(连接 #${c.conn}${c.part ? ' 穿 ' + c.part : ''}): ${c.connStr}`;
     console.log(`  - ${label} ${detail}`);
     if (s) console.log(`      事实：${s.事实} ｜ 根因：${s.根因} ｜ 建议：${s.建议} ｜ 规则卡：${s.规则}`);

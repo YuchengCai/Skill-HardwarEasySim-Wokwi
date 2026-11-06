@@ -32,6 +32,22 @@ if (!fs.existsSync(CASES_DIR)) {
   process.exit(0);
 }
 
+// 沙箱兼容：受限环境（如 DSH/容器）创建子进程管道 stdio 会 EPERM，
+// 导致 spawnSync 的 stdout 永远为空、全部用例假失败。
+// 改为把子进程输出重定向到工作目录内的临时文件（文件句柄不受限），再读回。
+function runCapture(args, logPath) {
+  const fd = fs.openSync(logPath, 'w');
+  try {
+    const r = spawnSync('node', args, { stdio: ['ignore', fd, fd] });
+    let out = '';
+    try { out = fs.readFileSync(logPath, 'utf8'); } catch (e) { /* 保留空串 */ }
+    return { status: r.status, error: r.error, out };
+  } finally {
+    fs.closeSync(fd);
+    try { fs.unlinkSync(logPath); } catch (e) { /* 忽略 */ }
+  }
+}
+
 let pass = 0, fail = 0;
 const names = fs.readdirSync(CASES_DIR).sort();
 for (const name of names) {
@@ -43,10 +59,11 @@ for (const name of names) {
   fs.mkdirSync(outDir, { recursive: true });
   let ok = true;
 
-  // ① 重生成（捕获 stdout+stderr）
-  const res = spawnSync('node', [LAYOUT, intent, outDir], { encoding: 'utf8' });
-  const out = (res.stdout || '') + (res.stderr || '');
-  if (res.status !== 0) { console.log(`  [gen] ${name} 生成失败（exit ${res.status}）`); ok = false; }
+  // ① 重生成（输出落文件后读回，沙箱安全）
+  const gen = runCapture([LAYOUT, intent, outDir], path.join(outDir, '.gen.log'));
+  const out = gen.out;
+  if (gen.error) { console.log(`  [gen] ${name} 子进程无法启动：${gen.error.message}`); ok = false; }
+  else if (gen.status !== 0) { console.log(`  [gen] ${name} 生成失败（exit ${gen.status}）`); ok = false; }
 
   // ② 不变式检查
   if (ok) {
@@ -70,8 +87,8 @@ for (const name of names) {
 
   // ③ 冲突检查（--dry-run）：线交叉是接受形态（X 形可读），仅当存在
   //    不含「线交叉」字样的冲突行（元件遮挡/重叠等）才 fail。
-  const cr = spawnSync('node', [OPT, outDir, '--dry-run'], { encoding: 'utf8' });
-  const cOut = (cr.stdout || '') + (cr.stderr || '');
+  const cr = runCapture([OPT, outDir, '--dry-run'], path.join(outDir, '.opt.log'));
+  const cOut = cr.out;
   const conflictLines = cOut.split('\n').filter(l => /^\s*- /.test(l) && !/事实|建议|根因|规则卡/.test(l));
   if (conflictLines.length > 0) {
     const nonCross = conflictLines.filter(l => !l.includes('线交叉'));

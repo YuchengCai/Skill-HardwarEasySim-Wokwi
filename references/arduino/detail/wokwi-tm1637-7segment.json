@@ -1,0 +1,15 @@
+{
+  "type": "wokwi-tm1637-7segment",
+  "pins": [
+    "CLK",
+    "DIO",
+    "VCC",
+    "GND"
+  ],
+  "zh": [
+    "四位数码管模块",
+    "TM1637数码管"
+  ],
+  "verified": true,
+  "note": "TM1637 四线接口数码管模块。引脚名来自官方文档 docs.wokwi.com/parts/wokwi-tm1637-7segment(2026-11)。attrs: color/type(colon|dp)。"
+}

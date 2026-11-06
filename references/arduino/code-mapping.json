@@ -3,6 +3,13 @@
   "notes": "代码→元件映射:库/类/构造函数指纹 → wokwi 元件 + 引脚推断 + 多候选。随用随长(pin-semantics 模式);新条目须过反拷贝三问(generic-wiring.md)。",
   "mappings": [
     {
+      "signal": { "include": "MFRC522.h", "constructor": "MFRC522(CS_PIN, RST_PIN)", "raw": "mfrc522.PCD_Init()/UID 读取" },
+      "candidates": [
+        { "type": "board-mfrc522", "confidence": "high", "when": "默认(SPI 接线:3.3V/RST/GND/IRQ/MISO/MOSI/SCK/SDA)", "pins": { "SS/CS": "构造第1实参", "RST": "构造第2实参" } }
+      ],
+      "note": "官方件 docs.wokwi.com/parts/board-mfrc522;I2C 形态模块用 SDA/SCK 复用脚"
+    },
+    {
       "signal": { "include": "Adafruit_NeoPixel.h", "constructor": "Adafruit_NeoPixel(N, PIN, …)", "raw": "" },
       "candidates": [
         { "type": "wokwi-led-ring", "confidence": "high", "when": "N == 16(第 1 实参为 LED 数)", "pins": { "DIN": "构造函数第 2 实参" } },

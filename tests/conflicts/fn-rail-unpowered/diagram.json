@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "author": "fixture",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "wokwi-breadboard-half", "id": "bb1", "top": 100, "left": 200, "attrs": {} },
+    { "type": "wokwi-arduino-uno", "id": "uno", "top": 300, "left": 0, "attrs": {} },
+    { "type": "wokwi-led", "id": "led1", "top": 20, "left": 240, "attrs": { "color": "red" } }
+  ],
+  "connections": [
+    [ "led1:A", "bb1:tp.3", "red", [ "v-20", "h-30" ] ],
+    [ "led1:C", "bb1:bn.23", "black", [ "v30", "h20" ] ],
+    [ "uno:GND.2", "bb1:bn.1", "black", [ "v40", "h180" ] ]
+  ]
+}

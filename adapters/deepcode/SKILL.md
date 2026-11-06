@@ -3,7 +3,7 @@ name: wokwi-arduino
 description: Create, compile, simulate, and upload Arduino projects with Wokwi (VS Code extension, wokwi.com browser automation, or web editor). Use when the user mentions Arduino, Wokwi, 单片机, 嵌入式, or when .ino / wokwi.toml / diagram.json files are detected. Explicitly activate with @wokwi, #arduino, or @simulate.
 ---
 
-# Arduino Wokwi Simulation Skill (v0.5.8)
+# Arduino Wokwi Simulation Skill (v0.5.9)
 
 Create, compile, simulate, and upload Arduino projects using Wokwi.
 
@@ -117,7 +117,7 @@ Auto-installs `arduino-cli` + Uno core if missing. Handles MINGW/Windows path co
 #### Mode A: Browser Automation
 
 **Path 1 (PRIMARY): Playwright MCP** — standard for non-IDE agents (WorkBuddy, Kimi, Cline…). Any MCP-capable agent, no node/npm.
-- Follow **`references/monaco-steps.md`**: `browser_navigate` → wait Monaco → `browser_evaluate` (setValue) → switch diagram.json → **user clicks Start (never auto-click — unlogged users get no compute quota)**.
+- Follow **`references/monaco-steps.md`**: `browser_navigate` → wait Monaco → `browser_evaluate` (executeEdits) → switch diagram.json → **user clicks Start (never auto-click — unlogged users get no compute quota)**.
 - MCP not configured → see the adapter's MCP setup section (e.g. WorkBuddy: `~/.workbuddy/mcp.json`).
 
 **Path 2 (FALLBACK only): `wokwi-automate.js`** — only for agents that run commands but have no MCP.
@@ -254,7 +254,7 @@ done
 
 ## Version Check & Auto Update
 
-Current version: **v0.5.8**
+Current version: **v0.5.9**
 Repository: `https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git`
 
 When activated, check the latest release:
@@ -284,6 +284,8 @@ If newer, ask user to update → `git clone + install.sh` (auto).
 4. **`references/arduino/experience.json`** — accumulated wiring patterns & layout tips (agent-learned). Reference it when generating `diagram.json`.
 5. **`references/arduino/detail/<type>.json`** — per-component detail (auto-generated skeleton).
 6. **`references/esp32/`** — ESP32 board reference + wiring differences (D-prefix pins, 3V3/5V, .bin firmware). Read when the project uses an ESP32 board.
+
+> Coverage note: the catalog is continuously synced with the official Wokwi parts list, but may lag. If you find a part in the Wokwi editor's part palette (especially `board-*` types) that `index.json` does not list, **trust the editor**: use the type directly, verify pin names from the editor's part tooltip or docs.wokwi.com, and report the catalog gap in your delivery notes.
 
 ### Breadboard (面包板) quick rules
 

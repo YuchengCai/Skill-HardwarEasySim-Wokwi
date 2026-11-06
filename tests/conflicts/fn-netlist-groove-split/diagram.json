@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "author": "fixture",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "wokwi-breadboard-half", "id": "bb1", "top": 100, "left": 200, "attrs": {} },
+    { "type": "wokwi-led", "id": "partA", "top": 20, "left": 240, "attrs": { "color": "red" } },
+    { "type": "wokwi-led", "id": "partB", "top": 40, "left": 260, "attrs": { "color": "green" } }
+  ],
+  "connections": [
+    [ "partA:A", "bb1:5t.a", "blue", [ "v-60", "h-10" ] ],
+    [ "partB:C", "bb1:5b.j", "blue", [ "v30", "h10" ] ]
+  ]
+}

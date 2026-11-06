@@ -56,12 +56,20 @@ await waitMonaco();
 
 ```
 工具: browser_evaluate
-代码: editors[0].setValue(<ino 代码全文>)
+代码: pushUndoStop + executeEdits('wokwi-inject', ...) + pushUndoStop
 ```
 
 ```js
 const editors = monaco.editor.getEditors();
-editors[0].setValue(`/* Arduino 代码全文 */`);
+const editor = editors[0];
+const model = editor.getModel();
+editor.pushUndoStop();
+editor.executeEdits('wokwi-inject', [{
+  range: model.getFullModelRange(),
+  text: `/* Arduino 代码全文 */`,
+  forceMoveMarkers: true
+}]);
+editor.pushUndoStop();
 ```
 
 ---
@@ -108,8 +116,29 @@ const jsonReady = () => new Promise((resolve) => {
 ### 4c. 填入电路图
 
 ```js
-visibleEditor.setValue(JSON.stringify(diagramJson, null, 2));
+const model = visibleEditor.getModel();
+visibleEditor.pushUndoStop();
+visibleEditor.executeEdits('wokwi-inject', [{
+  range: model.getFullModelRange(),
+  text: JSON.stringify(diagramJson, null, 2),
+  forceMoveMarkers: true
+}]);
+visibleEditor.pushUndoStop();
 ```
+
+---
+
+### 4d. 注入后按 F(Fit)适配视口
+
+聚焦画布容器并按 `F`，把负坐标元件拉回视口：
+
+```js
+const canvasHost = document.querySelector('[class*="canvas"]')
+  || Array.from(document.querySelectorAll('div')).find(d => d.querySelector('canvas'));
+canvasHost.focus();
+```
+
+随后 `browser_press_key`（或等价按键工具）按 **F**。
 
 ---
 
@@ -132,7 +161,7 @@ visibleEditor.setValue(JSON.stringify(diagramJson, null, 2));
 | monaco not ready | 页面未完全加载 | 等待更久 / 检查网络 |
 | diagram.json 按钮找不到 | 页面结构变化 | 用 snapshot 检查按钮文本 |
 | json editor 不可见 | 切标签异步未完成 | 加长轮询时间 |
-| setValue 无效果 | 编辑器未挂载 | 确认是可见编辑器 |
+| executeEdits 注入无效果 | 编辑器未挂载 / 直接 setValue 被同步回退 | 确认是可见编辑器；必须走 pushUndoStop+executeEdits 管线 |
 | Start 按钮找不到 | 大小写/文本变化 | snapshot 获取精确可访问名称 |
 | 点击后无反应 | 页面刷新导致 ref 失效 | 重新 snapshot 再点击 |
 

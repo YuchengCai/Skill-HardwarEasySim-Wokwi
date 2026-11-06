@@ -1,0 +1,16 @@
+{
+  "type": "board-ssd1306",
+  "pins": [
+    "GND",
+    "VCC",
+    "SCL",
+    "SDA"
+  ],
+  "zh": [
+    "OLED显示屏(模块)",
+    "SSD1306模块",
+    "OLED屏幕"
+  ],
+  "verified": true,
+  "note": "128x64 I2C OLED 模块,默认地址 0x3c(attrs.i2cAddress 可改 0x3d)。引脚名来自官方文档 docs.wokwi.com/parts/board-ssd1306(2026-11)。"
+}

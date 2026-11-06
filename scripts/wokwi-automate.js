@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * wokwi-automate.js — Wokwi 网页自动化仿真脚本 (v0.5.8)
+ * wokwi-automate.js — Wokwi 网页自动化仿真脚本 (v0.5.9)
  *
  * 功能：用 Playwright 驱动真实浏览器，自动完成
  *   打开 Wokwi 新项目页 → 填 .ino 代码 → 切 diagram.json 填电路图 → 交给用户点击启动仿真
@@ -162,7 +162,15 @@ async function main() {
   try {
     await page.evaluate((code) => {
       const editors = monaco.editor.getEditors();
-      editors[0].setValue(code);
+      const editor = editors[0];
+      const model = editor.getModel();
+      editor.pushUndoStop();
+      editor.executeEdits('wokwi-inject', [{
+        range: model.getFullModelRange(),
+        text: code,
+        forceMoveMarkers: true
+      }]);
+      editor.pushUndoStop();
     }, project.ino);
     console.log(`[OK]   代码已填入 (${project.ino.split('\n').length} 行)`);
   } catch (e) {
@@ -217,7 +225,14 @@ async function main() {
           el = el.parentElement;
         }
         if (visible && ed.getModel() && ed.getModel().getLanguageId() === 'json') {
-          ed.setValue(JSON.stringify(diagram, null, 2));
+          const model = ed.getModel();
+          ed.pushUndoStop();
+          ed.executeEdits('wokwi-inject', [{
+            range: model.getFullModelRange(),
+            text: JSON.stringify(diagram, null, 2),
+            forceMoveMarkers: true
+          }]);
+          ed.pushUndoStop();
           break;
         }
       }
@@ -227,6 +242,21 @@ async function main() {
     console.error(`[ERR]  填入电路图失败: ${e.message}`);
     await browser.close();
     process.exit(5);
+  }
+
+  // --- 步骤 4d: 聚焦画布并按 F (Fit) 适配视口（把负坐标元件拉回视口） ---
+  console.log(`[INFO] 按 F (Fit) 适配画布视口...`);
+  try {
+    await page.evaluate(() => {
+      const canvasHost = document.querySelector('[class*="canvas"]')
+        || Array.from(document.querySelectorAll('div')).find(d => d.querySelector('canvas'));
+      if (!canvasHost) throw new Error('canvas container not found');
+      canvasHost.focus();
+    });
+    await page.keyboard.press('F');
+    console.log(`[OK]   已聚焦画布并按 F (Fit)`);
+  } catch (e) {
+    console.error(`[WARN] Fit 步骤失败（不影响注入）: ${e.message}`);
   }
 
   // --- 步骤 5: 交给用户启动仿真（不自动点击） ---

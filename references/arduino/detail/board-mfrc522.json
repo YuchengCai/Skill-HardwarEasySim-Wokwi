@@ -1,0 +1,20 @@
+{
+  "type": "board-mfrc522",
+  "pins": [
+    "3.3V",
+    "RST",
+    "GND",
+    "IRQ",
+    "MISO",
+    "MOSI",
+    "SCK",
+    "SDA"
+  ],
+  "zh": [
+    "RFID读卡器",
+    "MFRC522",
+    "RFID模块"
+  ],
+  "verified": true,
+  "note": "引脚名来自官方文档 docs.wokwi.com/parts/board-mfrc522(2026-11);attrs.uid 可自定义蓝卡 UID。"
+}

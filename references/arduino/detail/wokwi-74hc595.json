@@ -1,0 +1,27 @@
+{
+  "type": "wokwi-74hc595",
+  "pins": [
+    "DS",
+    "SHCP",
+    "STCP",
+    "OE",
+    "Q0",
+    "Q1",
+    "Q2",
+    "Q3",
+    "Q4",
+    "Q5",
+    "Q6",
+    "Q7",
+    "Q7S",
+    "MR",
+    "GND",
+    "VCC"
+  ],
+  "zh": [
+    "移位寄存器(输出)",
+    "74HC595"
+  ],
+  "verified": true,
+  "note": "8 位串行入并行出(SIPO)输出扩展。引脚名来自官方文档 docs.wokwi.com/parts/wokwi-74hc595(2026-11)。"
+}

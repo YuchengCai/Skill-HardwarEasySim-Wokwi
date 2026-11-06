@@ -1,4 +1,4 @@
-# Arduino Wokwi Simulation (v0.5.8)
+# Arduino Wokwi Simulation (v0.5.9)
 
 Activate when: user mentions Arduino/Wokwi/microcontroller/单片机, `.ino` / `wokwi.toml` / `diagram.json` files detected, or `@wokwi` / `#arduino` / `@simulate` used.
 
@@ -16,7 +16,7 @@ Uno/Mega/Nano/ESP32 supported — compile.sh auto-infers FQBN from diagram.json;
 **Entry selection**: code artifacts present (`.ino` / sketch folder / `libraries.txt`) → **Entry B**: reverse parts + netlist via `references/arduino/code-mapping.json`; the reconstructed list MUST be user-confirmed before writing intent (multi-candidates → ask the user). Description only → design fresh below. Ambiguous → one question: "from this code, or fresh design?"
 
 1. **Generate** — Write `.ino` code, match `references/arduino/index.json` (Chinese names) → components.md → detail/. Write `layout-intent.json` (semantic intent, no coords; contract `references/common/intent-format.md`, prefs `references/common/layout-cards/`; `breadboard` may be left empty — script auto-falls-back on bus scenes) → `node scripts/layout-generator.js layout-intent.json <dir>` → `diagram.json` → `node scripts/optimize-wiring.js <dir> --dry-run` → `wokwi.toml`. **Library-external parts (not in index.json): first check `placeholders/<name>/` and reuse; else STOP and ask the user for the exact brand/model → search datasheet for real pins → generate via `scripts/generate-part-placeholder.js` (stored in `placeholders/`, used as `chip-<name>` in diagram.json + `[[chip]]` in wokwi.toml; generator copies a generic empty wasm — no simulation behavior). Before generating, **pause and let the user choose**: Minimal mode (default; empty wasm, wiring display only) or Functional mode (full simulation wasm — slow / token-heavy / may not fully simulate); always default to Minimal unless explicitly asked for Functional**
-2. **Compile** — `./scripts/compile.sh <dir>` (auto-installs arduino-cli, MINGW path handled)
+2. **Compile** — `./scripts/compile.sh <dir>` (auto-installs arduino-cli, MINGW path handled). Catalog note: `index.json` may lag the official parts list — if a part exists in the Wokwi editor (esp. `board-*`) but not in the catalog, trust the editor and report the gap.
 3. **Simulate** — tool-face degradation tree (no dead ends): VS Code + Wokwi plugin → Mode B (F1). Playwright MCP → Mode A primary (monaco-steps.md). No MCP but node+playwright installed / user approves → `node scripts/wokwi-automate.js`. Built-in browser → light ops only, ≤2 failures → next. None reachable → **Mode C manual import** (deliver web-import/ 三件套: merged sketch.ino + diagram.json + libraries.txt; user opens wokwi.com/projects/new, replaces both, adds libs, clicks Start). **HARD RULE: never install playwright/npm without user approval; visual verification only by Wokwi itself — self-drawn artifacts never count as verification; gate unreachable → deliver UNVERIFIED + Mode C**
 4. **Verify** — Before simulation, present wiring text summary (from diagram.json, grouped by component: "LED anode → resistor → board pin13/D2", use function names + exact pins, D prefix for ESP32). Then ask user, fix if needed
 5. **Detect board** — `arduino-cli board list`。**HARD RULE: 上传前必须向用户展示端口/板型/FQBN 并确认，禁止静默上传**（单板也要确认）。CH340 克隆板显示 Unknown 属正常，用 `--fqbn arduino:avr:uno`
@@ -47,7 +47,7 @@ done
 
 ## Version Check & Auto Update
 
-v0.5.8 | Repo: https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git
+v0.5.9 | Repo: https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git
 
 On activation, check latest release:
 ```bash

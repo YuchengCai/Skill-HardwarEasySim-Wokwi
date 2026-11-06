@@ -1042,6 +1042,104 @@
     "verified": false
   },
   {
+    "type": "wokwi-74hc165",
+    "pins": ["D0", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "PL", "CP", "CE", "Q7", "Q7_N", "DS", "GND", "VCC"],
+    "zh": ["移位寄存器（输入）", "74HC165"],
+    "verified": true,
+    "note": "引脚名来自官方文档 docs.wokwi.com/parts/wokwi-74hc165"
+  },
+  {
+    "type": "wokwi-74hc595",
+    "pins": ["DS", "SHCP", "STCP", "OE", "Q0", "Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "Q7", "Q7S", "MR", "GND", "VCC"],
+    "zh": ["移位寄存器（输出）", "74HC595"],
+    "verified": true,
+    "note": "引脚名来自官方文档 docs.wokwi.com/parts/wokwi-74hc595"
+  },
+  {
+    "type": "wokwi-a4988",
+    "pins": ["ENABLE", "MS1", "MS2", "MS3", "RESET", "SLEEP", "STEP", "DIR", "GND", "VDD", "1B", "1A", "2A", "2B", "VMOT"],
+    "zh": ["步进电机驱动器", "A4988"],
+    "verified": true,
+    "note": "引脚名来自官方文档 docs.wokwi.com/parts/wokwi-a4988"
+  },
+  {
+    "type": "wokwi-ds18b20",
+    "pins": ["VCC", "DQ", "GND"],
+    "zh": ["数字温度传感器", "DS18B20"],
+    "verified": true,
+    "note": "1-Wire 数字温度传感器；引脚名来自官方文档 docs.wokwi.com/parts/wokwi-ds18b20"
+  },
+  {
+    "type": "wokwi-tm1637-7segment",
+    "pins": ["CLK", "DIO", "VCC", "GND"],
+    "zh": ["四位数码管模块", "TM1637数码管"],
+    "verified": true,
+    "note": "引脚名来自官方文档 docs.wokwi.com/parts/wokwi-tm1637-7segment"
+  },
+  {
+    "type": "board-ssd1306",
+    "pins": ["GND", "VCC", "SCL", "SDA"],
+    "zh": ["OLED显示屏（模块）", "SSD1306模块"],
+    "verified": true,
+    "note": "I2C OLED 模块，默认地址 0x3c；引脚名来自官方文档 docs.wokwi.com/parts/board-ssd1306"
+  },
+  {
+    "type": "board-cd74hc4067",
+    "pins": [
+      "GND",
+      "VCC",
+      "S0",
+      "S1",
+      "S2",
+      "S3",
+      "EN",
+      "COM",
+      "I0",
+      "I1",
+      "I2",
+      "I3",
+      "I4",
+      "I5",
+      "I6",
+      "I7",
+      "I8",
+      "I9",
+      "I10",
+      "I11",
+      "I12",
+      "I13",
+      "I14",
+      "I15"
+    ],
+    "zh": [
+      "模拟多路复用器",
+      "CD74HC4067",
+      "16路复用器"
+    ],
+    "verified": true,
+    "note": "官方 parts 清单未列但编辑器可用(用户手绘图实证);引脚名见 detail/board-cd74hc4067.json"
+  },
+  {
+    "type": "board-mfrc522",
+    "pins": [
+      "3.3V",
+      "RST",
+      "GND",
+      "IRQ",
+      "MISO",
+      "MOSI",
+      "SCK",
+      "SDA"
+    ],
+    "zh": [
+      "RFID读卡器",
+      "MFRC522",
+      "RFID模块"
+    ],
+    "verified": true,
+    "note": "引脚名来自官方文档 docs.wokwi.com/parts/board-mfrc522"
+  },
+  {
     "type": "wokwi-breadboard",
     "zh": "面包板（全尺寸）",
     "pins": [],

@@ -1,0 +1,26 @@
+{
+  "type": "wokwi-a4988",
+  "pins": [
+    "ENABLE",
+    "MS1",
+    "MS2",
+    "MS3",
+    "RESET",
+    "SLEEP",
+    "STEP",
+    "DIR",
+    "GND",
+    "VDD",
+    "1B",
+    "1A",
+    "2A",
+    "2B",
+    "VMOT"
+  ],
+  "zh": [
+    "步进电机驱动器",
+    "A4988"
+  ],
+  "verified": true,
+  "note": "引脚名来自官方文档 docs.wokwi.com/parts/wokwi-a4988(2026-11)。RESET 默认浮空须拉高(常接相邻 SLEEP)。"
+}

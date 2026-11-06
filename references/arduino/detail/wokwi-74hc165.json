@@ -1,0 +1,27 @@
+{
+  "type": "wokwi-74hc165",
+  "pins": [
+    "D0",
+    "D1",
+    "D2",
+    "D3",
+    "D4",
+    "D5",
+    "D6",
+    "D7",
+    "PL",
+    "CP",
+    "CE",
+    "Q7",
+    "Q7_N",
+    "DS",
+    "GND",
+    "VCC"
+  ],
+  "zh": [
+    "移位寄存器(输入)",
+    "74HC165"
+  ],
+  "verified": true,
+  "note": "8 位并行入串行出(PISO)输入扩展。引脚名来自官方文档 docs.wokwi.com/parts/wokwi-74hc165(2026-11)。"
+}

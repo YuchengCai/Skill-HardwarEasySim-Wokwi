@@ -3,7 +3,7 @@ name: wokwi-arduino
 description: Create, compile, simulate, and upload Arduino projects with Wokwi. Use when the user mentions Arduino, Wokwi, 单片机, 嵌入式, or when .ino / wokwi.toml / diagram.json files are detected. Explicitly activate with @wokwi, #arduino, or @simulate.
 ---
 
-# Arduino Wokwi Simulation Skill (v0.5.8) — WorkBuddy Adapter
+# Arduino Wokwi Simulation Skill (v0.5.9) — WorkBuddy Adapter
 
 WorkBuddy 专用的 wokwi-arduino skill 适配器。与 deepcode/claude/cursor 适配器内容一致，仅安装路径不同。
 
@@ -60,7 +60,7 @@ WorkBuddy 专用的 wokwi-arduino skill 适配器。与 deepcode/claude/cursor �
 2. `references/common/layout-cards/index.md` — 元件偏好卡索引，只读用到的卡
 3. `references/common/generic-wiring.md` — 未收录元件的通用兜底
 4. `references/common/layout-rules.md` / `breadboard.md` / `waypoints.md` — 布局/面包板/控制点规则
-5. `references/arduino/index.json`（中文名匹配）→ `components.md` → `detail/<type>.json`
+5. `references/arduino/index.json`（中文名匹配）→ `components.md` → `detail/<type>.json`（目录或有滞后，编辑器面板为准，缺口回报）
 6. `references/arduino/experience.json` — 累积接线经验
 7. 库外元件（index.json 查不到）→ 发现缺元件先查 `placeholders/<name>/` 复用；否则【暂停问用户品牌型号】→ 搜 datasheet 拿真实引脚 → `scripts/generate-part-placeholder.js` 生成（存 `placeholders/`，diagram.json 用 `chip-<name>`，wokwi.toml 声明 `[[chip]]`；生成器随附通用空 wasm，无仿真行为）；生成前【暂停让用户选】：最小模式（默认，空 wasm 仅接线展示）或 功能模式（写仿真 wasm，耗时长/token 多/可能不能完整模拟）；未明确要求则一律最小模式
 
@@ -99,7 +99,7 @@ done
 
 ## 版本检查
 
-当前版本: **v0.5.8**
+当前版本: **v0.5.9**
 仓库: `https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git`
 
 激活时检查最新 release，有新版本询问用户是否更新（git clone + install.sh）。⚠️ 更新时使用 `install.sh --global`（WorkBuddy 本身固定全局）。

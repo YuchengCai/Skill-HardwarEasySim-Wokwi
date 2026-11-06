@@ -1,0 +1,14 @@
+{
+  "type": "wokwi-ds18b20",
+  "pins": [
+    "VCC",
+    "DQ",
+    "GND"
+  ],
+  "zh": [
+    "数字温度传感器",
+    "DS18B20"
+  ],
+  "verified": true,
+  "note": "1-Wire 数字温度传感器。引脚名来自官方文档 docs.wokwi.com/parts/wokwi-ds18b20(2026-11)。attrs: temperature/deviceID/familyCode。"
+}
