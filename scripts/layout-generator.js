@@ -647,10 +647,16 @@ function main() {
           return [`v${r1(escY - a.y)}`, `h${r1(escX - a.x)}`, `v${r1(powerY - escY)}`,
                   `h${r1(b.x - escX)}`, `v${r1(b.y - powerY)}`, '@drop'];
         }
-        if (a.y >= p.top + p.h - 4) {
-          // 底缘/体外下方引脚: 已离开本体, 直接下穿(无需逃离)
-          // Fix B/A/前置（条件触发）: 列穿板盒/<6px 近触/共列/同排 → 治理, 否则原样
-          return escHorizWps(p, powerY, a.x);
+        // 底缘引脚（容差 8）：本体底部一排引脚必须先垂直向下离体，再走车道。
+        // 实测教训：摇杆 5 脚在局部 y=115.8 / 本体高 120.2，距底边仅 4.4，旧容差 4 把它
+        // 判成「中部/侧列 → 水平逃离」→ 首段横移仍在本体内部，视觉上就是「线穿摇杆」。
+        if (a.y >= p.top + p.h - 8) {
+          const downY = r1(a.y + 10);
+          const col = escColFor(a.x, p, downY, powerY);
+          const wps = [`v${r1(downY - a.y)}`];
+          if (Math.abs(col - a.x) > 0.05) wps.push(`h${r1(col - a.x)}`);
+          wps.push(`v${r1(powerY - downY)}`, `h${r1(b.x - col)}`, `v${r1(b.y - powerY)}`, '@drop');
+          return wps;
         }
         // 中部/侧列引脚: 水平逃离（列过 Fix A/B 治理，干净时原样）
         const idx = goLeft ? esc.left++ : esc.right++;
@@ -689,10 +695,16 @@ function main() {
             return [`v${r1(escY - a.y)}`, `h${r1(escX - a.x)}`, `v${r1(powerY - escY)}`,
                     `h${r1(b.x - escX)}`, `v${r1(b.y - powerY)}`, '@drop'];
           }
-          if (a.y >= p.top + p.h - 4) {
-            // 底缘/体外下方引脚: 已离开本体, 直接下穿(无需逃离)
-            // Fix B/A/前置（条件触发）: 列穿板盒/<6px 近触/共列/同排 → 治理, 否则原样
-            return escHorizWps(p, powerY, a.x);
+          // 底缘引脚（容差 8）：本体底部一排引脚必须先垂直向下离体，再走车道。
+          // 实测教训：摇杆 5 脚在局部 y=115.8 / 本体高 120.2，距底边仅 4.4，旧容差 4 把它
+          // 判成「中部/侧列 → 水平逃离」→ 首段横移仍在本体内部（视觉上就是线穿摇杆）。
+          if (a.y >= p.top + p.h - 8) {
+            const downY = r1(a.y + 10);
+            const col = escColFor(a.x, p, downY, powerY);
+            const wps = [`v${r1(downY - a.y)}`];
+            if (Math.abs(col - a.x) > 0.05) wps.push(`h${r1(col - a.x)}`);
+            wps.push(`v${r1(powerY - downY)}`, `h${r1(b.x - col)}`, `v${r1(b.y - powerY)}`, '@drop');
+            return wps;
           }
           // 中部/侧列引脚: 水平逃离（列过 Fix A/B 治理，干净时原样）
           const idx = goLeft ? esc.left++ : esc.right++;
