@@ -3,9 +3,9 @@
   "notes": "元件画布尺寸（单位=canvas px），从 wokwi-elements 源码 pinInfo/viewBox 反推（2026-08）。未知元件默认 20x20。多配置元件（7segment/hx711/lcd1602/membrane-keypad/stepper-motor/led-ring 等）按默认属性值取值；chip 类（如 74hc595）为 DIP 封装近似值。",
   "sizes": {
     "board-mfrc522": {
-      "width": 74.2,
-      "height": 54.8,
-      "note": "估计值,待实测校准(标准 MFRC522 模块尺寸近似)"
+      "width": 224.9,
+      "height": 151.0,
+      "note": "实测于渲染 2026-11-06：页面 svg width=59.496mm height=39.964mm ×3.7795；旧值 74.2×54.8 是引脚范围退化的假值"
     },
     "board-cd74hc4067": {
       "width": 127.6,
