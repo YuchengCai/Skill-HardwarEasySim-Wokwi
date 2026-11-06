@@ -180,6 +180,11 @@
       "width": 79.4,
       "height": 37.8
     },
+    "wokwi-analog-joystick": {
+      "width": 102.8,
+      "height": 120.2,
+      "note": "官方 SVG viewBox 27.2mm×31.8mm 按 96dpi 换算；T12 补齐（此前缺失导致走线穿过本体算不出来）"
+    },
     "wokwi-ky-040": {
       "width": 116.5,
       "height": 70.4
