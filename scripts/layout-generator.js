@@ -207,6 +207,53 @@ function main() {
       fams.forEach(f => { famDemand[f] = (famDemand[f] || 0) + 1; });
     });
     famOrder.forEach(f => { famDemand[f] = (famDemand[f] || 0) + (useBB ? 1 : 0); });
+    // ============================================================
+    // 需求画像接入（analyze-demand.js 同口径，轻量内联版）
+    // 目的：让生成器在放元件前就知道「这个方案有多大、要不要板、要几块」，
+    // 并把超出当前能力的需求**明确降级**（保守回退），而不是悄悄画错。
+    // 能力边界：当前只支持「单块 wokwi-breadboard-half」；
+    // 全尺寸板 / 多板拼接 → 记录 WARN 并按单块半板继续（保守）。
+    // ============================================================
+    {
+      const partList = intent.parts || [];
+      const connList = intent.connections || [];
+      const sizeOfType = (t) => (sizesData.sizes && sizesData.sizes[t]) ? sizesData.sizes[t] : { width: 20, height: 20 };
+      let pluggable = 0, modules = 0, plugArea = 0, plugHoles = 0;
+      for (const p of partList) {
+        const sz = sizeOfType(p.type);
+        const small = sz.width * sz.height < 3600;
+        const onBB = (p.placement || 'bb') === 'bb' && small;
+        if (onBB) { pluggable++; plugArea += sz.width * sz.height; plugHoles += 2; }
+        else modules++;
+      }
+      // 电源家族扇出（板脚侧消费者数）
+      const famFan = {};
+      for (const c of connList) {
+        for (const ref of [c.from, c.to]) {
+          const m = String(ref).match(new RegExp('^' + board.id + ':(.+)$'));
+          if (!m) continue;
+          const fam = board.powerPins.find(x => m[1] === x || m[1].startsWith(x + '.'));
+          if (fam) famFan[fam] = (famFan[fam] || 0) + 1;
+        }
+      }
+      maxFamFan = Math.max(0, ...Object.values(famFan));
+      const needColumnBus = maxFamFan >= 3;
+      const needRelay = modules > 0 && connList.length > 8;
+      // 板数需求：孔位约束（粗略：可插接件每件 2 孔）+ 模块行宽约束
+      // 板数估算：可插接件面积 ÷（单板面积 × 35% 装载率，保守（重叠多来自走线，面积模型偏乐观））。模块在板外、不占板面，
+      // 此前按「模块行宽」估板数，把 U1/U2 这类方案误判成 2-3 块板（已修）。
+      const HALF_AREA = 328.8 * 207.9;
+      const byArea = Math.ceil(plugArea / (HALF_AREA * 0.35));
+      const needBoardsByArea = Math.max(1, byArea);
+      const needBoards = needBoardsByArea;
+      console.log(`[INFO] 方案画像: 元件 ${partList.length}(可插 ${pluggable}/模块 ${modules})，连接 ${connList.length}，`
+        + `电源扇出 ${Object.entries(famFan).map(([k, v]) => k + '=' + v).join(' ') || '无'}`
+        + ` → 列总线${needColumnBus ? '需要' : '不需要'}、接力${needRelay ? '需要' : '不需要'}`);
+      if (needBoards > 1) {
+        console.log(`[WARN] 需求分析建议 ${needBoards} 块面包板（可插件面积 ${Math.round(plugArea)} / 单板可用 ${Math.round(HALF_AREA * 0.35)}），`
+          + `当前仅支持单块半板 → 按**保守回退**继续（可能出现拥挤；请拆分方案或等全板/多板支持）`);
+      }
+    }
     const over = famOrder.filter(f => famDemand[f] > powerPinCounts[f]);
     if (over.length > 0) {
       const wasBB = useBB;
