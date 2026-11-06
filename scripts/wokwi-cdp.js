@@ -136,8 +136,14 @@ function findBrowser() {
     if (m.id && pending.has(m.id)) { const p = pending.get(m.id); pending.delete(m.id); m.error ? p.rej(new Error(m.error.message)) : p.res(m.result); }
   };
   ws.onclose = () => { for (const p of pending.values()) p.rej(new Error('WebSocket 已关闭(页面可能导航/关闭)')); pending.clear(); };
-  const send = (method, params = {}) => new Promise((res, rej) => {
+  const send = (method, params = {}, timeoutMs = 15000) => new Promise((res, rej) => {
     const id = ++msgId; pending.set(id, { res, rej });
+    // 超时守卫：页面主线程忙死（如后台编译）时 Runtime.evaluate 不会回包，
+    // 没 timeout 就永久挂起（实测注入卡 7 分钟无输出即此因）。超时按失败处理并清理登记。
+    const timer = setTimeout(() => { if (pending.has(id)) { pending.delete(id); rej(new Error(`CDP ${method} ${timeoutMs}ms 无响应（页面可能忙/挂起）`)); } }, timeoutMs);
+    const entry = pending.get(id);
+    const origRes = entry.res, origRej = entry.rej;
+    pending.set(id, { res: (v) => { clearTimeout(timer); origRes(v); }, rej: (e) => { clearTimeout(timer); origRej(e); } });
     ws.send(JSON.stringify({ id, method, params }));
   });
   const evaluate = async (fn, ...fnArgs) => {

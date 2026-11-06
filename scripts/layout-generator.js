@@ -912,6 +912,9 @@ function main() {
       list.forEach(p => { btnColumn[p.id] = cur; cur -= TYPE_STEP.pushbutton; });
     });
 
+    // 跨块插接的通用解：孔对跨距 ≠ 引脚跨距（实测半板 b/t 两块相位差 0.8 单位，
+    // halfBOffset=20.0 而非 19.2），双腿取中点放置、误差对半分（各 ≤0.4，过 0.5 对齐门）。
+    // 数值从 geometry.json + pins.json _rot90 运行时推导，不再焊死魔数。
     bbParts.forEach(p => {
       if (is(p, 'pushbutton')) {
         const n = btnColumn[p.id];
@@ -920,15 +923,27 @@ function main() {
         bbConns.push([`${p.id}:1.l`, `bb1:${n}b.g`, '', ['$bb']]);
         bbConns.push([`${p.id}:2.l`, `bb1:${n + 2}b.g`, '', ['$bb']]);
         p.rotate = 90;
-        p.left = r2(rx(n) - 44.5);
-        p.top = r2(ry('g', 'b') + 9.5);
+        const bOff = ((pins['wokwi-pushbutton'] || {})._rot90 || {})['1.l'];
+        const rOff = ((pins['wokwi-pushbutton'] || {})._rot90 || {})['1.r'];
+        if (bOff && rOff) {
+          const pinSpan = rOff[1] - bOff[1];                       // 67.2（上下腿跨距）
+          const holeSpan = ry('b', 't') - ry('g', 'b');            // 68.0（t.b 行 ↔ b.g 行）
+          p.left = r2(rx(n) - rOff[0]);
+          p.top = r2(ry('g', 'b') - bOff[1] + (holeSpan - pinSpan) / 2);
+        } else { p.left = r2(rx(n) - 44.5); p.top = r2(ry('g', 'b') + 9.5); }
       } else if (is(p, 'resistor')) {
         const n = resColumn[p.id];
         bbConns.push([`${p.id}:1`, `bb1:${n}b.g`, '', ['$bb']]);
         bbConns.push([`${p.id}:2`, `bb1:${n}t.c`, '', ['$bb']]);
         p.rotate = 90;
-        p.left = r2(rx(n) - 29.35);
-        p.top = r2(ry('g', 'b') + 24.0);
+        const o1 = ((pins['wokwi-resistor'] || {})._rot90 || {})['1'];
+        const o2 = ((pins['wokwi-resistor'] || {})._rot90 || {})['2'];
+        if (o1 && o2) {
+          const pinSpan = o2[1] - o1[1];                           // 57.6（上腿→下腿）
+          const holeSpan = ry('c', 't') - ry('g', 'b');            // 58.4（b.g 上行 → t.c 下行，正值）
+          p.left = r2(rx(n) - o2[0]);
+          p.top = r2(ry('g', 'b') - o1[1] + (holeSpan - pinSpan) / 2);
+        } else { p.left = r2(rx(n) - 29.35); p.top = r2(ry('g', 'b') + 24.0); }
       } else if (is(p, 'dht')) {
         const n = bandCursor[bandOf[p.id]].dht;
         bbConns.push([`${p.id}:GND`, `bb1:${n}b.i`, '', ['$bb']]);
@@ -958,6 +973,13 @@ function main() {
       left:   { x: board.left - 160 - EXPAND.left, y: board.top }
     };
     const dCursor = { top: 0, right: 0, bottom: 0, left: 0 };
+    // 几何 v0.2（板实测 328.8×207.9）后：left/top 区元件 x 带可能与面包板横向重叠，
+    // 区域基线必须让过面包板下缘（含 8 世界距），否则 part-on-breadboard 硬冲突。
+    // 仅当区域 x 起点落在面包板横向范围内才抬升（bottom/right 起点在板外不受影响）。
+    for (const k of ['top', 'left']) {
+      const r = dRegions[k];
+      if (r.x < bb.left + BB_W) r.y = Math.max(r.y, bb.top + BB_H + 8);
+    }
     (intent.groups || []).forEach(g => {
       const reg = ['top', 'right', 'bottom', 'left'].includes(g.region) ? g.region
                 : (ZONE_DIRECT[g.zone] || 'right');
