@@ -33,6 +33,19 @@ DIR = path.resolve(DIR);
 const diagramPath = path.join(DIR, 'diagram.json');
 if (!fs.existsSync(diagramPath)) { console.error(`[ERROR] 未找到 ${diagramPath}`); process.exit(1); }
 const diagramText = fs.readFileSync(diagramPath, 'utf8');
+// 直连板型项目 URL：/projects/new 会先落首页/板型选择页，实测可能要等很久（不可控）
+const BOARD_SLUG = (() => {
+  const map = {
+    'wokwi-arduino-uno': 'arduino-uno', 'wokwi-arduino-mega': 'arduino-mega',
+    'wokwi-arduino-nano': 'arduino-nano', 'wokwi-esp32-devkit-v1': 'esp32',
+    'wokwi-nano-rp2040-connect': 'nano-rp2040-connect', 'wokwi-franzininho': 'franzininho',
+  };
+  try {
+    const parts = (JSON.parse(diagramText).parts || []).map(x => x.type || '');
+    return map[parts.find(t => map[t])] || 'arduino-uno';
+  } catch (e) { return 'arduino-uno'; }
+})();
+const PROJECT_URL = `https://wokwi.com/projects/new/${BOARD_SLUG}`;
 const sketchPath = path.join(DIR, 'sketch.ino');
 const sketchText = fs.existsSync(sketchPath) ? fs.readFileSync(sketchPath, 'utf8') : null;
 
@@ -96,7 +109,7 @@ function findBrowser() {
       '--no-sandbox', '--disable-gpu',
       '--no-first-run', '--no-default-browser-check', '--disable-first-run-ui',
       '--window-size=1600,900',
-      '--new-window', 'https://wokwi.com/projects/new',
+      '--new-window', PROJECT_URL,
     ], { stdio: 'ignore', detached: true });
     child.unref();
     console.log(`[INFO] 已启动(pid ${child.pid}),profile=${profileDir}`);
@@ -138,12 +151,20 @@ function findBrowser() {
   await send('Runtime.enable');
   await send('Page.enable');
 
-  // 等 monaco 就绪
-  for (let i = 0; i < 60; i++) {
-    const ok = await evaluate(() => !!(window.monaco && monaco.editor && monaco.editor.getEditors().length > 0));
-    if (ok) break;
-    if (i === 59) throw new Error('30s 内 monaco 未就绪');
+  // 等 monaco 就绪(带进度打点:首页→板型项目页的跳转可能很慢,不让用户干等/乱猜)
+  let lastHref = '', ready = false;
+  for (let i = 0; i < 90; i++) {
+    const st = await evaluate(() => ({
+      href: location.href,
+      ok: !!(window.monaco && monaco.editor && monaco.editor.getEditors().length > 0),
+    })).catch(() => null);
+    if (st && st.ok) { ready = true; break; }
+    if (st && st.href !== lastHref) { lastHref = st.href; console.log(`[INFO] 页面: ${st.href.substring(0, 80)}（等编辑器就绪…）`); }
     await sleep(500);
+  }
+  if (!ready) {
+    console.error('[WARN] 45s 内编辑器未就绪：若窗口停在 wokwi 首页/板型选择页，请不要手动操作，改跑 `--url <项目URL>` 直接指定，或重跑一次（多数情况是首次加载慢）。');
+    throw new Error('45s 内 monaco 未就绪');
   }
   console.log('[INFO] monaco 就绪');
 
