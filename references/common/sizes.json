@@ -4,21 +4,21 @@
   "sizes": {
     "board-mfrc522": {
       "width": 224.9,
-      "height": 151.0,
+      "height": 151,
       "note": "实测于渲染 2026-11-06：页面 svg width=59.496mm height=39.964mm ×3.7795；旧值 74.2×54.8 是引脚范围退化的假值"
     },
     "board-cd74hc4067": {
-      "width": 127.6,
-      "height": 30.2,
-      "note": "估计值(DIP-24 按 9.6 孔距推算;v0.5.9 修订),待实测校准"
+      "width": 61,
+      "height": 152,
+      "note": "实测于渲染 2026-11-06（画布配准法，mm 16.1mm 与渲染盒双证；旧值 127.6x30.2 为引脚范围退化假值）"
     },
     "wokwi-arduino-uno": {
-      "width": 273.0,
-      "height": 201.0
+      "width": 273,
+      "height": 201
     },
     "wokwi-arduino-mega": {
-      "width": 388.0,
-      "height": 192.0
+      "width": 388,
+      "height": 192
     },
     "wokwi-arduino-nano": {
       "width": 169.7,
@@ -29,24 +29,24 @@
       "height": 204.3
     },
     "board-esp32-devkit-c-v4": {
-      "width": 55.0,
-      "height": 28.0
+      "width": 55,
+      "height": 28
     },
     "wokwi-led": {
-      "width": 40.0,
-      "height": 50.0
+      "width": 40,
+      "height": 50
     },
     "wokwi-resistor": {
-      "width": 59.0,
-      "height": 11.0
+      "width": 59,
+      "height": 11
     },
     "wokwi-pushbutton": {
-      "width": 67.0,
-      "height": 32.0
+      "width": 67,
+      "height": 32
     },
     "wokwi-buzzer": {
-      "width": 64.0,
-      "height": 84.0
+      "width": 64,
+      "height": 84
     },
     "wokwi-dht22": {
       "width": 57.1,
@@ -54,19 +54,19 @@
     },
     "wokwi-breadboard": {
       "width": 313.6,
-      "height": 166.0
+      "height": 166
     },
     "wokwi-breadboard-half": {
       "width": 313.6,
-      "height": 166.0
+      "height": 166
     },
     "wokwi-lcd1602": {
       "width": 302.4,
       "height": 136.1
     },
     "wokwi-ssd1306": {
-      "width": 150.0,
-      "height": 116.0
+      "width": 150,
+      "height": 116
     },
     "board-ssd1306": {
       "width": 104.7,
@@ -98,11 +98,12 @@
     },
     "wokwi-membrane-keypad": {
       "width": 265.8,
-      "height": 338.0
+      "height": 338
     },
     "wokwi-analog-joystick": {
       "width": 102.8,
-      "height": 120.2
+      "height": 120.2,
+      "note": "官方 SVG viewBox 27.2mm×31.8mm 按 96dpi 换算；T12 补齐（此前缺失导致走线穿过本体算不出来）"
     },
     "wokwi-franzininho": {
       "width": 241.9,
@@ -133,7 +134,7 @@
       "height": 75.6
     },
     "wokwi-pushbutton-6mm": {
-      "width": 28.0,
+      "width": 28,
       "height": 22.7
     },
     "wokwi-rgb-led": {
@@ -141,8 +142,8 @@
       "height": 72.6
     },
     "wokwi-rotary-dialer": {
-      "width": 266.0,
-      "height": 286.0
+      "width": 266,
+      "height": 286
     },
     "wokwi-big-sound-sensor": {
       "width": 140.1,
@@ -154,14 +155,14 @@
     },
     "wokwi-ds1307": {
       "width": 97.5,
-      "height": 84.0
+      "height": 84
     },
     "wokwi-flame-sensor": {
-      "width": 200.0,
+      "width": 200,
       "height": 61.5
     },
     "wokwi-gas-sensor": {
-      "width": 137.0,
+      "width": 137,
       "height": 62.8
     },
     "wokwi-heart-beat-sensor": {
@@ -179,11 +180,6 @@
     "wokwi-ks2e-m-dc5": {
       "width": 79.4,
       "height": 37.8
-    },
-    "wokwi-analog-joystick": {
-      "width": 102.8,
-      "height": 120.2,
-      "note": "官方 SVG viewBox 27.2mm×31.8mm 按 96dpi 换算；T12 补齐（此前缺失导致走线穿过本体算不出来）"
     },
     "wokwi-ky-040": {
       "width": 116.5,
@@ -239,7 +235,7 @@
     }
   },
   "default": {
-    "width": 20.0,
-    "height": 20.0
+    "width": 20,
+    "height": 20
   }
 }
