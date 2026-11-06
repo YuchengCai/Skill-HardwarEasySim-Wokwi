@@ -173,3 +173,22 @@ canvasHost.focus();
 2. **按钮文本区分大小写** —— "Start the simulation" 精确匹配
 3. **无需登录** —— URL 直达 `/projects/new/arduino-uno` 即可
 4. **不截图验证结果** —— 浏览器有头模式用户可见，直接观察
+
+---
+
+## 环境与权限（浏览器自动化前置条件，2026-11-06 实测）
+
+`wokwi-cdp.js` / `wokwi-automate.js` 要在用户屏幕上真的打开浏览器，**必须让拉起浏览器的那条命令跑在宿主正常权限下**。受限沙箱里做不到，且症状很有迷惑性：
+
+| 环境 | 现象 | 归因 |
+|---|---|---|
+| 沙箱把进程压到 Low 完整性级别（如 DSH `workspace-write`） | 浏览器 6 秒内自灭，`exit 21`；Node 用默认管道 stdio 的 `spawn` 报 `EPERM`；往用户目录写缓存报 EPERM | Low IL 下 Chromium 初始化不了自身沙箱 / 命名管道建不了 / Medium IL 目录写不了 |
+| 正常权限（DSH `danger-full-access` 或非沙箱终端） | `Start-Process` 或 `chromium.launch()` 正常，`/json/version` 立即响应 | — |
+
+**处置顺序（推荐）**：
+
+1. **拉起浏览器**这一步单独走"命令级权限确认"（DSH 会在执行前弹一次确认）；确认后浏览器常驻，后续注入走 attach，不再需要提升。
+2. 若环境完全不允许提升：改"用户侧先开一次带 `--remote-debugging-port=9333` 的浏览器"（`wokwi-browser-daemon.cmd`），agent 只 attach——attach 在受限沙箱里可正常工作（已实测）。
+3. 不要用"端口 9222"判断环境问题：9222 在 Windows 上还叠加了 DevTools 默认口的定点拦截，属独立坑，与本条无关。
+
+> 多 agent 兼容备注：本条是**宿主机权限**问题，不是某个 agent 的 bug。跨 agent 移植时保留"优先自启 / 失败降级 attach"的两级逻辑即可；若将来做 DSH 专用插件版，可由插件宿主代持浏览器进程，本条可省。

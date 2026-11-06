@@ -23,8 +23,9 @@ const args = process.argv.slice(2);
 // (实测 Windows 上 Edge 带 --remote-debugging-port=9222 启动即 STATUS_BREAKPOINT 崩溃)
 let PORT = 9333, EDGE = null, DIR = null;
 for (let i = 0; i < args.length; i++) {
-  if (args[i] === '--port') PORT = parseInt(args[i + 1], 10);
-  else if (args[i] === '--edge') EDGE = args[i + 1];
+  // 带值参数必须吃掉下一个 token，否则值会被当成位置参数 DIR（实测 bug：--port 9333 让 DIR 变成 "9333"）
+  if (args[i] === '--port') PORT = parseInt(args[++i], 10);
+  else if (args[i] === '--edge') EDGE = args[++i];
   else DIR = args[i];
 }
 if (!DIR) { console.error('用法: node scripts/wokwi-cdp.js <project-dir> [--port 9222] [--edge <path>]'); process.exit(1); }
