@@ -1616,6 +1616,62 @@ function main() {
         }
       }
     }
+    // ============================================================
+    // P3 孔行接力：跨度 >600 的「元件→板脚」信号线，切成两段短线，
+    // 中段靠面包板「同列 + 同半区」内部连通（手绘 ref1 的 1b.i / 1b.j 即此法）。
+    // 收益：长线不再横穿全场 → 交叉下降；回退：找不到同列两个空孔、
+    // 或切分后总长反而变长 >20% → 保持原直连。
+    // ============================================================
+    const RELAY_MIN_SPAN = 600;
+    {
+      const kept = [];
+      for (const c of wireConns) {
+        const srcRef = String(c[0]), dstRef = String(c[1]);
+        const sid = srcRef.split(':')[0], spun = srcRef.split(':')[1];
+        const did = dstRef.split(':')[0], dpin = dstRef.split(':')[1];
+        if (sid === 'bb1' || sid === board.id || did !== board.id) { kept.push(c); continue; }
+        const a = pinPos(sid, spun), b = pinPos(did, dpin);
+        if (!a || !b) { kept.push(c); continue; }
+        const span = Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+        if (span <= RELAY_MIN_SPAN) { kept.push(c); continue; }
+        // 选列：取「源引脚与板脚中点」对应的列并夹到 1..N（元件常在板外右侧，
+        // 直接按元件 x 会算出板外列号）；同列同半区要 ≥2 个空孔
+        let chosen = null;
+        const midX = (a.x + b.x) / 2;
+        const nRaw = Math.round((bb.left + BB_W - OFF_X - midX) / PITCH) + 1;
+        const nClamp = Math.max(1, Math.min(G.columns || 30, nRaw));
+        const n0 = nClamp;
+        for (let off = 0; off <= 6 && !chosen; off++) {
+          const cands = off === 0 ? [n0] : [n0 - off, n0 + off];
+          for (const n of cands) {
+            if (n < 1 || n > (G.columns || 30)) continue;
+            for (const half of ['t', 'b']) {
+              const used = usedHoles[`${n}:${half}`] || new Set();
+              const [lo, hi] = HALF_RANGE[half];
+              const free = [];
+              for (let i = lo; i <= hi; i++) if (!used.has(LETTER[i])) free.push(LETTER[i]);
+              if (free.length >= 2) { chosen = { n, half, letters: free.slice(0, 2) }; break; }
+            }
+            if (chosen) break;
+          }
+        }
+        if (!chosen) { kept.push(c); continue; }
+        const h1 = { row: chosen.n, half: chosen.half, letter: chosen.letters[0] };
+        const h2 = { row: chosen.n, half: chosen.half, letter: chosen.letters[1] };
+        const p1 = holePos(h1), p2 = holePos(h2);
+        // 长度校验：两段曼哈顿之和不得比原线长 20% 以上
+        const legLen = Math.abs(a.x - p1.x) + Math.abs(a.y - p1.y) + Math.abs(p2.x - b.x) + Math.abs(p2.y - b.y);
+        if (legLen > span * 1.2) { kept.push(c); continue; }
+        const ref1 = `bb1:${chosen.n}${chosen.half}.${h1.letter}`;
+        const ref2 = `bb1:${chosen.n}${chosen.half}.${h2.letter}`;
+        (usedHoles[`${chosen.n}:${chosen.half}`] = usedHoles[`${chosen.n}:${chosen.half}`] || new Set()).add(h1.letter);
+        (usedHoles[`${chosen.n}:${chosen.half}`] = usedHoles[`${chosen.n}:${chosen.half}`] || new Set()).add(h2.letter);
+        kept.push([srcRef, ref1, c[2], routeWp(sid, spun, a, p1, 0, 'bb1', `${chosen.n}${chosen.half}.${h1.letter}`)]);
+        kept.push([`${board.id}:${dpin}`, ref2, c[2], routeWp(board.id, dpin, b, p2, 0, 'bb1', `${chosen.n}${chosen.half}.${h2.letter}`)]);
+      }
+      wireConns.length = 0;
+      kept.forEach(x => wireConns.push(x));
+    }
     // 用最终 wps 重建几何（让重叠检测器与输出同源；此前它读的是调整前的旧路径，
     // 导致「改好了但告警还在」与「告警消失但图没改」两种假象都可能出现）
     wirePaths.length = 0;
