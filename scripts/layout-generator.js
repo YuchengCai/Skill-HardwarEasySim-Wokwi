@@ -738,6 +738,58 @@ function main() {
   // （左7/右7/左14/右14/左21/右21/左28/右28）选首个不撞「其他有线脚列(±15)」
   // 且不撞「已用落点列(±3)」的侧偏入脚列（消同脚落点竖段共线/端点近触）。
   // ============================================================
+  // ============================================================
+  // S3 统一离体（表驱动，单点实现）：同一元件同一条边引出的多条线，
+  // 首段若沿该边共线（例：ky-040 五脚同列在 x=1108，5 段竖线完全重叠），
+  // 就按「第 k 条外移 k*8 的阶梯」处理，并在其后续第一个同向段补偿回来，
+  // 保证净位移为 0、终点不变——视觉上是先垂直离体、再平行分离走线。
+  // 判据：layout-generator 自带的 [重叠] 共线告警应随之消失。
+  // ============================================================
+  const escapeIdx = {};
+  const escapeStagger = (fid, a, wps) => {
+    const p = partById[fid];
+    if (!p || !p.w || !p.h || !Array.isArray(wps) || !wps.length) return wps;
+    const r1 = v => Math.round(v * 10) / 10;
+    const isV = /^v-?[\d.]+$/.test(wps[0]);
+    const isH = /^h-?[\d.]+$/.test(wps[0]);
+    if (!isV && !isH) return wps;
+    const onLR = isV && (Math.abs(a.x - p.left) < 2 || Math.abs(a.x - (p.left + p.w)) < 2);
+    const onTB = isH && (Math.abs(a.y - p.top) < 2 || Math.abs(a.y - (p.top + p.h)) < 2);
+    if (!onLR && !onTB) return wps;
+    const k = (escapeIdx[fid] = (escapeIdx[fid] || 0) + 1) - 1;
+    if (k === 0) return wps;                    // 第一条贴边线保持最贴近本体
+    let d = k * 8;
+    // 邻件净空守卫：外移后的竖段/横段若落进别的元件矩形（实测 encoder2 向右外移撞进
+    // 相邻摇杆本体，24.7px 穿件硬冲突），就把偏移逐步收回，直到不在任何别的元件里。
+    const blocked = (dd) => {
+      const escX = a.x + (Math.abs(a.x - p.left) < 2 ? -dd : dd);
+      return parts.some(q => q.id !== fid && q.left != null &&
+        escX > q.left - 2 && escX < q.left + (q.w || 0) + 2 &&
+        a.y > q.top - 2 && a.y < q.top + (q.h || 0) + 2);
+    };
+    while (d > 0 && blocked(d)) d -= 8;
+    if (d <= 0) return wps;
+    const rest = wps.slice();
+    if (onLR) {
+      const dir = Math.abs(a.x - p.left) < 2 ? -1 : 1;   // 朝本体外侧
+      let comp = false;
+      for (let i = 0; i < rest.length; i++) {
+        const m = /^h(-?[\d.]+)$/.exec(rest[i]);
+        if (m) { rest[i] = 'h' + r1(parseFloat(m[1]) - dir * d); comp = true; break; }
+      }
+      if (!comp) rest.unshift('h' + r1(-dir * d));
+      return ['h' + r1(dir * d)].concat(rest);
+    }
+    const dir = Math.abs(a.y - p.top) < 2 ? -1 : 1;
+    let comp = false;
+    for (let i = 0; i < rest.length; i++) {
+      const m = /^v(-?[\d.]+)$/.exec(rest[i]);
+      if (m) { rest[i] = 'v' + r1(parseFloat(m[1]) - dir * d); comp = true; break; }
+    }
+    if (!comp) rest.unshift('v' + r1(-dir * d));
+    return ['v' + r1(dir * d)].concat(rest);
+  };
+
   const routeWp = (fid, fpin, a, b, stagger, toId, toPin) => {
     const rr1 = v => Math.round(v * 10) / 10;
     const wps = routeWpRaw(fid, fpin, a, b, stagger, toId, toPin);
@@ -1533,6 +1585,54 @@ function main() {
         pts.push([b.x, b.y]);
         wirePaths.push({ from: `${board.id}:${pin33}`, to: `bb1:bp.${n}`, pts });
       }
+    }
+
+    // S3 单点兜底：所有可见线在发射前统一做一次离体对齐（覆盖全部产出分支）
+    const RAIL_REF = /^bb1:([tb][pn])\.\d+$/;
+    for (const c of wireConns) {
+      const wfid = String(c[0]).split(':')[0], wpin = String(c[0]).split(':')[1];
+      // 只处理「元件引脚引出」的线：面包板孔（bb1:15b.h）与板子引脚（uno:GND）都是
+      // 既定锚点，挪动会破坏孔位精确对齐/板线车道（实测 6 个用例因此失败）。
+      if (wfid === 'bb1' || wfid === board.id) continue;
+      const wp2 = partById[wfid];
+      if (!wp2 || !wp2.w || !wp2.h || !Array.isArray(c[3])) continue;
+      const wa = pinPos(wfid, wpin);
+      if (!wa) continue;
+      c[3] = escapeStagger(wfid, wa, c[3]);
+      // 轨目标进线：末段若是长水平线，它正好落在轨行 y 上 → 与其他轨线共线重叠。
+      // 改成「先下/上 10px 到轨线外侧 → 横走 → 再垂直进孔」，即从外侧入孔。
+      const rm = String(c[1]).match(RAIL_REF);
+      if (rm && c[3].length) {
+        const last = /^h(-?[\d.]+)$/.exec(c[3][c[3].length - 1]);
+        if (last && Math.abs(parseFloat(last[1])) > 20) {
+          const ry = railY[rm[1]];
+          if (ry != null) {
+            const outside = (ry >= bb.top + BB_H / 2) ? 10 : -10;   // 下方轨→从下方入孔
+            c[3] = c[3].slice(0, -1);
+            c[3].push('v' + Math.round(outside * 10) / 10);
+            c[3].push('h' + last[1]);
+            c[3].push('v' + -Math.round(outside * 10) / 10);
+          }
+        }
+      }
+    }
+    // 用最终 wps 重建几何（让重叠检测器与输出同源；此前它读的是调整前的旧路径，
+    // 导致「改好了但告警还在」与「告警消失但图没改」两种假象都可能出现）
+    wirePaths.length = 0;
+    for (const c of wireConns) {
+      const wfid = String(c[0]).split(':')[0], wpin = String(c[0]).split(':')[1];
+      const wa = pinPos(wfid, wpin);
+      if (!wa) continue;
+      const pts = [[wa.x, wa.y]];
+      let cx = wa.x, cy = wa.y;
+      for (const s of (c[3] || [])) {
+        const m = /^([hv])(-?[\d.]+)$/.exec(s);
+        if (!m) continue;
+        const d = parseFloat(m[2]);
+        if (m[1] === 'h') cx += d; else cy += d;
+        pts.push([cx, cy]);
+      }
+      wirePaths.push({ from: c[0], to: c[1], pts });
     }
 
     const ovCount = detectOverlaps(wirePaths);
