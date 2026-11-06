@@ -79,10 +79,17 @@ const netList = Object.values(nets).map(n => {
 const powerNets = netList.filter(n => n.power);
 const busNets = netList.filter(n => n.fanout >= 3);
 // 电源扇出按家族聚合（同一家族可能被拆成多个网络：GND.1/GND.2）
+// 控制板 id（前向取，供 fanout 统计使用；后面还有一份完整的 boardId 对象）
+const boardPartId = ((parts.find(p => /arduino|esp32|rp2040|franzininho/i.test(p.type)) || {}).id) || 'uno';
+// 电源家族扇出 = 每个网络里「板脚之外的消费者」数（板脚自身不算）
 const famFanout = {};
-for (const n of powerNets) {
-  const fam = (n.fam || '').replace(/\..*$/, '').toUpperCase();
-  famFanout[fam] = (famFanout[fam] || 0) + n.fanout;
+for (const n of netList) {
+  const boardPinRef = n.pins.find(x => x.split(':')[0] === boardPartId);
+  if (!boardPinRef) continue;
+  const bp = boardPinRef.split(':')[1] || '';
+  if (!POWER_RE.test(bp)) continue;
+  const fam = bp.replace(/\.\d+$/, '');            // GND.2 → GND；3.3V 原样
+  famFanout[fam] = (famFanout[fam] || 0) + Math.max(0, n.pins.length - 1);
 }
 
 // ── 面包板需求 ────────────────────────────────────────────
@@ -114,6 +121,34 @@ const needRelay = detail.some(p => !p.pluggable) && conns.length > 8;  // 有模
 const arrangement = plan[0].boards > 1
   ? (suggestBox.w >= suggestBox.h * 1.2 ? '横向并列（轨间桥接）' : '纵向堆叠（轨间桥接）')
   : '单块居中';
+// ── 是否需要面包板（分析层的第一个判断，而不是默认用板）──────────
+const boardsCfg = (() => {
+  try { return JSON.parse(fs.readFileSync(path.join(ROOT, 'references/common/boards.json'), 'utf8')); }
+  catch (e) { return { boards: {} }; }
+})();
+const boardProfile = boardsCfg.boards[(intent.board || 'wokwi-arduino-uno')] || boardsCfg.boards['wokwi-arduino-uno'] || {};
+const powerCaps = boardProfile.powerPinCounts || { GND: 2, '5V': 1, '3.3V': 1, VIN: 1 };
+const bbDecision = (() => {
+  const must = [];      // 必须用板
+  const better = [];    // 用板更好
+  if (pluggableParts.length > 0) {
+    must.push(`可插接离散件 ${pluggableParts.length} 个（按钮/电阻/LED 必须插孔）`);
+  }
+  for (const [fam, n] of Object.entries(famFanout)) {
+    const key = Object.keys(powerCaps).find(k => fam.toUpperCase().startsWith(k.replace('.', '').toUpperCase()) || fam.toUpperCase().startsWith(k.toUpperCase()));
+    const cap = key ? powerCaps[key] : 1;
+    if (n > cap) must.push(`电源 ${fam} 消费者 ${n} > 板脚 ${cap}（需要共用/分配）`);
+  }
+  // 共享总线：同一网络 ≥3 引脚且其中 ≥2 个是非板器件（I2C/SPI 多设备典型）
+  const sharedBus = netList.filter(n => n.fanout >= 3 && n.pins.filter(p => p.split(':')[0] !== (boardId ? boardId.id : 'uno')).length >= 2).length;
+  if (sharedBus > 0) better.push(`共享总线网络 ${sharedBus} 个（多设备共用 SDA/SCL 等，列总线更整齐）`);
+  const anyModule = moduleParts.length > 0;
+  if (must.length) return { verdict: '必需', reasons: must.concat(better) };
+  if (better.length) return { verdict: '有帮助', reasons: better };
+  if (anyModule) return { verdict: '不需要', reasons: [`全部 ${moduleParts.length} 个为模块、电源扇出均在板脚容量内（${Object.entries(famFanout).map(([k, v]) => k + '=' + v).join(' ') || '无电源共用'}）→ 直连最干净`] };
+  return { verdict: '不需要', reasons: ['无元件、无电源共用需求'] };
+})();
+
 const suggestion = {
   breadboard: plan[0],
   arrangement,
@@ -129,6 +164,7 @@ const suggestion = {
 const out = {
   schema: 'wokwi-layout-demand/1',
   input: file,
+  breadboardDecision: bbDecision,
   parts: { total: detail.length, pluggable: pluggableParts.length, modules: detail.length - pluggableParts.length, totalArea: Math.round(totalArea), pluginArea: Math.round(plugArea), suggestBox },
   nets: { count: netList.length, powerNets: powerNets.length, busNets: busNets.length, maxFanout, famFanout },
   demand: suggestion,
@@ -139,6 +175,7 @@ if (asJson) { console.log(JSON.stringify(out, null, 2)); process.exit(0); }
 console.log(`=== 布局需求分析: ${path.basename(file)} ===`);
 console.log(`元件 ${out.parts.total} 个（可插接 ${out.parts.pluggable} / 模块 ${out.parts.modules}），总足迹 ${out.parts.totalArea}，建议包围盒 ${suggestBox.w}×${suggestBox.h}（宽高比 ${(suggestBox.w / suggestBox.h).toFixed(2)}）`);
 console.log(`网络 ${out.nets.count} 个（电源 ${out.nets.powerNets} / 总线型≥3 ${out.nets.busNets}），电源家族扇出: ${Object.entries(famFanout).map(([k, v]) => k + '=' + v).join(' ') || '无'}`);
+console.log(`面包板判定: ${bbDecision.verdict} —— ${bbDecision.reasons.join('；')}`);
 console.log(`面包板: ${plan[0].boards} × ${plan[0].type}（需 ${holesNeeded} 孔 / 每块 ${plan[0].holesPerBoard} 孔），排布建议「${arrangement}」`);
 console.log(`策略: 列总线=${needColumnBus ? '需要' : '不需要'}，孔行接力=${needRelay ? '需要' : '不需要'}`);
 console.log(`  列总线: ${suggestion.reason.columnBus}`);
