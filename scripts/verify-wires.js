@@ -41,7 +41,8 @@ function pinPosition(part, pinName) {
       const grp = geo.rail.groupSize;
       ox = geo.rail.xLeftRot0 + (idx + Math.floor(idx / grp)) * geo.pitch;
       const Y = geo.rail.yRot180;
-      oy = Y[mRail[1] + mRail[2]];
+      // 轨表存「渲染偏移」（abs = bb.top + 值）；本函数统一走 y + H − oy，故此处反算成内部值
+      oy = geo.height - Y[mRail[1] + mRail[2]];
     }
     if (ox != null) {
       if (rot === 180) return { x: x + geo.width - ox, y: y + geo.height - oy };
@@ -81,15 +82,11 @@ const conns = (diagram.connections || []).filter(c => !(c[3] || []).includes('$b
   const r = await withTimeout(new Promise((res, rej) => {
     ws.onmessage = ev => { const m = JSON.parse(ev.data); if (m.id === 1) { m.error ? rej(new Error(m.error.message)) : res(m.result); } };
     ws.send(JSON.stringify({ id: 1, method: 'Runtime.evaluate', params: { returnByValue: true, expression: `(() => {
-      const all = [];
-      const walk = (root) => { for (const el of root.querySelectorAll('*')) { if (el.tagName === 'svg') all.push(el); if (el.shadowRoot) walk(el.shadowRoot); } };
-      walk(document);
-      let canvas = null;
-      for (const s of all) { const vb = (s.getAttribute('viewBox') || '').split(/[ ,]+/).map(Number); if (vb.length === 4 && vb[2] > 800) canvas = s; }
-      if (!canvas) return { error: 'no-canvas' };
+      const layer = document.querySelector('svg[class*="connections"]');
+      if (!layer) return { error: 'no-connections-layer' };
       // 线层 = 大 canvas 里的 path（排除零件内部 svg——那些不在 canvas 里）
       const wires = [];
-      for (const p of canvas.querySelectorAll('path')) {
+      for (const p of layer.querySelectorAll('path')) {
         const d = p.getAttribute('d') || '';
         const nums = d.match(/-?\\d+(\\.\\d+)?/g);
         if (!nums || nums.length < 4) continue;
@@ -113,19 +110,24 @@ const conns = (diagram.connections || []).filter(c => !(c[3] || []).includes('$b
     const A = fp && pinPosition(fp, from.split(':')[1]);
     const B = tp && pinPosition(tp, to.split(':')[1]);
     if (!A || !B) { console.log(`  [skip] ${from} -> ${to}（引脚模型缺失）`); continue; }
-    const vx = B.x - A.x, vy = B.y - A.y;
-    // 找端点向量最接近的渲染线（不区分方向）
+    // 双向端点就近匹配：算出的 A/B 各自贴近渲染线的两端（不区分方向）。
+    // 早期用「端点向量最近」会被密集平行线（相邻轨位差 9.6）配错，实测误报 14 条。
+    // 颜色优先：同一元件相邻引脚（如 RFID 的 SDA/SCK 相距 9.6）连线平行，
+    // 仅按端点就近会把两条平行线配错（实测反复误报）。线颜色是我们自己指定的，可作判别位。
+    const wantColor = String(c[2] || '').toLowerCase();
+    const pool = wires.filter(w => String(w.stroke || '').toLowerCase() === wantColor);
+    const cands = pool.length ? pool : wires;
     let bestErr = Infinity, bestWire = null;
-    for (const w of wires) {
-      const e1 = Math.hypot((w.b[0] - w.a[0]) - vx, (w.b[1] - w.a[1]) - vy);
-      const e2 = Math.hypot((w.a[0] - w.b[0]) - vx, (w.a[1] - w.b[1]) - vy);
+    for (const w of cands) {
+      const e1 = Math.max(Math.hypot(w.a[0] - A.x, w.a[1] - A.y), Math.hypot(w.b[0] - B.x, w.b[1] - B.y));
+      const e2 = Math.max(Math.hypot(w.a[0] - B.x, w.a[1] - B.y), Math.hypot(w.b[0] - A.x, w.b[1] - A.y));
       const e = Math.min(e1, e2);
       if (e < bestErr) { bestErr = e; bestWire = w; }
     }
     const tag = bestErr <= 1.5 ? 'OK ' : 'BAD';
     if (bestErr <= 1.5) ok++; else { bad++; }
     if (!worst || bestErr > worst.err) worst = { err: bestErr, conn: `${from} -> ${to}` };
-    if (bestErr > 1.5) console.log(`  [${tag}] ${from} -> ${to}  端点向量误差=${bestErr.toFixed(2)}（算=${vx.toFixed(1)},${vy.toFixed(1)} 渲=${(bestWire.b[0]-bestWire.a[0]).toFixed(1)},${(bestWire.b[1]-bestWire.a[1]).toFixed(1)}）`);
+    if (bestErr > 1.5) console.log(`  [${tag}] ${from} -> ${to}  端点误差=${bestErr.toFixed(2)}（算A=(${A.x.toFixed(1)},${A.y.toFixed(1)}) B=(${B.x.toFixed(1)},${B.y.toFixed(1)})  渲=(${bestWire.a[0]},${bestWire.a[1]})→(${bestWire.b[0]},${bestWire.b[1]})）`);
   }
   console.log(`\n契约核对: ${ok} 条 OK / ${bad} 条超差（阈值 1.5 单位）；最大误差 ${worst ? worst.err.toFixed(2) + ' @ ' + worst.conn : '-'}`);
   process.exit(bad > 0 ? 1 : 0);
