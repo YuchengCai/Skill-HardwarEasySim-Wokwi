@@ -62,8 +62,44 @@ const pinXOf = (id) => {
 };
 mods.sort((a, b) => pinXOf(a.id) - pinXOf(b.id));
 
+// ── 2.5 信号分层（BFS）：直连板子=第 1 层（近板行），经模块中转=第 2+ 层（远行）
+// 电源连接不参与距离（人人都有电源，不构成"该放一起"的理由）。
+// 对应用户手绘 ref2 形态：RFID（只连 MUX）排上方行，MUX（直连板子）在近板行。
+const isPowerPinRef = (id, pin) => {
+  const t = id === boardId ? boardType : ((intent.parts.find(x => x.id === id) || {}).type);
+  return (pins[t] || {})[pin] ? POWER_RE.test(pin) : false;
+};
+const sigAdj = {}, boardDirect = new Set();
+for (const c of intent.connections || []) {
+  const [fa, fb] = [String(c.from), String(c.to)];
+  const [aid, apin] = fa.split(':'), [bid, bpin] = fb.split(':');
+  if (isPowerPinRef(aid, apin) || isPowerPinRef(bid, bpin)) continue;      // 只看信号
+  const aMod = mods.find(m => m.id === aid), bMod = mods.find(m => m.id === bid);
+  if (aMod && bMod) {
+    (sigAdj[aid] = sigAdj[aid] || new Set()).add(bid);
+    (sigAdj[bid] = sigAdj[bid] || new Set()).add(aid);
+  } else if (aMod && bid === boardId) boardDirect.add(aid);
+  else if (bMod && aid === boardId) boardDirect.add(bid);
+}
+const distOf = {};
+boardDirect.forEach(id => { distOf[id] = 1; });
+for (let d = 1; d <= mods.length; d++) {
+  const frontier = Object.keys(distOf).filter(id => distOf[id] === d);
+  if (!frontier.length) break;
+  for (const id of frontier) {
+    (sigAdj[id] || new Set()).forEach(n => { if (distOf[n] == null) distOf[n] = d + 1; });
+  }
+}
+mods.forEach(m => { if (distOf[m.id] == null) distOf[m.id] = 1; });       // 孤立模块（纯电源）放近行
+const rowsByDist = {};
+mods.forEach(m => { const d = distOf[m.id]; (rowsByDist[d] = rowsByDist[d] || []).push(m); });
+const maxDist = Math.max(1, ...Object.keys(rowsByDist).map(Number));
+const rowH = {};
+for (let d = 1; d <= maxDist; d++) rowH[d] = rowsByDist[d] ? Math.max(...rowsByDist[d].map(m => m.h)) : 0;
+
 // ── 3. 构图骨架（T1/T2 择优，与 compose-skeleton.js 同口径）──
-const H_mod = mods.length ? Math.max(...mods.map(m => m.h)) : 0;
+// 多行模块带：第 1 层（近板）贴走廊，第 2+ 层依次向上叠
+const H_mod = Object.values(rowH).reduce((a, b) => a + b, 0) + (maxDist - 1) * MOD_GAP;
 const W_mod = mods.reduce((a, m) => a + m.w + MOD_SPACING, 0) - (mods.length ? MOD_SPACING : 0);
 const cands = [];
 {
@@ -93,12 +129,39 @@ if (tpl.name === 'T2') {
   boardLeft = cx - boardSize.width / 2;
 }
 
-// ── 4. 放置：模块底部对齐 band0，水平依次排开 ────────────────
+// ── 4. 放置：自下而上逐行放。第 1 层贴走廊（近板），第 2+ 层对齐其信号锚点 ──
 const pos = {};
-let mx = tpl.name === 'T2' ? 0 : Math.max(0, (Math.max(W_mod, BB.width, boardSize.width) - W_mod) / 2);
-for (const m of mods) {
-  pos[m.id] = { left: Math.round(mx), top: Math.round(y1_mod - m.h) };
-  mx += m.w + MOD_SPACING;
+const rowBottoms = {};   // d → 该行下沿 y（间隙车道/避障判定要用）
+const anchorXOf = (id, d) => {
+  // 找同一信号的 d-1 层邻居，用其中心做行对齐基准
+  for (const n of (sigAdj[id] || new Set())) {
+    if (distOf[n] === d - 1 && pos[n]) return pos[n].left + ((mods.find(m => m.id === n) || {}).w || 0) / 2;
+  }
+  return null;
+};
+{
+  const canvasW = Math.max(W_mod, BB.width, boardSize.width);
+  let yBottom = y1_mod;                                  // 整个模块带的下沿 = 走廊上沿
+  for (let d = 1; d <= maxDist; d++) {
+    const list = rowsByDist[d] || [];
+    if (!list.length) continue;
+    const rowTop = yBottom - rowH[d];
+    const rowW = list.reduce((s, m) => s + m.w + MOD_SPACING, 0) - MOD_SPACING;
+    let startX;
+    if (d === 1) {
+      startX = tpl.name === 'T2' ? 0 : Math.max(0, (canvasW - rowW) / 2);
+    } else {
+      const ax = anchorXOf(list[0].id, d);
+      startX = ax != null ? Math.max(0, ax - rowW / 2) : Math.max(0, (canvasW - rowW) / 2);
+    }
+    let x = startX;
+    for (const m of list) {
+      pos[m.id] = { left: Math.round(x), top: Math.round(rowTop + (rowH[d] - m.h)) };   // 行内底部对齐
+      x += m.w + MOD_SPACING;
+    }
+    rowBottoms[d] = yBottom;
+    yBottom = rowTop - MOD_GAP;
+  }
 }
 const bb = { type: 'wokwi-breadboard-half', id: 'bb1', left: Math.round(bbLeft), top: Math.round(bbTop), rotate: 180 };
 
@@ -147,6 +210,33 @@ const pickRail = (rail, wantX) => {
   railUsed[rail].add(best);
   return best;
 };
+// ── 6 前置：行避障（远行模块的竖线下落不得穿过更低行的模块本体）──
+// 分层后实测：rfid1(第2层) 在 mux1(第1层) 正上方，电源线直落到全局走廊时
+// 从 mux 本体中间穿过（20px 穿件硬冲突）。规则：
+//   ① 远行(d≥2)模块的横走车道 = 本行与下一行之间的间隙（rowBottoms[d]+20），
+//      不再直接降到全局走廊；
+//   ② 下落 x 必须避开更低行模块的 x 带（±4 余量），轨位选择也遵守此约束。
+const blockedBelow = (x, d) => mods.some(m => {
+  if ((distOf[m.id] || 1) >= d) return false;           // 只看更低行
+  const pp = pos[m.id];
+  return pp && x > pp.left - 4 && x < pp.left + m.w + 4;
+});
+const pickRailClear = (rail, wantX, d) => {
+  let best = null, bd = Infinity;
+  for (let n = 1; n <= geo.rail.maxPosition; n++) {
+    if (railUsed[rail].has(n)) continue;
+    const x = railX(n);
+    if (blockedBelow(x, d)) continue;                   // 下落点被更低行模块挡住 → 换位
+    const dd = Math.abs(x - wantX);
+    if (dd < bd) { bd = dd; best = n; }
+  }
+  if (best == null) return pickRail(rail, wantX);       // 全被挡则退回普通就近
+  railUsed[rail].add(best);
+  return best;
+};
+const laneYFor = (d) => (d >= 2 && rowBottoms[d] != null)
+  ? Math.min(rowBottoms[d] + 20, y1_mod + 12)
+  : y1_mod + 12;
 
 const famOf = (id, pin) => {
   const type = id === boardId ? boardType : (intent.parts.find(x => x.id === id) || {}).type;
@@ -169,14 +259,15 @@ for (const c of intent.connections || []) {
   const srcId = swap ? tRef : fRef;
   const wantX = a.x;
 
-  // 统一"先离体"：模块行下沿 +12 是走廊基准，任何横走都必须先降到它下面
-  // （否则横段会穿过同排相邻模块的本体——实测 12 处穿件全由此产生）
-  const dropY = y1_mod + 12;
-  const vDown = (curY) => (curY < dropY ? r1(dropY - curY) : 0);
+  // 统一"先离体"：横走车道按源模块所在行选——第 1 行用全局走廊（模块行下沿+12），
+  // 第 2+ 行用本行下方间隙，避免竖线穿过更低行的模块本体。
+  const dSrc = distOf[src.id] || 1;
+  const laneY = laneYFor(dSrc);
+  const vDown = (curY) => (curY < laneY ? r1(laneY - curY) : 0);
   if (fam && dst.id === boardId) {
-    // 电源：消费者 → 轨；板子 → 轨（单点喂入）
+    // 电源：消费者 → 轨；板子 → 轨（单点喂入）。轨位避开更低行模块的 x 带。
     const rail = railOf(fam);
-    const n = pickRail(rail, wantX);
+    const n = pickRailClear(rail, wantX, dSrc);
     const rp = { x: railX(n), y: railY(rail) };
     const wps = [];
     const v1 = vDown(a.y);
