@@ -107,17 +107,21 @@ for (let d = 1; d <= maxDist; d++) rowH[d] = rowsByDist[d] ? Math.max(...rowsByD
 
 // ── 3. 构图骨架（T1/T2 择优，与 compose-skeleton.js 同口径）──
 // 多行模块带：第 1 层（近板）贴走廊，第 2+ 层依次向上叠
+// 走廊（模块带→面包板/板子）与行间隙分治：多行电路的信号车道在行间隙里，
+// 走廊只承载最下行模块的少量线（实测 U2 仅 mux 的 ~3 车道）→ 走廊可窄；
+// 单行电路（U1 型）全部车道都在走廊 → 走廊保持行间隙宽度。
+const CORR_GAP = MOD_GAP;
 const H_mod = Object.values(rowH).reduce((a, b) => a + b, 0) + (maxDist - 1) * MOD_GAP;
 const W_mod = mods.reduce((a, m) => a + m.w + MOD_SPACING, 0) - (mods.length ? MOD_SPACING : 0);
 const cands = [];
 {
-  const h = H_mod + 20 + MOD_GAP + BB.height + BOARD_GAP + boardSize.height;
+  const h = H_mod + 20 + CORR_GAP + BB.height + BOARD_GAP + boardSize.height;
   const w = Math.max(W_mod, BB.width, boardSize.width);
   cands.push({ name: 'T1', w, h, aspect: w / h });
 }
 {
   const w = boardSize.width + 40 + Math.max(BB.width, W_mod - boardSize.width - 40);
-  const h = Math.max(H_mod + MOD_GAP + Math.max(BB.height + BB_DROP, boardSize.height), boardSize.height + 40);
+  const h = Math.max(H_mod + CORR_GAP + Math.max(BB.height + BB_DROP, boardSize.height), boardSize.height + 40);
   cands.push({ name: 'T2', w, h, aspect: w / h });
 }
 cands.forEach(c => { c.score = Math.abs(c.aspect - TARGET_ASPECT); });
@@ -125,7 +129,7 @@ cands.sort((a, b) => a.score - b.score);
 const tpl = cands[0];
 
 const y0_mod = 0, y1_mod = H_mod;
-const y1_corridor = y1_mod + 20 + MOD_GAP;
+const y1_corridor = y1_mod + 20 + CORR_GAP;
 let bbLeft, bbTop, boardLeft, boardTop;
 if (tpl.name === 'T2') {
   boardLeft = 0; boardTop = y1_corridor;
@@ -157,7 +161,13 @@ const anchorXOf = (id, d) => {
     const rowW = list.reduce((s, m) => s + m.w + MOD_SPACING, 0) - MOD_SPACING;
     let startX;
     if (d === 1) {
-      startX = tpl.name === 'T2' ? 0 : Math.max(0, (canvasW - rowW) / 2);
+      // 模板锚定：模块带对齐「面包板列」而非画布左边（T2 板在左、面包板在右；
+      // 板子那一列的上方没有可连对象，模块压在那里只会拉长线——ref2 的形态是
+      // 模块聚在面包板上方）。行比面包板宽时按面包板中心居中并左钳 0。
+      const bbCx = bbLeft + BB.width / 2;
+      startX = tpl.name === 'T2'
+        ? Math.max(0, bbCx - rowW / 2)
+        : Math.max(0, (canvasW - rowW) / 2);
     } else {
       const ax = anchorXOf(list[0].id, d);
       startX = ax != null ? Math.max(0, ax - rowW / 2) : Math.max(0, (canvasW - rowW) / 2);
@@ -457,10 +467,22 @@ const singleColFeed = new Map();   // fam → { holePin, x, y }（单列即网�
       const slot = escSlotOf.get(i) || 0;
       return p.x + os.x * (Math.max(14, edge + 14) + sidePhase(n.src.id) + slot * SLOT_STEP);
     };
-    const validCol = (c) => idxs.every(i => {
-      const ex = escXOf(i);
-      return ex == null || Math.abs(ex - holeXOf(c)) >= 15;
-    });
+    const busD = Math.min(...idxs.map(i => distOf[normed[i].src.id] || 1));
+    const validCol = (c) => {
+      // 列 x 不得落在更低行模块的 x 带内：落孔竖段会从该模块本体穿过去
+      // （实测 rfid3:3.3V→21b.h 在 mux 的 x 带内下钻 152px 穿件）。
+      const cx0 = holeXOf(c);
+      for (const m of mods) {
+        if ((distOf[m.id] || 1) >= busD) continue;
+        const mp = pos[m.id];
+        if (!mp) continue;
+        if (cx0 > mp.left - 14 && cx0 < mp.left + m.w + 14) return false;
+      }
+      return idxs.every(i => {
+        const ex = escXOf(i);
+        return ex == null || Math.abs(ex - holeXOf(c)) >= 15;
+      });
+    };
     let col = (cands.find(x => validCol(x.c)) || cands[0]).c;
     usedCols.add(col);
     idxs.sort((i, j) => {
@@ -608,6 +630,20 @@ for (const [idx, c] of connList.entries()) {
       turnX = Math.max(a.x + 4, hole.x - 16 - hole.k * 4);   // 两者都向右
     }
     plan.dx0 = regVert(r1(turnX), a.x < hole.x ? 1 : -1);
+    // 转弯 x（落孔竖段所在 x）必须避开更低行模块的 x 带：否则竖段从该模块本体穿过
+    // （实测 rfid3:3.3V 的竖段在 mux 带内下钻 152px）。撞带则挪到带边外 20。
+    for (const m of mods) {
+      if ((distOf[m.id] || 1) >= dSrc) continue;
+      const mp = pos[m.id];
+      if (!mp) continue;
+      const l = mp.left - 20, r = mp.left + m.w + 20;
+      if (plan.dx0 > l && plan.dx0 < r) {
+        plan.dx0 = r1(Math.abs(plan.dx0 - l) <= Math.abs(plan.dx0 - r) ? l : r);
+      }
+    }
+    // 多条线被挤到同一个带边是常态（实测两条 rfid3 线同为 427 → 竖段 500px 共线）：
+    // 挪动后重新登记竖向 x，占用冲突时自动错开。
+    plan.dx0 = regVert(plan.dx0, a.x < hole.x ? 1 : -1);
     // 不同族的同字母孔 y 相同：进孔横段按族错开 1px 级别，避免共线；末段微斜收尾。
     const famOff = fam === 'GND' ? -0.6 : fam === '5V' ? 0.6 : -1.6;
     plan.entryY = r1(hole.y + famOff);
