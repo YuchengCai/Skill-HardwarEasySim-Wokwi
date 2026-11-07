@@ -628,13 +628,21 @@ for (const [idx, c] of connList.entries()) {
   });
 
   if (busHoleOf.has(idx)) {
-    // 电源消费者 → 列孔：横进入孔。转弯 x 按孔序错开（下孔先转、上孔后转），
-    // 电源走独立的 P:d 走廊，不与信号束混在一起。
+    // 电源消费者 → 列孔。
     const hole = busHoleOf.get(idx);
+    // 【直落式入孔】竖向落孔路径无遮挡时，直接竖降到孔上方再横进孔：
+    // 3 段 / 2 转角（escape → v → h → 微斜入孔），省掉"车道→转弯x"两段。
+    // 转角少 = 用户反复反馈的"90° 转弯太杂乱"最直接的减法；孔在面包板面上，
+    // 横进孔不会穿本体（bb 是接口载体）。
+    if (!blockedBelow(a.x, dSrc)) {
+      plan.kind = 'busDirect';
+      plan.hole = hole;
+      plan.target = hole.pin;
+      plan.color = famColor(fam);
+      plan.entryY = r1(hole.y + 6 + (fam === 'GND' ? -3 : fam === '5V' ? 3 : -6));
+      plan.holeXAdj = r1(hole.x - 0.6);
+    } else {
     plan.kind = 'bus';
-    plan.hole = hole;
-    plan.target = hole.pin;
-    plan.color = famColor(fam);
     // 转弯 x 取在"源引脚 → 孔"之间，保证 A 段与进孔段同向（不出现左右 180 折返）；
     // 多条线按孔序错开，避免右缘梳子。源在板左侧时，转弯 x 必须落在板右之外（不穿板）。
     const boardR = boardLeft + boardSize.width;
@@ -665,6 +673,7 @@ for (const [idx, c] of connList.entries()) {
     const famOff = fam === 'GND' ? -0.6 : fam === '5V' ? 0.6 : -1.6;
     plan.entryY = r1(hole.y + famOff);
     plan.runA = srcRun(`P:${dSrc}`, a.x, plan.dx0, `${srcId}→${hole.pin}`, hole.pin);
+    }
   } else if (fam && dst.id === boardId) {
     // 电源网（含「任一端」判定，如 mux:S0→uno:GND.2）：单消费者/总线溢出 → 直连轨。
     // 不得回退成「直连板脚」——实测 S0-S2 直连 GND.2 会绕出 457px 的下探怪线。
@@ -933,6 +942,9 @@ for (const bj of busJumpers) {
     } else if (plan.kind === 'bottom') {
       pushV(plan.runA.y); pushH(plan.dx0); pushV(plan.underY);
       pushH(b.x); pushV(b.y);
+    } else if (plan.kind === 'busDirect') {
+      // 直落式入孔：竖降到孔上方 6px，横到孔 x-0.6，末段微斜入孔（3 段 / 2 转角）
+      pushV(plan.entryY); pushH(plan.holeXAdj);
     } else if (plan.kind === 'bus') {
       // 下降到孔行，横进入孔（孔列 x），末点 y 按族错开做微斜收尾。
       pushV(plan.runA.y); pushH(plan.dx0); pushV(plan.entryY);
