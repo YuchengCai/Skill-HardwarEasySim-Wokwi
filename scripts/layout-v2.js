@@ -26,7 +26,7 @@ const BB = geo;                                  // 半板：328.8 × 207.9
 // 行间距 = 主走廊高度：left-edge 通道不再取模后，走廊要放得下同池的全部车道。
 // 用户实测 10px 仍看不出分开，车道步距改 16px；行距随之加到 160。
 const LANE_STEP = 16, SLOT_STEP = 4;
-const MOD_GAP = 260, MOD_SPACING = 40, BOARD_GAP = 60, TARGET_ASPECT = 1.3;
+const MOD_GAP = 170, MOD_SPACING = 40, BOARD_GAP = 60, TARGET_ASPECT = 1.3;
 // 面包板相对控制板下移：让 tn/tp 轨落在板底脚下方，板→孔/轨可以"向下再向下"直进，
 // 不再需要"到轨下方再折回"的 180° 钩。
 const BB_DROP = 60;
