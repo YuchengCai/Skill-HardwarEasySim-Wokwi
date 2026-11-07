@@ -470,18 +470,21 @@ const busJumpers = [];
     const railAtBottom = railY(rail0) > bb.top + BB.height / 2;
     const half = railAtBottom ? 't' : 'b';
     const LO = railAtBottom ? ['a', 'b', 'c', 'd', 'e'] : ['f', 'g', 'h', 'i', 'j'];
-    const onBus = idxs.slice(0, LO.length);
+    // 跳线孔必须**预留**：下缘轨列保留最靠近轨的 LO[0]（t 半区的 a，屏幕最低），
+    // 上缘轨列保留最靠近轨的 LO 末位（b 半区的 j）。消费者只分其余孔——
+    // 此前跳线与消费者都从 a 开始分配，出现"元件线和轨跳线插同一个孔"（物理不可能）。
+    const jumpLetter = railAtBottom ? LO[0] : LO[LO.length - 1];
+    const free = railAtBottom ? LO.slice(1) : LO.slice(0, -1);
+    const onBus = idxs.slice(0, free.length);
     onBus.forEach((i, k) => {
-      const hp = holePosOf(col, half, LO[k]);
+      const hp = holePosOf(col, half, free[k]);
       busHoleOf.set(i, {
-        pin: `bb1:${col}${half}.${LO[k]}`, x: hp.x, y: hp.y,
-        fam, col, letter: LO[k], k,
+        pin: `bb1:${col}${half}.${free[k]}`, x: hp.x, y: hp.y,
+        fam, col, letter: free[k], k,
       });
     });
-    idxs.slice(LO.length).forEach(i => { normed[i].busExtra = true; });
+    idxs.slice(free.length).forEach(i => { normed[i].busExtra = true; });
     const rail = rail0;
-    // 跳线孔：下缘轨从最低占用孔向下走，上缘轨从最高占用孔向上走，避免竖直段穿过同列其它孔。
-    const jumpLetter = railAtBottom ? LO[0] : LO[onBus.length - 1];
     const jp = holePosOf(col, half, jumpLetter);
     // 选轨位：跳线从孔列向"右"横进轨（引导段 ≥20），把左侧轨位留给板→轨馈电，
     // 两根线的入轨横段 x 区间不重叠，不会共线。
@@ -662,24 +665,28 @@ for (const bj of busJumpers) {
     if (!pp) continue;
     const bj = busJumpers.find(b => b.fam === fam);
     const railAtBottom = railY(rail) > bb.top + BB.height / 2;
-    // 上缘轨(bp)：不再从板直连（h-first 会穿板 123px）。tp 已用时改「末端桥接」
-    // tp→bp（P1 模式，同手绘 ref1 的 bp.25→tp.25 末端桥）；tp 未用时走板底带绕行。
+    // 上缘轨(bp, rot180 后在板上方)：从板脚**绕边馈电**——板底带 → bb 右缘外 → 板上方
+    // → 从上方进轨（bp 开放侧向上，直进方向正确）。
+    // 注意：绝不能用 tp→bp 桥接供电——tp/bp 是两根**不同电源网**的正轨（5V/3.3V），
+    // 桥接即短路（用户实测抓出的电气错误；ref1 的 tp↔bp 桥是"两侧同网"场景）。
     if (!railAtBottom) {
-      if (railUsed.tp.size && rail === 'bp') continue;   // 由循环后的末端桥接供电
-      const nEnd = (() => {
-        let n = 1;
-        while (n <= geo.rail.maxPosition && (railUsed.bp.has(n) || railNUsed.has(n))) n++;
-        return n;
-      })();
-      if (nEnd <= geo.rail.maxPosition) {
-        const rp0 = { x: railX(nEnd), y: railY(rail) };
-        railUsed[rail].add(nEnd); railNUsed.add(nEnd);
-        const belowY0 = belowBase + 100;
-        conns.push([`${boardId}:${pin}`, `bb1:${rail}.${nEnd}`, famColor(fam),
-          [`v${r1(belowY0 - pp.y)}`, `h${r1(rp0.x - pp.x)}`, `v${r1(rp0.y - belowY0)}`]]);
-        console.log(`[INFO] 馈电: ${boardId}:${pin} → bb1:${rail}.${nEnd}（板底带绕行上探）`);
-        continue;
+      let n = null, best = Infinity;
+      for (let nn = 1; nn <= geo.rail.maxPosition; nn++) {
+        if (railUsed[rail].has(nn) || railNUsed.has(nn)) continue;
+        const dd = Math.abs(railX(nn) - (bj ? bj.hole.x : pp.x));
+        if (dd < best) { best = dd; n = nn; }
       }
+      if (n == null) n = pickRailClear(rail, pp.x, 1);
+      else { railUsed[rail].add(n); railNUsed.add(n); }
+      const rp0 = { x: railX(n), y: railY(rail) };
+      const belowY0 = belowBase + 100;
+      const upX = bb.left + BB.width + 12;
+      const aboveY = bb.top - 12;
+      conns.push([`${boardId}:${pin}`, `bb1:${rail}.${n}`, famColor(fam),
+        [`v${r1(belowY0 - pp.y)}`, `h${r1(upX - pp.x)}`, `v${r1(aboveY - belowY0)}`,
+         `h${r1(rp0.x - upX)}`, `v${r1(rp0.y - aboveY)}`]]);
+      console.log(`[INFO] 馈电: ${boardId}:${pin} → bb1:${rail}.${n}（绕边：板底带→bb右缘外→板上方进轨）`);
+      continue;
     }
     // 下缘轨：馈电从板脚向下，横进最左空闲轨位（与列跳线的右段 x 区间错开）。
     let n = null, best = -Infinity, fallback = null, fbest = Infinity;
@@ -701,20 +708,6 @@ for (const bj of busJumpers) {
       a: { x: pp.x, y: pp.y }, b: { x: rp.x, y: rp.y }, rp, rail, railAtBottom,
     });
     console.log(`[INFO] 馈电: ${boardId}:${pin} → bb1:${rail}.${n}（下缘轨直进）`);
-  }
-  // 末端桥接 tp→bp（P1 模式，同手绘 ref1）：bp 由 tp 在最右空闲轨位竖直短桥供电。
-  if (railUsed.bp.size && railUsed.tp.size) {
-    let n = 1;
-    while (n <= geo.rail.maxPosition && (railUsed.tp.has(n) || railUsed.bp.has(n) || railNUsed.has(n))) n++;
-    if (n <= geo.rail.maxPosition) {
-      railUsed.tp.add(n); railUsed.bp.add(n); railNUsed.add(n);
-      plans.push({
-        kind: 'endBridge', srcId: `bb1:tp.${n}`, target: `bb1:bp.${n}`,
-        color: famColor('3.3V'),
-        a: { x: railX(n), y: railY('tp') }, b: { x: railX(n), y: railY('bp') },
-      });
-      console.log(`[INFO] 末端桥接: bb1:tp.${n} → bb1:bp.${n}（bp 由 tp 桥接供电）`);
-    }
   }
 }
 
