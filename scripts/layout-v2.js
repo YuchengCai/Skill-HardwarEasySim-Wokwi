@@ -422,6 +422,7 @@ const holePosOf = (col, half, letter) => {
 // 板→列由一根"板脚向下 → 横进孔"的馈电线完成；长轨由列跳线供电，不再从板直连长轨。
 const busHoleOf = new Map();
 const busJumpers = [];
+const singleColFeed = new Map();   // fam → { holePin, x, y }（单列即网：馈电与消费者同列，免轨免跳线）
 {
   const byFam = {};
   normed.forEach((n, i) => {
@@ -432,7 +433,10 @@ const busJumpers = [];
   const LETTERS = ['a', 'b', 'c', 'd', 'e'];
   for (const fam of ['GND', '5V', '3.3V']) {
     const idxs = (byFam[fam] || []).slice();
-    if (idxs.length < 2) continue;
+    if (idxs.length < 1) continue;
+    // R-按网选基础设施（用户黄金样本 U2-golden-power）：参与者 ≤2（1 馈电 + 1 消费者）
+    // → 单列即网：馈电占列首孔、消费者占列尾孔，不经轨、零跳线。列固定 t 半区（贴板侧）。
+    const single = idxs.length === 1;
     const xs = idxs.map(i => (pinPos(normed[i].src.id, normed[i].src.pin) || {}).x).filter(x => x != null);
     const meanX = xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : bb.left + BB.width / 2;
     const cands = [];
@@ -465,11 +469,21 @@ const busJumpers = [];
       return pj.y - pi.y;                                  // 下面的引脚 → 下面的孔
     });
     // 列半区跟目标轨走：下缘轨(tn/tp, rot180 后在板下方) → t 半区（贴轨，跳线短）；
-    // 上缘轨(bp, 在板上方) → b 半区（f-j 孔）。此前全用 t 半区 → bp 的跳线要竖穿整块板面。
+    // 上缘轨(bp, 在板上方) → b 半区（f-j 孔）。单列即网固定 t 半区（贴板侧，馈电从下方进）。
     const rail0 = railOf(fam);
-    const railAtBottom = railY(rail0) > bb.top + BB.height / 2;
+    const railAtBottom = single ? true : railY(rail0) > bb.top + BB.height / 2;
     const half = railAtBottom ? 't' : 'b';
     const LO = railAtBottom ? ['a', 'b', 'c', 'd', 'e'] : ['f', 'g', 'h', 'i', 'j'];
+    if (single) {
+      // 单列即网：消费者占列尾孔（e），馈电占列首孔（a）——同列内部连通，免轨免跳线。
+      const i0 = idxs[0];
+      const hp = holePosOf(col, 't', 'e');
+      busHoleOf.set(i0, { pin: `bb1:${col}t.e`, x: hp.x, y: hp.y, fam, col, letter: 'e', k: 0 });
+      const fp = holePosOf(col, 't', 'a');
+      singleColFeed.set(fam, { holePin: `bb1:${col}t.a`, x: fp.x, y: fp.y });
+      console.log(`[INFO] 单列即网: ${fam} → 列 ${col}t（馈电 a + 消费者 e，免轨免跳线）`);
+      continue;
+    }
     // 跳线孔必须**预留**：下缘轨列保留最靠近轨的 LO[0]（t 半区的 a，屏幕最低），
     // 上缘轨列保留最靠近轨的 LO 末位（b 半区的 j）。消费者只分其余孔——
     // 此前跳线与消费者都从 a 开始分配，出现"元件线和轨跳线插同一个孔"（物理不可能）。
@@ -657,6 +671,21 @@ for (const bj of busJumpers) {
 {
   const FEED = { tn: 'GND.2', tp: '5V', bp: '3.3V' };
   const famOfRail = { tn: 'GND', tp: '5V', bp: '3.3V' };
+  const FEED_PIN = { GND: 'GND.2', '5V': '5V', '3.3V': '3.3V' };
+  // 单列即网的馈电：板脚 → 板底带 → 横到列 x → 从下方进列首孔（用户黄金样本的 30t.a 形态）。
+  // 板底横段按馈电序错开 16px（N1 两族同带共线实测）。
+  {
+    let feedK = 0;
+    for (const [fam, sf] of singleColFeed) {
+      const pin = boardPins[FEED_PIN[fam]] ? FEED_PIN[fam] : FEED_PIN[fam].split('.')[0];
+      const pp = pinPos(boardId, pin);
+      if (!pp) continue;
+      const belowY0 = belowBase + 20 + (feedK++) * 16;
+      conns.push([`${boardId}:${pin}`, sf.holePin, famColor(fam),
+        [`v${r1(belowY0 - pp.y)}`, `h${r1(sf.x - pp.x)}`, `v${r1(sf.y - belowY0)}`]]);
+      console.log(`[INFO] 馈电: ${boardId}:${pin} → ${sf.holePin}（单列即网，进列首孔）`);
+    }
+  }
   for (const rail of ['tn', 'tp', 'bp']) {
     if (!railUsed[rail].size) continue;
     const fam = famOfRail[rail];
@@ -665,11 +694,34 @@ for (const bj of busJumpers) {
     if (!pp) continue;
     const bj = busJumpers.find(b => b.fam === fam);
     const railAtBottom = railY(rail) > bb.top + BB.height / 2;
-    // 上缘轨(bp, rot180 后在板上方)：从板脚**绕边馈电**——板底带 → bb 右缘外 → 板上方
-    // → 从上方进轨（bp 开放侧向上，直进方向正确）。
-    // 注意：绝不能用 tp→bp 桥接供电——tp/bp 是两根**不同电源网**的正轨（5V/3.3V），
-    // 桥接即短路（用户实测抓出的电气错误；ref1 的 tp↔bp 桥是"两侧同网"场景）。
+    // 上缘轨(bp)：R-同极双轨一张网——tp 空闲（5V 走了单列）时，经 tp 馈电 + 末端桥
+    // tp↔bp（同为正轨，同网桥接合法；跨电源网互桥才短路）。tp 被占则退回绕边馈电。
     if (!railAtBottom) {
+      if (rail === 'bp' && railUsed.tp.size === 0) {
+        let nf = geo.rail.maxPosition;
+        while (nf > 0 && (railUsed.tp.has(nf) || railNUsed.has(nf) || blockedBelow(railX(nf), 1))) nf--;
+        if (nf > 0) {
+          railUsed.tp.add(nf); railNUsed.add(nf);
+          const rpF = { x: railX(nf), y: railY('tp') };
+          plans.push({
+            kind: 'feedRail', srcId: `${boardId}:${pin}`, target: `bb1:tp.${nf}`,
+            color: famColor(fam), a: { x: pp.x, y: pp.y }, b: { x: rpF.x, y: rpF.y },
+            rp: rpF, rail: 'tp', railAtBottom: true,
+          });
+          let nb = 1;
+          while (nb <= geo.rail.maxPosition && (railUsed.tp.has(nb) || railUsed.bp.has(nb) || railNUsed.has(nb))) nb++;
+          if (nb <= geo.rail.maxPosition) {
+            railUsed.tp.add(nb); railUsed.bp.add(nb); railNUsed.add(nb);
+            plans.push({
+              kind: 'endBridge', srcId: `bb1:tp.${nb}`, target: `bb1:bp.${nb}`,
+              color: famColor(fam), a: { x: railX(nb), y: railY('tp') }, b: { x: railX(nb), y: railY('bp') },
+            });
+            console.log(`[INFO] 馈电: ${boardId}:${pin} → bb1:tp.${nf}（端部）+ 末端桥 tp.${nb}→bp.${nb}（同极双轨一张网）`);
+            continue;
+          }
+        }
+      }
+      // 绕边馈电（tp 被占时的兜底）：板底带 → bb 右缘外 → 板上方 → 从上方进轨。
       let n = null, best = Infinity;
       for (let nn = 1; nn <= geo.rail.maxPosition; nn++) {
         if (railUsed[rail].has(nn) || railNUsed.has(nn)) continue;
@@ -688,19 +740,24 @@ for (const bj of busJumpers) {
       console.log(`[INFO] 馈电: ${boardId}:${pin} → bb1:${rail}.${n}（绕边：板底带→bb右缘外→板上方进轨）`);
       continue;
     }
-    // 下缘轨：馈电从板脚向下，横进最左空闲轨位（与列跳线的右段 x 区间错开）。
-    let n = null, best = -Infinity, fallback = null, fbest = Infinity;
-    for (let nn = 1; nn <= geo.rail.maxPosition; nn++) {
-      if (railNUsed.has(nn)) continue;
-      const rx = railX(nn);
-      if (blockedBelow(rx, 1)) continue;
-      if (bj && rx > bj.hole.x - 20) continue;            // 留给列跳线右侧
-      if (rx > best) { best = rx; n = nn; }
-      const dd = Math.abs(rx - pp.x);
-      if (dd < fbest) { fbest = dd; fallback = nn; }
+    // 下缘轨：R-端部馈电——轨位优先取端部（n=25，靠板一侧），中段留给列跳线/消费者。
+    let n = null;
+    if (!railNUsed.has(geo.rail.maxPosition) && !blockedBelow(railX(geo.rail.maxPosition), 1)) {
+      n = geo.rail.maxPosition;
+    } else {
+      let best = -Infinity, fallback = null, fbest = Infinity;
+      for (let nn = 1; nn <= geo.rail.maxPosition; nn++) {
+        if (railNUsed.has(nn)) continue;
+        const rx = railX(nn);
+        if (blockedBelow(rx, 1)) continue;
+        if (bj && rx > bj.hole.x - 20) continue;
+        if (rx > best) { best = rx; n = nn; }
+        const dd = Math.abs(rx - pp.x);
+        if (dd < fbest) { fbest = dd; fallback = nn; }
+      }
+      if (n == null) n = fallback != null ? fallback : pickRailClear(rail, pp.x, 1);
     }
-    if (n == null) n = fallback != null ? fallback : pickRailClear(rail, pp.x, 1);
-    else { railUsed[rail].add(n); railNUsed.add(n); }
+    railUsed[rail].add(n); railNUsed.add(n);
     const rp = { x: railX(n), y: railY(rail) };
     plans.push({
       kind: 'feedRail', srcId: `${boardId}:${pin}`, target: `bb1:${rail}.${n}`,
