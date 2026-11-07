@@ -25,7 +25,7 @@ const POWER_RE = /^(GND|5V|3\.3V|VIN|VCC|VDD|V\+|V-)(\.\d+)?$/;   // 允许 GND.
 const BB = geo;                                  // 半板：328.8 × 207.9
 // 行间距 = 主走廊高度：left-edge 通道不再取模后，走廊要放得下同池的全部车道。
 // 用户实测 10px 仍看不出分开，车道步距改 16px；行距随之加到 160。
-const LANE_STEP = 16, SLOT_STEP = 4;
+const LANE_STEP = 16, SLOT_STEP = 12;
 const MOD_GAP = 170, MOD_SPACING = 40, BOARD_GAP = 60, TARGET_ASPECT = 1.3;
 // 面包板相对控制板下移：让 tn/tp 轨落在板底脚下方，板→孔/轨可以"向下再向下"直进，
 // 不再需要"到轨下方再折回"的 180° 钩。
@@ -565,8 +565,25 @@ for (const [idx, c] of connList.entries()) {
       const edge = osS.x > 0 ? (mSrc.w - rel) : rel;
       const slot = escSlotOf.get(idx) || 0;
       const dBase = osS.x * (Math.max(14, edge + 14) + sidePhase(src.id));
-      const d = osS.x * (Math.max(14, edge + 14) + sideOffset(src.id, slot));
+      let d = osS.x * (Math.max(14, edge + 14) + sideOffset(src.id, slot));
       const a0x = a.x;
+      // 加宽离体槽（SLOT_STEP=12）后必须做**本体避让**：离体横段在引脚 y 上，
+      // 若拉宽后进入同排邻件的 x 带 → 穿件（实测 U1 3 / U2 2）。撞到就退到邻件边缘外 8px。
+      {
+        const dir = Math.sign(d);
+        const x1 = a0x + d;
+        for (const m of mods) {
+          if (m.id === src.id) continue;
+          const mp = pos[m.id];
+          if (!mp) continue;
+          const inYband = a.y >= mp.top - 2 && a.y <= mp.top + m.h + 2;
+          if (!inYband) continue;
+          const l = mp.left - 8, r = mp.left + m.w + 8;
+          if (dir > 0 && x1 > l && a0x < r) d = l - a0x;
+          if (dir < 0 && x1 < r && a0x > l) d = r - a0x;
+        }
+        if (Math.abs(d) < 6) d = osS.x * 6;                // 兜底：至少离开 6px
+      }
       escBaseX = r1(a0x + dBase);
       a.x = regVert(r1(a0x + d), Math.sign(d));
       escW = `h${r1(a.x - a0x)}`;
