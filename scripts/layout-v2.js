@@ -238,6 +238,32 @@ const laneAlloc = (d) => {
   laneUse[d] = (laneUse[d] || 0) + 1;
   return laneBase(d) + ((laneUse[d] - 1) % 3) * 8;      // 错开 8px，最多 3 档后回绕
 };
+// 引脚开放侧（单位向量）：底边向下 / 顶边向上 / 左边向左 / 右边向右。
+// 用于「离体段」与「方向一致性自检」——原理见 layout-rules.md「走线方向即语义」。
+const openSideRef = (id, pin) => {
+  if (id === boardId) {
+    const pd = boardPins[pin];
+    if (!Array.isArray(pd)) return { x: 0, y: 1 };
+    return pd[1] > boardSize.height / 2 ? { x: 0, y: 1 } : { x: 0, y: -1 };
+  }
+  const m = mods.find(x => x.id === id) || plugs.find(x => x.id === id);
+  if (!m) return { x: 0, y: 1 };
+  const pd = (pins[m.type] || {})[pin];
+  if (!Array.isArray(pd)) return { x: 0, y: 1 };
+  const dl = pd[0], dr = m.w - pd[0], dt = pd[1], db = m.h - pd[1];
+  const mn = Math.min(dl, dr, dt, db);
+  if (mn === db) return { x: 0, y: 1 };
+  if (mn === dt) return { x: 0, y: -1 };
+  if (mn === dl) return { x: -1, y: 0 };
+  return { x: 1, y: 0 };
+};
+const dirOfW = (w) => {
+  const m = /^([hv])(-?[\d.]+)$/.exec(String(w));
+  if (!m) return null;
+  const v = parseFloat(m[2]);
+  if (Math.abs(v) <= 12) return null;                   // 微调段不算方向
+  return m[1] === 'h' ? { x: Math.sign(v), y: 0 } : { x: 0, y: Math.sign(v) };
+};
 const belowBase = boardTop + boardSize.height + 14;      // 板底下方的绕行带
 let belowUse = 0;
 const belowAlloc = () => belowBase + (belowUse++ % 4) * 8;
@@ -331,7 +357,118 @@ for (const c of intent.connections || []) {
   i++;
 }
 
-// ── 6c. 板 → 轨馈电（每族一根）：没有馈电则轨道电气悬空 ──────
+// ── 6d-pre. 离体段补齐：首段与源引脚开放侧不符 → 前置离体段，并在后续首个
+// 同轴段上补偿回来（净位移 0，终点不变）。实测：mfr522/mux 的引脚在左/右边缘，
+// 而走线一律向下离体 → U1 8 条 / U2 17 条首段方向不符。
+for (const c of conns) {
+  if (!Array.isArray(c[3]) || !c[3].length) continue;
+  const [fid, fpin] = String(c[0]).split(':');
+  if (fid === 'bb1' || fid === boardId) continue;        // 板/孔侧由其它规则保证
+  const os = openSideRef(fid, fpin);
+  if (os.x !== 0) {
+    const d = 14 * os.x;
+    const first = dirOfW(c[3][0]);
+    if (!first || first.x !== os.x) {
+      let comp = false;
+      for (let i = 0; i < c[3].length; i++) {
+        const m = /^h(-?[\d.]+)$/.exec(c[3][i]);
+        if (m) { c[3][i] = 'h' + r1(parseFloat(m[1]) - d); comp = true; break; }
+      }
+      if (!comp) c[3].push('h' + r1(-d));                // 没有水平段 → 末尾补回
+      c[3].unshift('h' + r1(d));
+    }
+  } else if (os.y < 0) {
+    const d = -14;
+    const first = dirOfW(c[3][0]);
+    if (!first || first.y !== -1) {
+      let comp = false;
+      for (let i = 0; i < c[3].length; i++) {
+        const m = /^v(-?[\d.]+)$/.exec(c[3][i]);
+        if (m) { c[3][i] = 'v' + r1(parseFloat(m[1]) - d); comp = true; break; }
+      }
+      if (!comp) c[3].push('v' + r1(-d));
+      c[3].unshift('v' + r1(d));
+    }
+  }
+}
+// ── 6d-pre2. 进脚钩：末段方向与目标引脚开放侧不符 → 在末段前把落点挪到
+// 「开放侧一侧 14px」，末段改为沿开放侧反向入脚（净位移 0，终点不变）。
+// 实测：rfid→mux 的线从上方垂直进 mux，而 mux 引脚开放侧在右侧（5 条不符）。
+for (const c of conns) {
+  if (!Array.isArray(c[3]) || c[3].length < 2) continue;
+  const [tid, tpin] = String(c[1]).split(':');
+  if (tid === 'bb1') continue;
+  const os = openSideRef(tid, tpin);
+  const last = dirOfW(c[3][c[3].length - 1]);
+  if (!last) continue;
+  const good = last.x * -os.x + last.y * -os.y >= 0.5;   // 末段应沿 -开放侧
+  if (good) continue;
+  // 找末段之前最后一个同轴段并挪动，再追加沿开放侧反向的小段
+  const axis = os.x !== 0 ? 'h' : 'v';
+  const d = 14 * (os.x !== 0 ? os.x : os.y);
+  let moved = false;
+  for (let i = c[3].length - 1; i >= 0; i--) {
+    const m = /^([hv])(-?[\d.]+)$/.exec(c[3][i]);
+    if (!m || m[1] !== axis) continue;
+    c[3][i] = axis + r1(parseFloat(m[2]) + d);
+    moved = true;
+    break;
+  }
+  if (!moved) continue;                                   // 找不到可挪段就不动
+  c[3].push(axis + r1(-d));
+}
+// ── 6d. 方向一致性自检（原理层：起点/终点应沿引脚开放侧离体/进脚）─────
+// P-方向：底边脚向下、顶边脚向上、左边脚向左、右边脚向右。
+// 首段/末段与开放侧不一致 → 说明写反了方向或几何绕错了侧（提示级，不阻断）。
+{
+  const openSide = (id, pin) => {
+    if (id === boardId) {
+      const pd = boardPins[pin];
+      if (!Array.isArray(pd)) return { x: 0, y: 1 };
+      return pd[1] > boardSize.height / 2 ? { x: 0, y: 1 } : { x: 0, y: -1 };
+    }
+    const m = mods.find(x => x.id === id) || plugs.find(x => x.id === id);
+    if (!m) return { x: 0, y: 1 };
+    const pd = (pins[m.type] || {})[pin];
+    if (!Array.isArray(pd)) return { x: 0, y: 1 };
+    const dl = pd[0], dr = m.w - pd[0], dt = pd[1], db = m.h - pd[1];
+    const mn = Math.min(dl, dr, dt, db);
+    if (mn === db) return { x: 0, y: 1 };
+    if (mn === dt) return { x: 0, y: -1 };
+    if (mn === dl) return { x: -1, y: 0 };
+    return { x: 1, y: 0 };
+  };
+  const dirOf = (w) => {
+    const m = /^([hv])(-?[\d.]+)$/.exec(String(w));
+    if (!m) return null;
+    const v = parseFloat(m[2]);
+    if (Math.abs(v) <= 12) return null;                   // 微调段不算方向
+    return m[1] === 'h' ? { x: Math.sign(v), y: 0 } : { x: 0, y: Math.sign(v) };
+  };
+  let escBad = 0, appBad = 0;
+  for (const c of conns) {
+    const [fr, to, , wps] = c;
+    if (!Array.isArray(wps) || !wps.length) continue;
+    const [fid, fpin] = String(fr).split(':');
+    const first = dirOf(wps[0]);
+    if (first && fid !== 'bb1') {
+      const os = openSide(fid, fpin);
+      if (first.x * os.x + first.y * os.y < 0.5) escBad++;
+    }
+    const [tid, tpin] = String(to).split(':');
+    const lastDir = dirOf(wps[wps.length - 1]);
+    if (lastDir && tid !== 'bb1') {
+      const os = openSide(tid, tpin);
+      // 进入方向应与开放侧相反（从开放侧向内）
+      if (lastDir.x * -os.x + lastDir.y * -os.y < 0.5) appBad++;
+    }
+  }
+  if (escBad || appBad) {
+    console.log(`[WARN] 方向一致性: 首段离体方向不符 ${escBad} 条 / 末段进脚方向不符 ${appBad} 条（提示级）`);
+  } else {
+    console.log('[INFO] 方向一致性: 全部符合引脚开放侧');
+  }
+}
 {
   const FEED = { tn: 'GND.2', tp: '5V', bp: '3.3V' };
   for (const rail of ['tn', 'tp', 'bp']) {
