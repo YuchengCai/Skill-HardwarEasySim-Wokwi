@@ -19,7 +19,7 @@ const pins = JSON.parse(fs.readFileSync(path.join(ROOT, 'references/common/pins.
 const geo = JSON.parse(fs.readFileSync(path.join(ROOT, 'references/common/geometry.json'), 'utf8')).breadboard;
 const boardsCfg = JSON.parse(fs.readFileSync(path.join(ROOT, 'references/common/boards.json'), 'utf8')).boards;
 
-const POWER_RE = /^(GND|5V|3\.3V|VIN|VCC|VDD)$/;
+const POWER_RE = /^(GND|5V|3\.3V|VIN|VCC|VDD)(\.\d+)?$/;   // 允许 GND.2 / 5V.1 这类带后缀脚名
 const BB = geo;                                  // 半板：328.8 × 207.9
 const MOD_GAP = 40, MOD_SPACING = 40, BOARD_GAP = 60, TARGET_ASPECT = 1.3;
 
@@ -210,23 +210,49 @@ const pickRail = (rail, wantX) => {
   railUsed[rail].add(best);
   return best;
 };
-// ── 6 前置：行避障（远行模块的竖线下落不得穿过更低行的模块本体）──
-// 分层后实测：rfid1(第2层) 在 mux1(第1层) 正上方，电源线直落到全局走廊时
-// 从 mux 本体中间穿过（20px 穿件硬冲突）。规则：
-//   ① 远行(d≥2)模块的横走车道 = 本行与下一行之间的间隙（rowBottoms[d]+20），
-//      不再直接降到全局走廊；
-//   ② 下落 x 必须避开更低行模块的 x 带（±4 余量），轨位选择也遵守此约束。
-const blockedBelow = (x, d) => mods.some(m => {
-  if ((distOf[m.id] || 1) >= d) return false;           // 只看更低行
-  const pp = pos[m.id];
-  return pp && x > pp.left - 4 && x < pp.left + m.w + 4;
-});
+// ── 6 前置：行避障 + 车道分配 ──────────────────────────────
+// 分层后实测三类问题（用户浏览器实测确认）：
+//   ① 模块在板正上方时，线直落穿过板体（A4/A5 线穿 uno 190px）→ 底边脚必须绕板侧进
+//   ② mux:S0→uno:GND.2 被当信号（S0 非电源名）三线汇聚板脚 → 电源看「任一端」，走轨
+//   ③ 同层所有线共用一条车道 y → 共线重叠 → 每条线错开 8px
+// 另：v2 此前没有「板→轨馈电」，轨道电气悬空（optimize-wiring 会报 rail-unpowered）。
+const blockedBelow = (x, d) => {
+  // 更低行模块的 x 带
+  if (mods.some(m => {
+    if ((distOf[m.id] || 1) >= d) return false;
+    const pp = pos[m.id];
+    return pp && x > pp.left - 4 && x < pp.left + m.w + 4;
+  })) return true;
+  // 控制板本体的 x 带（从上方下落穿过板体 = 穿板硬冲突）
+  return x > boardLeft - 4 && x < boardLeft + boardSize.width + 4;
+};
+const pinIsBottom = (pin) => {
+  const pd = boardPins[pin];
+  return Array.isArray(pd) && pd[1] > boardSize.height / 2;
+};
+const laneBase = (d) => (d >= 2 && rowBottoms[d] != null)
+  ? Math.min(rowBottoms[d] + 20, y1_mod + 12)
+  : y1_mod + 12;
+const laneUse = {};
+const laneAlloc = (d) => {
+  laneUse[d] = (laneUse[d] || 0) + 1;
+  return laneBase(d) + ((laneUse[d] - 1) % 3) * 8;      // 错开 8px，最多 3 档后回绕
+};
+const belowBase = boardTop + boardSize.height + 14;      // 板底下方的绕行带
+let belowUse = 0;
+const belowAlloc = () => belowBase + (belowUse++ % 4) * 8;
+const aroundX = (bxx) => {                               // 绕板侧的下降 x
+  const right = bxx > boardLeft + boardSize.width / 2;
+  let dx0 = right ? boardLeft + boardSize.width + 8 : boardLeft - 8;
+  if (dx0 > bb.left - 6 && dx0 < bb.left + BB.width + 6) dx0 = boardLeft - 8;   // 右侧被面包板挡 → 走左
+  return dx0;
+};
 const pickRailClear = (rail, wantX, d) => {
   let best = null, bd = Infinity;
   for (let n = 1; n <= geo.rail.maxPosition; n++) {
     if (railUsed[rail].has(n)) continue;
     const x = railX(n);
-    if (blockedBelow(x, d)) continue;                   // 下落点被更低行模块挡住 → 换位
+    if (blockedBelow(x, d)) continue;                   // 下落点被更低行/板体挡住 → 换位
     const dd = Math.abs(x - wantX);
     if (dd < bd) { bd = dd; best = n; }
   }
@@ -234,9 +260,6 @@ const pickRailClear = (rail, wantX, d) => {
   railUsed[rail].add(best);
   return best;
 };
-const laneYFor = (d) => (d >= 2 && rowBottoms[d] != null)
-  ? Math.min(rowBottoms[d] + 20, y1_mod + 12)
-  : y1_mod + 12;
 
 const famOf = (id, pin) => {
   const type = id === boardId ? boardType : (intent.parts.find(x => x.id === id) || {}).type;
@@ -255,35 +278,50 @@ for (const c of intent.connections || []) {
   const dst = swap ? { id: fid, pin: fpin } : { id: tid, pin: tpin };
   const a = pinPos(src.id, src.pin), b = pinPos(dst.id, dst.pin);
   if (!a || !b) { console.log(`  [跳过] ${fRef} → ${tRef}：引脚坐标缺失`); continue; }
-  const fam = famOf(src.id, src.pin);
   const srcId = swap ? tRef : fRef;
-  const wantX = a.x;
-
-  // 统一"先离体"：横走车道按源模块所在行选——第 1 行用全局走廊（模块行下沿+12），
-  // 第 2+ 行用本行下方间隙，避免竖线穿过更低行的模块本体。
   const dSrc = distOf[src.id] || 1;
-  const laneY = laneYFor(dSrc);
-  const vDown = (curY) => (curY < laneY ? r1(laneY - curY) : 0);
+
+  // 电源判定看「任一端」：mux:S0→uno:GND.2 里 S0 非电源名但目标脚是 GND
+  // → 整个网络按电源走轨（此前被当信号：三线汇聚板脚 + 穿板，用户实测确认）。
+  const fam = (dst.id === boardId && famOf(dst.id, dst.pin)) || famOf(src.id, src.pin);
+
   if (fam && dst.id === boardId) {
-    // 电源：消费者 → 轨；板子 → 轨（单点喂入）。轨位避开更低行模块的 x 带。
+    // 电源：消费者 → 轨（轨位避开更低行模块与板体；引脚无遮挡且轨位近则直落）
     const rail = railOf(fam);
-    const n = pickRailClear(rail, wantX, dSrc);
+    const n = pickRailClear(rail, a.x, dSrc);
     const rp = { x: railX(n), y: railY(rail) };
-    const wps = [];
-    const v1 = vDown(a.y);
-    if (v1) wps.push(`v${v1}`);
-    const midY = a.y + v1;
-    const dx = rp.x - a.x;
-    if (Math.abs(dx) > 0.5) wps.push(`h${r1(dx)}`);
-    if (Math.abs(rp.y - midY) > 0.5) wps.push(`v${r1(rp.y - midY)}`);
+    let wps;
+    if (!blockedBelow(a.x, dSrc) && Math.abs(rp.x - a.x) <= 12) {
+      wps = [];
+      if (Math.abs(rp.x - a.x) > 0.5) wps.push(`h${r1(rp.x - a.x)}`);   // 横段在自己本体内（豁免）
+      wps.push(`v${r1(rp.y - a.y)}`);
+    } else {
+      const lane = laneAlloc(dSrc);
+      wps = [`v${r1(lane - a.y)}`, `h${r1(rp.x - a.x)}`, `v${r1(rp.y - lane)}`];
+    }
     conns.push([srcId, `bb1:${rail}.${n}`, fam === 'GND' ? 'black' : (fam === '3.3V' ? 'orange' : 'red'), wps]);
+  } else if (dst.id === boardId && pinIsBottom(dst.pin)) {
+    // 底边板脚（A0-A5/电源脚）：从上方直落必然穿板 → 绕板侧下降、从板底下方进脚
+    const dx0 = aroundX(b.x);
+    const lane = laneAlloc(dSrc);
+    const below = belowAlloc();
+    const wps = [`v${r1(lane - a.y)}`, `h${r1(dx0 - a.x)}`, `v${r1(below - lane)}`, `h${r1(b.x - dx0)}`, `v${r1(b.y - below)}`];
+    conns.push([srcId, `${boardId}:${dst.pin}`, c.color || 'blue', wps]);
+  } else if (dst.id === boardId) {
+    // 顶边板脚（数字脚）：从上方进
+    const lane = laneAlloc(dSrc);
+    const wps = [];
+    if (a.y < lane) wps.push(`v${r1(lane - a.y)}`);
+    wps.push(`h${r1(b.x - a.x)}`, `v${r1(b.y - lane)}`);
+    conns.push([srcId, `${boardId}:${dst.pin}`, c.color || 'green', wps]);
   } else {
-    // 信号：正下方 → 直落；错列 → 先降到走廊再横移再直落
+    // 模块 → 模块：直落（同列）或 车道横移（车道错开）
     const dy = b.y - a.y, dx = b.x - a.x;
     let wps;
     if (Math.abs(dx) <= 12) wps = [`v${r1(dy)}`];
     else {
-      const v1 = vDown(a.y);
+      const lane = laneAlloc(dSrc);
+      const v1 = a.y < lane ? r1(lane - a.y) : 0;
       wps = [];
       if (v1) wps.push(`v${v1}`);
       wps.push(`h${r1(dx)}`, `v${r1(dy - v1)}`);
@@ -291,6 +329,23 @@ for (const c of intent.connections || []) {
     conns.push([srcId, swap ? `${boardId}:${dst.pin}` : tRef, c.color || 'green', wps]);
   }
   i++;
+}
+
+// ── 6c. 板 → 轨馈电（每族一根）：没有馈电则轨道电气悬空 ──────
+{
+  const FEED = { tn: 'GND.2', tp: '5V', bp: '3.3V' };
+  for (const rail of ['tn', 'tp', 'bp']) {
+    if (!railUsed[rail].size) continue;
+    const pin = boardPins[FEED[rail]] ? FEED[rail] : FEED[rail].split('.')[0];
+    const pp = pinPos(boardId, pin);
+    if (!pp) continue;
+    const n = pickRailClear(rail, boardLeft + boardSize.width + 30, 1);
+    const rp = { x: railX(n), y: railY(rail) };
+    const below = belowAlloc();
+    const wps = [`v${r1(below - pp.y)}`, `h${r1(rp.x - pp.x)}`, `v${r1(rp.y - below)}`];
+    conns.push([`${boardId}:${pin}`, `bb1:${rail}.${n}`, rail === 'tn' ? 'black' : (rail === 'bp' ? 'orange' : 'red'), wps]);
+    console.log(`[INFO] 馈电: ${boardId}:${pin} → bb1:${rail}.${n}（${railUsed[rail].size} 个消费者）`);
+  }
 }
 
 // ── 7. 输出 ───────────────────────────────────────────────
