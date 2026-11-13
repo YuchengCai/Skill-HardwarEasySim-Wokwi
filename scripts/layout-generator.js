@@ -140,7 +140,18 @@ function main() {
     process.exit(1);
   }
   const intent = JSON.parse(fs.readFileSync(args[0], 'utf-8'));
+  // 形状归一（2026-11-13）：v2 的 groups[] 用 ids，v1 用 parts —— 统一成 parts。
+  // 两引擎共用同一份 intent，避免"换个引擎就崩在深处"。
+  for (const g of (intent.groups || [])) {
+    if (!Array.isArray(g.parts) && Array.isArray(g.ids)) g.parts = g.ids;
+  }
+  if (!Array.isArray(intent.groups) || !intent.groups.length) {
+    console.error("[ERROR] 本引擎需要 groups[]（分区）。若 intent 声明了 routing.zones/relays，请改用：");
+    console.error("        node scripts/layout-v2.js <intent.json> <outDir>");
+    process.exit(2);
+  }
   const OUT_DIR = args[1] ? path.resolve(args[1]) : path.dirname(path.resolve(args[0]));
+  fs.mkdirSync(OUT_DIR, { recursive: true });   // 输出目录不存在时自动创建（与 layout-v2 一致）
   // --spacing <px>：覆盖元件间距（迭代骨架逐轮加大间距消重叠用）
   const spIdx = args.indexOf('--spacing');
   if (spIdx >= 0 && args[spIdx + 1]) {
@@ -305,7 +316,7 @@ function main() {
   const ZONE_DIRECT = { output: 'top', input: 'right', sensor: 'right', display: 'right', misc: 'right' };
   const directRegion = (g) => ['top', 'right', 'bottom', 'left'].includes(g.region) ? g.region
                       : (ZONE_DIRECT[g.zone] || 'right');
-  groups.forEach(g => g.parts.forEach(id => { groupOf[id] = g; regionOf[id] = directRegion(g); }));
+  groups.forEach(g => (g.parts || []).forEach(id => { groupOf[id] = g; regionOf[id] = directRegion(g); }));
 
   // 引脚坐标 + 面包板对象 + 走线路由（两个分支共用：面包板 / 直连）
   const pins = loadPins();
@@ -1755,6 +1766,12 @@ function main() {
     allConns.forEach((c, i) => lines.push('    ' + JSON.stringify(c) + (i < allConns.length - 1 ? ',' : '')));
     lines.push('  ]', '}');
     fs.writeFileSync(path.join(OUT_DIR, 'diagram.json'), lines.join('\n'));
+  // 生成后自动产出台账（与 layout-v2 一致）：说明每个网是电源干道 / 母线中继 / 列隔离。
+  if (process.env.V2_NO_NOTES !== "1") {
+    try {
+      require("child_process").execFileSync(process.execPath, [path.join(__dirname, "wiring-notes.js"), OUT_DIR], { stdio: "ignore" });
+    } catch (e) { console.log("[WARN] 台账生成失败（不影响 diagram.json）:", e.message); }
+  }
     // ============================================================
     // A5 面包板最低使用检查（bb 模式，[OK] 前）：
     //   ① bb 空置：allConns(bbConns+wireConns) 中任一端是轨孔（bn/bp/tn/tp.N）的

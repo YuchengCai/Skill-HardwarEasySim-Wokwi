@@ -78,6 +78,7 @@ arduino-cli lib install "DHT sensor library" "Adafruit SSD1306"
 4. Generate `diagram.json` from intent (the script computes coordinates/geometry):
    ```bash
    node scripts/layout-generator.js layout-intent.json <project-dir>
+   # → 生成 diagram.json + **wiring-notes.md**（接线说明/跳线台账，自动产出）
    ```
 5. Generate `wokwi.toml` pointing to `build/project.ino.hex`
 6. **Run the wiring checker** to detect conflicts before simulating:
@@ -203,6 +204,9 @@ This compiles (if needed), uploads, auto-captures serial output, and prints the 
 
 ---
 
+- **指标政策（必读）**：`references/common/metrics-policy.md`
+  —— 指标分三级：GATE（一票否决）/ BUDGET（只设上限）/ DIAGNOSTIC（只做归因）；
+  **软指标（交叉、转弯、线长）不得作为优化目标**，只能设上限并诊断归因。
 ## Design Rules (Mandatory — Do Not Violate)
 
 1. **Keep native operation steps in SKILL.md/references** — scripts are shortcuts, not the only path

@@ -73,7 +73,7 @@ function findBrowser() {
     try {
       const r = await fetch(`http://127.0.0.1:${PORT}/json/list`);
       const list = await r.json();
-      let page = list.find(t => t.type === 'page' && (t.url || '').includes('wokwi.com'));
+      let page = list.find(t => t.type === 'page' && (t.url || '').includes('wokwi.com') && (!process.env.CDP_TAB || t.id.startsWith(process.env.CDP_TAB)));
       if (!page) {
         // 浏览器在但无 wokwi 页签 → 浏览器级 WebSocket 开新标签
         const v = await (await fetch(`http://127.0.0.1:${PORT}/json/version`)).json();
@@ -85,7 +85,7 @@ function findBrowser() {
         });
         await sleep(1500);
         const list2 = await (await fetch(`http://127.0.0.1:${PORT}/json/list`)).json();
-        page = list2.find(t => t.type === 'page' && (t.url || '').includes('wokwi.com'));
+        page = list2.find(t => t.type === 'page' && (t.url || '').includes('wokwi.com') && (!process.env.CDP_TAB || t.id.startsWith(process.env.CDP_TAB)));
       }
       if (page && page.webSocketDebuggerUrl) return page;
     } catch (e) { /* 无守护进程,走启动路径 */ }
@@ -233,7 +233,8 @@ function findBrowser() {
     console.log('[INFO] 已派发 F(Fit)');
   } catch (e) { console.warn(`[WARN] Fit 派发失败(${e.message}),请在浏览器按 F`); }
 
-  // 截图存档(10s 超时兜底,防 ws 悬死)
+  // 截图存档(10s 超时兜底,防 ws 悬死)；先等一拍让 Fit 重绘完成，否则截到的是旧视口
+  await new Promise(r => setTimeout(r, 1500));
   try {
     const shot = await Promise.race([
       send('Page.captureScreenshot', { format: 'png' }),
