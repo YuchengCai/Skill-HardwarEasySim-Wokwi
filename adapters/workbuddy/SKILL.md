@@ -3,17 +3,9 @@ name: wokwi-arduino
 description: Create, compile, simulate, and upload Arduino projects with Wokwi. Use when the user mentions Arduino, Wokwi, 单片机, 嵌入式, or when .ino / wokwi.toml / diagram.json files are detected. Explicitly activate with @wokwi, #arduino, or @simulate.
 ---
 
-# Arduino Wokwi Simulation Skill (v0.6.0) — WorkBuddy Adapter
+# Arduino Wokwi Simulation Skill (v0.6.0)
 
-WorkBuddy 专用的 wokwi-arduino skill 适配器。与 deepcode/claude/cursor 适配器内容一致，仅安装路径不同。
-
-## 与其它适配器的区别
-
-| 项 | WorkBuddy | DeepCode |
-|----|-----------|----------|
-| 安装位置 | `~/.workbuddy/skills/wokwi-arduino/` | `./.agents/skills/wokwi-arduino/` |
-| MCP 配置 | `~/.workbuddy/mcp.json` | `~/.deepcode/settings.json` |
-| 激活方式 | 关键词 + @wokwi / @simulate | 关键词 + @wokwi / @simulate |
+用自然语言描述电路，自动生成可仿真的 Wokwi 工程(Arduino Uno/Mega/Nano/ESP32)：自动布局与走线、编译固件、浏览器仿真、可选烧录与串口监视。
 
 ## Playwright MCP 配置（WorkBuddy 前置）
 
@@ -86,7 +78,31 @@ WorkBuddy 专用的 wokwi-arduino skill 适配器。与 deepcode/claude/cursor �
 ```bash
 # 检查并恢复缺失文件
 BASE="https://raw.githubusercontent.com/YuchengCai/Skill-HardwarEasySim-Wokwi/main"
-for F in scripts/compile.sh scripts/wokwi-automate.js scripts/layout-generator.js scripts/optimize-wiring.js references/monaco-steps.md references/arduino/components.md references/arduino/index.json references/arduino/experience.json references/arduino/code-mapping.json references/common/intent-format.md references/common/layout-rules.md references/common/generic-wiring.md references/common/breadboard.md references/common/waypoints.md references/common/geometry.json references/common/boards.json references/common/pins.json references/common/sizes.json references/common/layout-cards/index.md references/common/layout-cards/led.md references/common/layout-cards/resistor.md references/common/layout-cards/pushbutton.md references/common/layout-cards/dht22.md references/common/layout-cards/oled.md references/common/layout-cards/buzzer.md; do
+# 运行时脚本（14）
+for F in scripts/compile.sh scripts/wokwi-automate.js scripts/layout-generator.js scripts/layout-v2.js \
+         scripts/optimize-wiring.js scripts/wiring-notes.js scripts/verify-wires.js scripts/wokwi-cdp.js \
+         scripts/extract-diagram.js scripts/generate-part-placeholder.js scripts/chip-geometry.js \
+         scripts/placeholder-chip.wasm scripts/placeholder-chip.c scripts/wokwi-api.h; do
+  if [ ! -f "$F" ]; then
+    echo "缺失 $F，正在从 GitHub 恢复..."
+    mkdir -p "$(dirname "$F")"
+    curl -fsSL "$BASE/$F" -o "$F"
+  fi
+done
+# 关键参考资料（文档/数据/卡片）
+for F in references/monaco-steps.md \
+         references/arduino/components.md references/arduino/index.json references/arduino/experience.json references/arduino/code-mapping.json \
+         references/common/intent-format.md references/common/layout-rules.md references/common/generic-wiring.md \
+         references/common/breadboard.md references/common/waypoints.md references/common/geometry.json \
+         references/common/boards.json references/common/pins.json references/common/sizes.json \
+         references/common/pin-semantics.json references/common/programmatic-pins.json \
+         references/common/pins-auto.json references/common/sizes-auto.json \
+         references/common/metrics-policy.md references/common/wiring-profiles.md \
+         references/common/env-switches.md references/common/layout-analysis.md \
+         references/common/layout-cards/index.md references/common/layout-cards/led.md \
+         references/common/layout-cards/resistor.md references/common/layout-cards/pushbutton.md \
+         references/common/layout-cards/dht22.md references/common/layout-cards/oled.md references/common/layout-cards/buzzer.md \
+         references/esp32/board.md references/esp32/components.md references/esp32/experience.json; do
   if [ ! -f "$F" ]; then
     echo "缺失 $F，正在从 GitHub 恢复..."
     mkdir -p "$(dirname "$F")"

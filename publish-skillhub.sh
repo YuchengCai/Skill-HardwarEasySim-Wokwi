@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+﻿#!/usr/bin/env bash
 # ==============================================================
 # publish-skillhub.sh — 一键发布/更新 wokwi-arduino skill 到 SkillHub
 # ==============================================================
@@ -20,7 +20,9 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SKILL_NAME="wokwi-arduino"
 SLUG="workbuddy-hardwareasysim-wokwi"     # SkillHub 上已有的 slug（更新时保持不变）
 DISPLAY_NAME="Wokwi Arduino Simulation"
-SUMMARY="Create, compile, simulate and upload Arduino projects with Wokwi"
+SUMMARY="用自然语言创建、编译、仿真并上传 Arduino(Wokwi)项目,自动生成电路图与走线"
+# SkillHub 市场描述(中文;不带 @wokwi/#arduino/@simulate 等激活协议标记)
+DESCRIPTION_ZH="创建、编译、仿真并上传 Arduino 项目(Wokwi)。当用户提到 Arduino、Wokwi、单片机、嵌入式,或检测到 .ino / wokwi.toml / diagram.json 文件时使用。"
 LICENSE="MIT"
 HOMEPAGE="https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi"
 TAGS="[arduino, wokwi, embedded, simulation, hardware]"
@@ -95,9 +97,16 @@ rm -rf "$OUT_DIR"
 mkdir -p "$OUT_DIR"
 cp "$SCRIPT_DIR/adapters/workbuddy/SKILL.md" "$OUT_DIR/SKILL.md"
 cp -r "$SCRIPT_DIR/scripts" "$OUT_DIR/scripts"
-# 移除开发期脚本（不进运行时包：回归测试 / 一次性数据提取 / 一次性翻译）
-rm -f "$OUT_DIR/scripts/run-tests.js" "$OUT_DIR/scripts/extract-components.py" "$OUT_DIR/scripts/fill-zh.py"
+# 移除开发期脚本（不进运行时包：回归测试 / 一次性数据提取 / 布局v2开发工具）
+rm -f "$OUT_DIR/scripts/run-tests.js" "$OUT_DIR/scripts/extract-components.py" "$OUT_DIR/scripts/fill-zh.py" \
+      "$OUT_DIR/scripts/extract-geometry.py" "$OUT_DIR/scripts/extract-programmatic-pins.js" \
+      "$OUT_DIR/scripts/calibrate-sizes.js" "$OUT_DIR/scripts/measure-parts.js" \
+      "$OUT_DIR/scripts/analyze-demand.js" "$OUT_DIR/scripts/compose-skeleton.js" \
+      "$OUT_DIR/scripts/iterate-layout.js" \
+      "$OUT_DIR/scripts/placeholder-chip.wasm" "$OUT_DIR/scripts/placeholder-chip.c" "$OUT_DIR/scripts/wokwi-api.h"
 cp -r "$SCRIPT_DIR/references" "$OUT_DIR/references"
+# 移除开发期文档（决策史/开发分析，市场包不带）
+rm -f "$OUT_DIR/references/common/handoff-layout-v2.md" "$OUT_DIR/references/common/routing-philosophy.md"
 info "已提取到: $OUT_DIR"
 find "$OUT_DIR" -type f | sort
 
@@ -114,11 +123,19 @@ info "版本号: $VERSION"
 # 5. 注入 SkillHub frontmatter
 # ==============================================================
 section "注入 SkillHub frontmatter (slug: $SLUG, version: $VERSION)"
-python - "$OUT_DIR/SKILL.md" "$SLUG" "$VERSION" "$DISPLAY_NAME" "$SUMMARY" "$LICENSE" "$HOMEPAGE" "$TAGS" <<'PY'
+python - "$OUT_DIR/SKILL.md" "$SLUG" "$VERSION" "$DISPLAY_NAME" "$SUMMARY" "$LICENSE" "$HOMEPAGE" "$TAGS" "$DESCRIPTION_ZH" <<'PY'
 import sys
-path, slug, version, display_name, summary, license_, homepage, tags = sys.argv[1:9]
+path, slug, version, display_name, summary, license_, homepage, tags, description = sys.argv[1:10]
 with open(path, encoding="utf-8") as f:
     content = f.read()
+
+# 先覆盖 description 为中文市场文案（不带激活协议标记）
+lines = []
+for line in content.splitlines(keepends=True):
+    if line.startswith("description:"):
+        line = "description: " + description + "\n"
+    lines.append(line)
+content = "".join(lines)
 
 # 定位 frontmatter 结束（第二个 ---）
 fm_end = content.index("---", content.index("---") + 3)
@@ -135,7 +152,7 @@ extra = (
 new_content = content[:fm_end] + extra + content[fm_end:]
 with open(path, "w", encoding="utf-8") as f:
     f.write(new_content)
-print("frontmatter 注入完成")
+print("frontmatter 注入完成（description 已中文化）")
 PY
 
 # ==============================================================
