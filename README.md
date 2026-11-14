@@ -8,15 +8,15 @@
 
 ## 📋 What's New / 本次大版本更新
 
-**v0.5.X — Automatic Circuit Layout & Wiring / 电路图自动生成与布线优化**
+**v0.6.0 — Readability Engine & Wiring Ledger / 可读性引擎与接线台账**
 
-> Describe your circuit in plain words → get a ready-to-simulate Wokwi diagram, with wiring auto-optimized.
-> 用自然语言描述电路 → 自动生成可仿真的 Wokwi 电路图，布线自动优化。
+> Opt-in readability layout (declare `routing.zones` / `routing.relays`), every net explained, and judgement tiers that stop soft metrics from becoming goals.
+> 可选可读性布局（声明 `routing.zones` / `routing.relays` 即启用）、逐网接线台账，以及不让软指标变成优化目标的指标分级。
 
-- 🧠 **Intent → Circuit** / 意图即电路 — describe parts & connections, auto-compute positions, breadboard wiring & routing (no manual drawing) / 只描述元件和连接，自动计算位置、插接和走线，不用手动画图
-- 📐 **Wiring Self-Check** / 布线自检 — auto-detect crossings / overlaps / through-part, with iterative re-layout & reroute / 自动检测交叉、重叠、穿线，支持迭代重排与绕行修正
-- 🧩 **Auto Component Data** / 元件数据自动入库 — 48+ parts' pins & sizes extracted from official sources (no manual measuring) / 48+ 常用元件的引脚与尺寸自动从官方源码提取，终结手动测量
-- 🔁 **Model-Script Split** / 人机分工 — model makes design decisions (gray), scripts handle geometry & fallback / 模型做设计决策（灰度），脚本做几何执行与兜底
+- 🧠 **Readability Engine (v2)** / 可读性引擎 — same-band descent, board clears the hub corridor, nested feed lanes, seam width = wire count × 9.6 + 12 (U2 crossings 47→36 / 54→47) / 同带下行、板让开枢纽走廊、馈电四道嵌套、缝宽按过线数计算（U2 交叉 47→36 / 54→47）
+- 🧾 **Wiring Ledger** / 接线台账 — electrical network rebuilt by union-find (even bare bb jumpers), every net explained (trunk / bus relay / isolated column / direct) + cross-voltage short check / 并查集重建电气网络（裸跳线也能归网），逐网说明形态（电源干道 / 母线中继 / 列隔离 / 直连）+ 跨电位类短路检查
+- 📏 **Judgement Tiers** / 指标三级 — GATE (veto) / BUDGET (upper bound only) / DIAGNOSTIC (attribution only); soft metrics (crossings / turns / length) must never be optimization targets / GATE 一票否决 / BUDGET 只设上限 / DIAGNOSTIC 只归因；交叉、转弯、线长等软指标不得作为优化目标
+- 🧩 **Existing-Code Entry & Behavior Spec** / 存量代码入口与行为说明 — point it at an existing `.ino` / sketch / `libraries.txt` → code fingerprints + pin scan → confirm gate → intent (v0.5.8); delivery explains normal behavior in the chat and archives `BEHAVIOR.md` / 从存量代码反推意图并入主线（v0.5.8）；交付时对话内给出「正常工作状态说明」并静默归档 `BEHAVIOR.md`
 
 **小版本更新历程**
 
@@ -109,12 +109,15 @@ Judgement tiers: GATE / BUDGET / DIAGNOSTIC — see `references/common/metrics-p
 - ⚡ **One-Command Compile** — Auto-installs `arduino-cli` + Uno core, compiles `.ino` to `.hex`, handles MINGW path conversion.
 - 🔢 **Multi-Board (Uno/Mega/Nano/ESP32)** — compile.sh auto-infers FQBN from diagram.json (no config needed).
 - 🔌 **Cross-Agent** — Works with DeepCode, WorkBuddy (`SKILL.md`), Claude Code (`CLAUDE.md`), and Cursor (`.cursorrules`).
-- 🧩 **Component Catalog (50 parts)** — `index.json` full catalog with Chinese names + pins, `detail/` per-part, auto-extracted from wokwi-elements source. Chinese name matching + ambiguity handling (asks user).
+- 🧩 **Component Catalog (60 parts)** — `index.json` full catalog with Chinese names + pins, `detail/` per-part, auto-extracted from wokwi-elements source. Chinese name matching + ambiguity handling (asks user).
 - 📚 **Experience Library** — `experience.json` accumulates verified wiring patterns & layout tips (agent-learned).
 - 🛠️ **Clean Layouts** — Supports `rotate` and routing waypoints for tidy diagrams.
 - 🔍 **Clone Board Detection** — Detects CH340/CP2102/FTDI chips via VID/PID (Windows PowerShell, macOS system_profiler, Linux lsusb) and suggests FQBN for clone boards.
 - ✅ **Safe Upload** — Always asks for user confirmation (port + board + FQBN) before uploading. Never silently flashes.
 - ⚠️ **Hardware Check** — Before guiding physical wiring, confirms component model/version matches simulation; warns about interface differences (e.g. I2C vs SPI OLED) and simulator limitations.
+- 🧾 **Existing-Code Entry (Entry B)** — Hand it an existing `.ino` / sketch / `libraries.txt`: `#include` fingerprints + pin scan → confirm gate → `layout-intent.json`; the main flow stays untouched (v0.5.8).
+- 📖 **Behavior Spec on Delivery** — Normal-operation notes in the chat (depth follows verification reachability), archived to `BEHAVIOR.md` (v0.5.8).
+- 🔎 **Electrical Semantics Checks** — Union-find net analysis: `rail-unpowered` / `netlist-broken` are hard conflicts, so "GND unconnected yet no conflict" cannot slip through (v0.5.9).
 
 ### Quick Start
 
@@ -139,6 +142,7 @@ The agent will:
 Skill-HardwarEasySim-Wokwi/
 ├── install.sh                         # One-click installer
 ├── publish-skillhub.sh                # 🚀 SkillHub CLI publish script
+├── CHANGELOG.md                       # 🗒️ Version history
 ├── adapters/
 │   ├── deepcode/SKILL.md              # DeepCode skill file
 │   ├── workbuddy/SKILL.md             # WorkBuddy skill file
@@ -147,9 +151,12 @@ Skill-HardwarEasySim-Wokwi/
 ├── scripts/
 │   ├── compile.sh                     # OS-aware compile/upload script
 │   ├── layout-generator.js            # 🧠 intent → diagram.json (coordinates)
-│   ├── optimize-wiring.js             # ✅ wiring conflict detect/fix
+│   ├── layout-v2.js                   # 🧠 readability engine (opt-in, v0.6.0)
+│   ├── optimize-wiring.js             # ✅ wiring conflicts + electrical net checks
+│   ├── wiring-notes.js                # 🧾 wiring ledger (per-net explanation)
 │   ├── generate-part-placeholder.js   # 🧩 library-external part placeholder
 │   ├── wokwi-automate.js              # 🌐 Auto browser simulation script
+│   ├── wokwi-cdp.js                   # 🌐 attach-first CDP driver
 │   └── run-tests.js                   # 🧪 regression (dev-only)
 └── references/
     ├── common/                        # 🧠 layout system (any board)
@@ -157,14 +164,17 @@ Skill-HardwarEasySim-Wokwi/
     │   ├── pins.json / sizes.json     # 📏 pin coords / canvas sizes
     │   ├── intent-format.md           # 📋 layout-intent.json contract
     │   ├── layout-rules.md            # 📐 layout/wiring rules
+    │   ├── metrics-policy.md          # 📏 GATE/BUDGET/DIAGNOSTIC tiers
+    │   ├── routing-philosophy.md      # 🧭 human vs script routing
     │   ├── generic-wiring.md          # 🔌 fallback for unknown parts
     │   ├── breadboard.md / waypoints.md
     │   └── layout-cards/              # 🧩 per-component preference cards
     ├── arduino/
     │   ├── components.md              # 📖 Component reference manual (high-freq)
     │   ├── index.json                 # 🗂️ Full catalog: type + pins + zh names
+    │   ├── code-mapping.json          # 🔎 code fingerprint → part mapping
     │   ├── experience.json            # 📚 Agent-learned wiring patterns & tips
-    │   └── detail/*.json              # Per-component details (50 files)
+    │   └── detail/*.json              # Per-component details (58 files)
     ├── esp32/board.md                 # ESP32 board reference
     └── monaco-steps.md                # Native Monaco fallback steps
 ```
@@ -246,12 +256,15 @@ The agent reads `components.md` for correct pin names, generates the project, co
 - 🔢 **多板型（Uno/Mega/Nano/ESP32）** — compile.sh 自动从 diagram.json 推断 FQBN，无需配置
 - ⚡ **一键编译** — 自动安装 `arduino-cli` + Uno 核心，编译 `.ino` 到 `.hex`，处理 MINGW 路径转换
 - 🔌 **跨 Agent** — 支持 DeepCode、WorkBuddy（`SKILL.md`）、Claude Code（`CLAUDE.md`）和 Cursor（`.cursorrules`）
-- 🧩 **元件目录（50 种）** — `index.json` 全量目录（含中文名+引脚），`detail/` 分元件详情，从 wokwi-elements 源码自动提取；中文名匹配 + 歧义询问
+- 🧩 **元件目录（60 种）** — `index.json` 全量目录（含中文名+引脚），`detail/` 分元件详情，从 wokwi-elements 源码自动提取；中文名匹配 + 歧义询问
 - 📚 **经验库** — `experience.json` 累积验证过的接线模式和布线技巧（agent 自学习）
 - 🛠️ **整洁布线** — 支持电阻旋转和路由控制点，生成清晰的电路图
 - 🔍 **克隆板识别** — 通过 VID/PID 检测 CH340/CP2102/FTDI 芯片（Windows PowerShell / macOS system_profiler / Linux lsusb），为克隆板提供 FQBN 建议
 - ✅ **安全上传** — 上传前始终请求用户确认（端口 + 板型 + FQBN），绝不静默烧录
 - ⚠️ **硬件核对** — 接实物前确认元件型号/版本与模拟一致，提示接口差异（如 OLED 的 I2C/SPI）和模拟器限制
+- 🧾 **存量代码入口（Entry B）** — 给一份现成的 `.ino` / sketch / `libraries.txt`：`#include` 指纹 + 引脚扫描 → 确认门 → `layout-intent.json`，主线流程零改动（v0.5.8）
+- 📖 **行为说明（呈现即对话）** — 交付时在对话内给出「正常工作状态说明」（深度随验证可达性分级），静默归档 `BEHAVIOR.md`（v0.5.8）
+- 🔎 **电气语义检查** — 并查集网络分析：`rail-unpowered` / `netlist-broken` 列为硬冲突，"GND 没接却报无冲突"不会再漏（v0.5.9）
 
 ### 快速开始
 
@@ -275,6 +288,7 @@ bash path/to/install.sh
 ```
 Skill-HardwarEasySim-Wokwi/
 ├── install.sh                         # 一键安装脚本
+├── CHANGELOG.md                       # 🗒️ 版本历史
 ├── adapters/
 │   ├── deepcode/SKILL.md              # DeepCode 技能文件
 │   ├── workbuddy/SKILL.md             # WorkBuddy 技能文件
@@ -283,9 +297,12 @@ Skill-HardwarEasySim-Wokwi/
 ├── scripts/
 │   ├── compile.sh                     # 跨平台编译/上传脚本
 │   ├── layout-generator.js            # 🧠 intent → diagram.json（坐标）
-│   ├── optimize-wiring.js             # ✅ 布线冲突检测/修正
+│   ├── layout-v2.js                   # 🧠 可读性引擎（可选，v0.6.0）
+│   ├── optimize-wiring.js             # ✅ 布线冲突 + 电气网络检查
+│   ├── wiring-notes.js                # 🧾 接线台账（逐网说明）
 │   ├── generate-part-placeholder.js   # 🧩 库外元件占位符
 │   ├── wokwi-automate.js              # 🌐 自动浏览器仿真脚本
+│   ├── wokwi-cdp.js                   # 🌐 attach-first CDP 驱动
 │   └── run-tests.js                   # 🧪 回归测试（开发期）
 └── references/
     ├── common/                        # 🧠 布局体系（任何板型）
@@ -293,14 +310,17 @@ Skill-HardwarEasySim-Wokwi/
     │   ├── pins.json / sizes.json     # 📏 引脚坐标 / 画布尺寸
     │   ├── intent-format.md           # 📋 layout-intent.json 契约
     │   ├── layout-rules.md            # 📐 布局/布线规则
+    │   ├── metrics-policy.md          # 📏 GATE/BUDGET/DIAGNOSTIC 三级政策
+    │   ├── routing-philosophy.md      # 🧭 人类与脚本的走线思路差异
     │   ├── generic-wiring.md          # 🔌 未收录元件兜底
     │   ├── breadboard.md / waypoints.md
     │   └── layout-cards/              # 🧩 元件偏好卡
     ├── arduino/
     │   ├── components.md              # 📖 元件参考手册（高频）
     │   ├── index.json                 # 🗂️ 全量目录：type + 引脚 + 中文名
+    │   ├── code-mapping.json          # 🔎 代码指纹 → 元件映射
     │   ├── experience.json            # 📚 agent 自学习接线模式与布线技巧
-    │   └── detail/*.json              # 分元件详情（50 个）
+    │   └── detail/*.json              # 分元件详情（58 个）
     ├── esp32/board.md                 # ESP32 板卡参考
     └── monaco-steps.md                # 原生 Monaco 降级操作步骤
 ```
