@@ -3,7 +3,7 @@ name: wokwi-arduino
 description: Create, compile, simulate, and upload Arduino projects with Wokwi. Use when the user mentions Arduino, Wokwi, 单片机, 嵌入式, or when .ino / wokwi.toml / diagram.json files are detected. Explicitly activate with @wokwi, #arduino, or @simulate.
 ---
 
-# Arduino Wokwi Simulation Skill (v0.5.9) — WorkBuddy Adapter
+# Arduino Wokwi Simulation Skill (v0.6.0) — WorkBuddy Adapter
 
 WorkBuddy 专用的 wokwi-arduino skill 适配器。与 deepcode/claude/cursor 适配器内容一致，仅安装路径不同。
 
@@ -99,7 +99,19 @@ done
 
 ## 版本检查
 
-当前版本: **v0.5.9**
+当前版本: **v0.6.0**
 仓库: `https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git`
 
 激活时检查最新 release，有新版本询问用户是否更新（git clone + install.sh）。⚠️ 更新时使用 `install.sh --global`（WorkBuddy 本身固定全局）。
+
+## 可读性布局（v0.6.0 新增，可选）
+
+意图声明 `routing.zones` / `routing.relays` 时启用可读性引擎（`scripts/layout-v2.js`）：
+
+- 预设：`V2_ALIGN=1`（边对齐）、`V2_T3=1`（枢纽同排，自动识别枢纽）
+- 规则：同带下行 / 板让开走廊 / 馈电四道嵌套 / 缝宽 = 过线数×9.6+12
+- 档位：`routing.profile` = `prototype`（默认）/ `matrix`（母线中继，交叉最少但线多）/ `device`（不支持）
+- 产出：`wiring-notes.md` 接线台账（电源干道 / 母线中继 / 列隔离 / 直连 + 短路检查）
+- 判据：GATE（硬性）/ BUDGET（只设上限）/ DIAGNOSTIC（只归因）→ 软指标不得作为优化目标
+
+详见 `references/common/layout-rules.md`（Rule 9/10）、`layout-analysis.md`、`wiring-profiles.md`、`metrics-policy.md`。

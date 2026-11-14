@@ -1,4 +1,4 @@
-// Arduino Wokwi Simulation (v0.5.9)
+// Arduino Wokwi Simulation (v0.6.0)
 // Repo: https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git
 // Triggers: arduino/wokwi/uno/单片机 keywords, .ino/wokwi.toml/diagram.json files, @wokwi @simulate
 
@@ -44,10 +44,22 @@ done
 
 ## Version Check
 
-v0.5.9 | Repo: https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git
+v0.6.0 | Repo: https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git
 
 On activation:
 ```bash
 curl -s --connect-timeout 3 https://api.github.com/repos/YuchengCai/Skill-HardwarEasySim-Wokwi/releases/latest | grep "tag_name"
 ```
 If newer, ask user → auto update: `git clone + install.sh --global` (use --global unless user wants project-only).
+
+## 可读性布局（v0.6.0 新增，可选）
+
+意图声明 `routing.zones` / `routing.relays` 时启用可读性引擎（`scripts/layout-v2.js`）：
+
+- 预设：`V2_ALIGN=1`（边对齐）、`V2_T3=1`（枢纽同排，自动识别枢纽）
+- 规则：同带下行 / 板让开走廊 / 馈电四道嵌套 / 缝宽 = 过线数×9.6+12
+- 档位：`routing.profile` = `prototype`（默认）/ `matrix`（母线中继，交叉最少但线多）/ `device`（不支持）
+- 产出：`wiring-notes.md` 接线台账（电源干道 / 母线中继 / 列隔离 / 直连 + 短路检查）
+- 判据：GATE（硬性）/ BUDGET（只设上限）/ DIAGNOSTIC（只归因）→ 软指标不得作为优化目标
+
+详见 `references/common/layout-rules.md`（Rule 9/10）、`layout-analysis.md`、`wiring-profiles.md`、`metrics-policy.md`。

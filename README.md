@@ -20,6 +20,19 @@
 
 **小版本更新历程**
 
+- **v0.6.0** — Readability Engine & Wiring Ledger / 可读性引擎与接线台账：
+  - 形态规则：**同带下行**（元件已在目标带内 → 直接向下，U2 交叉 47→36）、**板让开枢纽走廊**（54→47）、
+    **馈电四道嵌套**（间距真违规 10→7）、**缝宽 = 过线数 × 9.6 + 12**（缝宽不再拍数值）
+  - **枢纽同排合并**：`V2_T3=1` 自动识别枢纽（连接数最多 + 接板最多），与 hub 放置同一实现（此前两套入口）
+  - **接线台账** `wiring-notes.md`：电气网络重建（并查集，bb 裸跳线也能正确归网）+ 跨电位类短路检查 +
+    每网形态说明（电源干道 / 母线中继 / 列隔离 / 直连）；两引擎生成后自动产出
+  - **指标三级政策**（`metrics-policy.md`）：GATE 一票否决 / BUDGET 只设上限 / DIAGNOSTIC 只归因；
+    **软指标（交叉/转弯/线长）不得作为优化目标**
+  - **输出档位** `routing.profile`：`prototype`（默认）/ `matrix`（母线中继，交叉最少但线多）/ `device`（不支持，显式声明）
+  - 两引擎 intent 形状归一（`groups[].ids → parts`），v1 缺 groups 时快速失败并指向 v2；输出目录自动创建
+  - 间距报告区分「真违规 <9.5」与「网格取整 9.5」（U3b 真违规 7→0）
+  - 新增 `V2_TRACE` 决策轨迹：每根线记录规则来源，替代"改了没效果就盲猜钩子"
+
 - **v0.5.9** — Electrical Semantics & Catalog Coverage / 电气语义检查与元件目录补齐：
   - 电气连通性检查（`optimize-wiring.js` 新增并查集网络分析）：`rail-unpowered`（轨上有消费者、网络内却无任何电源脚）与 `netlist-broken`（同一网络被面包板沟槽切断）列为**硬冲突**，`column-halfzone-split` 降为提示；堵住「GND 根本没接却报告无冲突」的漏报（真实项目实测反馈）
   - 元件目录补到 60 条：新增 `board-mfrc522`（RFID 读卡器）、`board-cd74hc4067`（16 路模拟复用器）、`board-ssd1306`、`wokwi-74hc165 / 74hc595 / a4988 / ds18b20 / tm1637-7segment`，附 detail 引脚表与几何（尺寸为估计值，已标注待实测校准）
@@ -72,7 +85,22 @@
 <a id="english"></a>
 ## 📘 English
 
-**Wokwi Arduino Simulation Skill** — v0.5.9 — A portable skill package for AI coding agents (DeepCode, WorkBuddy, Claude Code, Cursor) that enables automated Arduino hardware prototyping, **auto browser simulation**, circuit compilation, and firmware upload.
+**Wokwi Arduino Simulation Skill** — v0.6.0 — A portable skill package for AI coding agents (DeepCode, WorkBuddy, Claude Code, Cursor) that enables automated Arduino hardware prototyping, **auto browser simulation**, circuit compilation, and firmware upload.
+
+### Readability layout (optional, v0.6.0)
+
+Declare `routing.zones` / `routing.relays` in the intent to enable the readability engine
+(`scripts/layout-v2.js`). It trades a few extra jumpers for a much tidier diagram:
+
+- **Same-band down**: a part already inside the target band drops straight down (no detour above the board)
+- **Board clears the hub corridor**: in hub layouts the board shifts left so module wires stop being blocked
+- **Nested feed lanes**: power feeds rank by board-pin x, deepest lane outermost
+- **Seam width = wire count × 9.6 + 12** (a seam must be wide enough for the verticals crossing it)
+- **Wiring ledger** `wiring-notes.md`: every net explained (trunk / bus relay / isolated column / direct)
+
+Layout presets: `V2_ALIGN=1` (edge-aligned), `V2_T3=1` (hub-in-band, auto-detected hub).
+Profiles: `routing.profile` = `prototype` (default) / `matrix` (bus-relay, fewest crossings, more wires).
+Judgement tiers: GATE / BUDGET / DIAGNOSTIC — see `references/common/metrics-policy.md`.
 
 ### Features
 
@@ -194,7 +222,22 @@ The agent reads `components.md` for correct pin names, generates the project, co
 <a id="chinese"></a>
 ## 📘 中文
 
-**Wokwi Arduino 仿真 Skill** — v0.5.9 — 一个可移植的技能包，专为 AI 编程助手（DeepCode、WorkBuddy、Claude Code、Cursor）设计，实现自动化硬件原型设计、**自动浏览器仿真**、代码编译和固件上传。
+**Wokwi Arduino 仿真 Skill** — v0.6.0 — 一个可移植的技能包，专为 AI 编程助手（DeepCode、WorkBuddy、Claude Code、Cursor）设计，实现自动化硬件原型设计、**自动浏览器仿真**、代码编译和固件上传。
+
+### 可读性布局（可选，v0.6.0）
+
+在意图里声明 `routing.zones` / `routing.relays` 即启用可读性引擎（`scripts/layout-v2.js`），
+用少量额外跳线换取明显更清晰的走线：
+
+- **同带下行**：元件已在目标带内时直接向下走，不再抬到板外绕回（U2 枢纽布局交叉 47→36）
+- **板让开枢纽走廊**：枢纽布局下板左移，模块竖线不再被板挡住（交叉 54→47）
+- **馈电四道嵌套**：按板脚 x 排名，最深的一条走最外缘（间距真违规 10→7）
+- **缝宽 = 过线数 × 9.6 + 12**：缝宽由穿过它的竖线根数决定，而不是拍数值
+- **接线台账** `wiring-notes.md`：逐网说明是电源干道 / 母线中继 / 列隔离 / 直连，并做跨电位类短路检查
+
+布局预设：`V2_ALIGN=1`（边对齐）、`V2_T3=1`（枢纽同排，自动识别枢纽）。
+输出档位：`routing.profile` = `prototype`（默认）/ `matrix`（母线中继，交叉最少但线多）/ `device`（不支持）。
+判据三级：GATE / BUDGET / DIAGNOSTIC，见 `references/common/metrics-policy.md`。
 
 ### 功能
 
