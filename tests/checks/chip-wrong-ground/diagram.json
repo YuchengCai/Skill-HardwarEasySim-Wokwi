@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "author": "Wiring review",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "wokwi-arduino-uno", "id": "uno", "top": 0, "left": 0, "attrs": {} },
+    { "type": "chip-ls757", "id": "sensor", "top": 256, "left": 230, "attrs": {} },
+    { "type": "wokwi-text", "id": "legend", "top": 345, "left": 0, "attrs": { "text": "Photo: GND top left (HV side). Diagram: GND bottom right (HV side)." } }
+  ],
+  "connections": [
+    ["uno:3.3V", "sensor:LV", "red", []],
+    ["uno:5V", "sensor:HV", "red", []],
+    ["uno:GND.2", "sensor:JP3_GND", "black", []]
+  ],
+  "dependencies": {}
+}

@@ -1,0 +1,7 @@
+{
+  "checkExit": 3,
+  "stdoutMustInclude": [
+    "指定孔",
+    "3b.j"
+  ]
+}

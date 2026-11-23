@@ -1,0 +1,18 @@
+{
+  "board": "wokwi-arduino-uno",
+  "breadboard": "wokwi-breadboard-half",
+  "parts": [
+    { "id": "pot1", "type": "wokwi-potentiometer", "placement": "board", "attrs": {} },
+    { "id": "btn1", "type": "wokwi-pushbutton", "hint": { "order": "left" }, "attrs": {} }
+  ],
+  "groups": [
+    { "name": "旋钮模拟输入区", "parts": ["pot1"], "zone": "input", "region": "right", "relation": "together" },
+    { "name": "按键数字输入区", "parts": ["btn1"], "zone": "input", "region": "middle", "relation": "together" }
+  ],
+  "connections": [
+    { "from": "pot1:VCC", "to": "uno:5V", "color": "red" },
+    { "from": "pot1:SIG", "to": "uno:A0", "color": "green" },
+    { "from": "pot1:GNDX", "to": "bb1:3b.j", "color": "black" },
+    { "from": "uno:2", "to": "btn1:2.r", "color": "yellow" }
+  ]
+}

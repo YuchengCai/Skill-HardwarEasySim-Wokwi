@@ -152,6 +152,75 @@ function main() {
   }
   const OUT_DIR = args[1] ? path.resolve(args[1]) : path.dirname(path.resolve(args[0]));
   fs.mkdirSync(OUT_DIR, { recursive: true });   // 输出目录不存在时自动创建（与 layout-v2 一致）
+
+  // ============================================================
+  // 需求预检（序列1/文档42）：显式面包板端点必须合法、且不得重复占孔。
+  // 旧意图不含 bb1 端点 → 行为不变；非法引用不再静默跳过（terra61 的 ta.8 等）。
+  // 失败：exit 3（不生成图，先修意图）。
+  // ============================================================
+  {
+    const HOLE_PAT = /^(\d+)([tb])\.([a-j])$/;
+    const RAIL_PAT = /^(tn|tp|bn|bp)\.(\d+)$/;
+    const HALF = { t: 'abcde', b: 'fghij' };
+    const bad = [];
+    const used = new Map();   // 物理端点 → 引用位置列表
+    (intent.connections || []).forEach((c, i) => {
+      [['from', c.from], ['to', c.to]].forEach(([k, ref]) => {
+        const s = String(ref || '');
+        if (!s.startsWith('bb1:')) return;
+        const pin = s.slice(4);
+        let m = pin.match(HOLE_PAT);
+        if (m) {
+          const row = parseInt(m[1], 10), half = m[2], letter = m[3];
+          if (row < 1 || row > 30) { bad.push(`连接#${i} ${k}=${s}：孔行号越界（1-30）`); return; }
+          if (!HALF[half].includes(letter)) { bad.push(`连接#${i} ${k}=${s}：${half} 半区孔字母应为 ${HALF[half]}`); return; }
+          if (!used.has(s)) used.set(s, []);
+          used.get(s).push(`#${i}:${k}`);
+          return;
+        }
+        m = pin.match(RAIL_PAT);
+        if (m) {
+          const n = parseInt(m[2], 10);
+          if (n < 1 || n > 25) { bad.push(`连接#${i} ${k}=${s}：轨位置号越界（1-25）`); return; }
+          if (!used.has(s)) used.set(s, []);
+          used.get(s).push(`#${i}:${k}`);
+          return;
+        }
+        bad.push(`连接#${i} ${k}=${s}：非法面包板引用（应为 <row><t|b>.<a-j> 或 <tn|tp|bn|bp>.<1-25>）`);
+      });
+    });
+    for (const [ref, arr] of used) {
+      if (arr.length > 1) bad.push(`物理端点 ${ref} 被重复占用：${arr.join(', ')}`);
+    }
+    if (bad.length) {
+      console.error('[FAIL] 意图中的面包板端点预检未通过：');
+      bad.forEach(b => console.error('  - ' + b));
+      process.exit(3);
+    }
+  }
+
+  // ============================================================
+  // 生成后需求对账（序列1/文档42）：从实际 diagram 重建网络，逐条核对 intent。
+  // 缺线 / 锁孔移动 / 网络误并要求 exit 3；图保留为诊断草稿（不标记可交付）。
+  // ============================================================
+  const requiredCheck = () => {
+    try {
+      const res = require('./check-required').check({ intent, dir: OUT_DIR, diagramPath: path.join(OUT_DIR, 'diagram.json') });
+      const passed = res.required.filter(r => r.ok).length;
+      if (res.ok) {
+        console.log(`[OK] 需求对账：${passed}/${res.required.length} 条必需连接全部满足`);
+        return true;
+      }
+      console.log(`[FAIL] 需求对账未通过（diagram.json 保留为诊断草稿，不可标记可交付）：`);
+      res.required.filter(r => !r.ok).forEach(r => console.log(`  - 需求#${r.i} ${r.from} → ${r.to}：${r.reason}`));
+      res.errors.forEach(e => console.log(`  - ${e.code}: ${e.message}`));
+      res.warnings.forEach(w => console.log(`  [WARN] ${w.code}: ${w.message}`));
+      return false;
+    } catch (e) {
+      console.log('[WARN] 需求对账未执行（未验证）：' + e.message);
+      return true;
+    }
+  };
   // --spacing <px>：覆盖元件间距（迭代骨架逐轮加大间距消重叠用）
   const spIdx = args.indexOf('--spacing');
   if (spIdx >= 0 && args[spIdx + 1]) {
@@ -1228,6 +1297,19 @@ function main() {
     const RY = RAIL_G.yRot180 || { tn: 185.6, tp: 195.2, bn: 11.8, bp: 21.4 };
     const railY = { bn: bb.top + RY.bn, bp: bb.top + RY.bp, tn: bb.top + RY.tn, tp: bb.top + RY.tp };
     const railPos = (rail, n) => ({ x: railX(n), y: railY[rail] });
+    // 显式面包板端点解析（序列1/文档42：锁定孔 / 轨位 / 板内桥接）
+    const BB_HOLE_PAT = /^(\d+)([tb])\.([a-j])$/;
+    const BB_RAIL_PAT = /^(tn|tp|bn|bp)\.(\d+)$/;
+    const bbHoleOf = (pin) => {
+      const m = String(pin || '').match(BB_HOLE_PAT);
+      return m ? { row: parseInt(m[1], 10), half: m[2], letter: m[3] } : null;
+    };
+    const resolveBBEndpoint = (pin) => {
+      const h = bbHoleOf(pin);
+      if (h) return holePos(h);
+      const r = String(pin || '').match(BB_RAIL_PAT);
+      return r ? railPos(r[1], parseInt(r[2], 10)) : null;
+    };
     // 识别电源连线（目标 = uno:GND/5V/3V3/VIN）→ 连对应轨
     const railUsed = { bn: new Set(), bp: new Set(), tn: new Set(), tp: new Set() };
     const railXCross = {};   // 已被任一轨占用的 x（防同 x 跨轨电源线共线）
@@ -1464,11 +1546,25 @@ function main() {
       const fpin = fromRef0.split(':')[1];
       let fromRef = fromRef0;
       let toRef = toRef0;
-      let a = pinPos(fid, fpin);
-      let b = pinPos(toRef0.split(':')[0], toRef0.split(':')[1]);
+      const resolveEndpoint = (id, pin) => id === 'bb1' ? resolveBBEndpoint(pin) : pinPos(id, pin);
+      let a = resolveEndpoint(fid, fpin);
+      let b = resolveEndpoint(toRef0.split(':')[0], toRef0.split(':')[1]);
       if (!a || !b) {
         console.log(`  [走线跳过] ${c.from}→${c.to}：引脚坐标缺失`);
         return;
+      }
+      // 显式面包板端点登记占用：自动分孔/落轨不得再占用同一孔位/轨位
+      for (const ref of [fromRef0, toRef0]) {
+        const sp = String(ref).split(':');
+        if (sp[0] !== 'bb1') continue;
+        const h = bbHoleOf(sp[1]);
+        if (h) {
+          const key = `${h.row}:${h.half}`;
+          (usedHoles[key] = usedHoles[key] || new Set()).add(h.letter);
+        } else {
+          const r = sp[1].match(BB_RAIL_PAT);
+          if (r) railUsed[r[1]].add(parseInt(r[2], 10));
+        }
       }
 
       // A2 扩展（A3）：part↔part 电源菊花链，bb 在场时默认走轨分发。
@@ -1519,12 +1615,16 @@ function main() {
       }
 
       let stagger = 0;
+      // 显式面包板端点（锁孔/桥接）的板源线：在常规车道外再让一条独立走廊，
+      // 避免与电源主线/其他板源平线共用 safeY（sol56 实测间距 1 的近贴）。
+      const explicitBBEnd = /^bb1:/.test(String(toRef0)) || /^bb1:/.test(String(fromRef0));
       if (fid === board.id) {
         // 板线：按脚位 x 占独立水平车道，避免多线共线/右脚本向左压左脚出线
         const pinInfo = (pins[board.type] || {})[fpin];
         const side = pinInfo && pinInfo[1] < board.pinSideThreshold ? 'top' : 'bottom';
         const lane = (boardPinLane[fpin] != null) ? boardPinLane[fpin] : edgeLane[side]++;
         stagger = side === 'top' ? -lane * 8 : lane * 8;
+        if (explicitBBEnd) stagger += side === 'top' ? -20 : 20;
       } else {
         // 元件→板脚：按目标板脚的车道错开（同侧每脚一条独立水平车道，消除多线共线重叠）
         const tId = toRef.split(':')[0], tPin = toRef.split(':')[1];
@@ -1792,6 +1892,7 @@ function main() {
     if (unknownTypes.size) {
       console.log(`[INFO] 未知元件类型(回退默认尺寸/直连):${[...unknownTypes].join('、')}。尺寸表未收录。补录 references/common/sizes.json 或显式声明尺寸。`);
     }
+    if (!requiredCheck()) process.exit(3);
     console.log(`[OK] 面包板布局：${bbParts.length} 插面板 + ${boardParts.length} 直连 + ${bbConns.length} 条 $bb + ${wireConns.length} 条可见线`);
     console.log('[INFO] 输出:', path.join(OUT_DIR, 'diagram.json'));
     return;
@@ -2043,6 +2144,7 @@ function main() {
   if (unknownTypes.size) {
     console.log(`[INFO] 未知元件类型(回退默认尺寸/直连):${[...unknownTypes].join('、')}。尺寸表未收录。补录 references/common/sizes.json 或显式声明尺寸。`);
   }
+  if (!requiredCheck()) process.exit(3);
   console.log(`[OK] 直连布局：${parts.length} 元件 + ${wireConns.length} 条可见线`);
   if (issues.length) {
     console.log(`[WARN] 硬约束修复 ${issues.length} 处:`);

@@ -1,0 +1,5 @@
+{
+  "name": "757",
+  "author": "Wiring review",
+  "pins": ["LV", "A1", "A2", "A3", "A4", "JP3_GND", "JP4_GND", "B4", "B3", "B2", "B1", "HV"]
+}

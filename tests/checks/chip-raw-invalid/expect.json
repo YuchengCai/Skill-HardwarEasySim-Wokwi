@@ -1,0 +1,4 @@
+{
+  "checkExit": 3,
+  "stdoutMustInclude": ["未声明的引脚键", "sensor:1", "sensor:12", "sensor:7"]
+}

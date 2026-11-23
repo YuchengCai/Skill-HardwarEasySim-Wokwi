@@ -305,7 +305,9 @@ function computeRect(p, sizesData) {
     const ldh = flipped ? p.w : p.h;
     const wasShrunk = ldw !== realSize.width || ldh !== realSize.height;
     const intentionalShrink = type === 'wokwi-led' || type === 'wokwi-rgb-led';
-    if (wasShrunk && !intentionalShrink) {
+    // 仅 LED 家族需要「意外缩小」绊线（led-ring/led-bar-graph 漏检回归）；
+    // 其他元件（按钮等）的检测矩形本就不等于 sizes.json 容器尺寸，不参与。
+    if (wasShrunk && !intentionalShrink && type.includes('led')) {
       console.warn(`  [尺寸] ${p.id}: ${type} → 检测矩形 ${ldw}×${ldh}(sizes.json 为 ${realSize.width}×${realSize.height},疑似缩小回归)`);
     }
   }

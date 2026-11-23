@@ -1,0 +1,4 @@
+{
+  "checkExit": 3,
+  "stdoutMustInclude": ["sensor:JP4_GND", "不在同一网络"]
+}

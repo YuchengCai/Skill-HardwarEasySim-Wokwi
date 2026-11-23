@@ -1,0 +1,6 @@
+{
+  "checkExit": 3,
+  "stdoutMustInclude": [
+    "不在同一网络"
+  ]
+}

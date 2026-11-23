@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "author": "Wiring review",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "wokwi-arduino-uno", "id": "uno", "top": 0, "left": 0, "attrs": {} },
+    { "type": "chip-ls757", "id": "sensor", "top": 256, "left": 230, "attrs": {} }
+  ],
+  "connections": [
+    ["uno:3.3V", "sensor:1", "red", []],
+    ["uno:5V", "sensor:12", "red", []],
+    ["uno:GND.2", "sensor:7", "black", []]
+  ],
+  "dependencies": {}
+}

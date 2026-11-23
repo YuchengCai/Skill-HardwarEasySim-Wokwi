@@ -1,0 +1,5 @@
+{
+  "genExit": 0,
+  "skipOptimize": true,
+  "stdoutMustInclude": ["[OK] 需求对账：7/7 条必需连接全部满足"]
+}

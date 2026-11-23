@@ -1,0 +1,5 @@
+{
+  "genExit": 3,
+  "stdoutMustInclude": ["非法面包板引用"],
+  "stdoutMustNotInclude": ["[OK] 面包板布局"]
+}

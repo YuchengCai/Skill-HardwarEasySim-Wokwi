@@ -1,0 +1,14 @@
+{
+  "board": "wokwi-arduino-uno",
+  "parts": [
+    { "id": "sensor", "type": "chip-ls757", "placement": "board", "attrs": {} }
+  ],
+  "groups": [
+    { "name": "sensor", "zone": "sensor", "parts": ["sensor"] }
+  ],
+  "connections": [
+    { "from": "uno:3.3V", "to": "sensor:LV", "color": "red" },
+    { "from": "uno:5V", "to": "sensor:HV", "color": "red" },
+    { "from": "uno:GND.2", "to": "sensor:JP4_GND", "color": "black" }
+  ]
+}

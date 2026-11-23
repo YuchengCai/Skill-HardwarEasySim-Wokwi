@@ -1,0 +1,5 @@
+{
+  "genExit": 3,
+  "stdoutMustInclude": ["未声明的引脚键", "[FAIL] 需求对账未通过"],
+  "stdoutMustNotInclude": ["[OK] 面包板布局", "[OK] 直连布局"]
+}
