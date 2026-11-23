@@ -1,0 +1,12 @@
+{
+  "mustInclude": [
+    "线近已用孔",
+    "bb1:22t.e",
+    "modA:SCL",
+    "bb1:21t.e"
+  ],
+  "mustNotInclude": [
+    "共线覆盖",
+    "rtc1:"
+  ]
+}

@@ -173,5 +173,30 @@ if (fs.existsSync(CONFLICTS_DIR)) {
   }
 }
 
+// ============================================================
+// 序列1/文档24 固定件（tests/task1/）：线-孔端点保护 + 异线共线覆盖
+// 每个目录：diagram.json + expect.json { optArgs?, mustInclude?, mustNotInclude? }
+// ============================================================
+const TASK1_DIR = path.join(ROOT, 'tests', 'task1');
+if (fs.existsSync(TASK1_DIR)) {
+  for (const name of fs.readdirSync(TASK1_DIR).sort()) {
+    const dir = path.join(TASK1_DIR, name);
+    if (!fs.existsSync(path.join(dir, 'diagram.json'))) continue;
+    let expect = {};
+    const ep = path.join(dir, 'expect.json');
+    if (fs.existsSync(ep)) { try { expect = JSON.parse(fs.readFileSync(ep, 'utf8')); } catch (e) { console.log(`  [expect] ${name} 解析失败`); } }
+    const r = runCapture([OPT, dir, '--dry-run', ...(expect.optArgs || [])], path.join(dir, '.opt.log'));
+    let ok = true;
+    for (const s of expect.mustInclude || []) {
+      if (!r.out.includes(s)) { console.log(`  [task1] ${name} 输出缺少「${s}」`); ok = false; }
+    }
+    for (const s of expect.mustNotInclude || []) {
+      if (r.out.includes(s)) { console.log(`  [task1] ${name} 输出不应含「${s}」`); ok = false; }
+    }
+    if (ok) { pass++; console.log(`[PASS] ${name} (task1 反馈)`); }
+    else { fail++; console.log(`[FAIL] ${name}`); }
+  }
+}
+
 console.log(`\n结果：${pass} passed, ${fail} failed`);
 process.exit(fail > 0 ? 1 : 0);

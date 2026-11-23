@@ -538,6 +538,128 @@ function detectConflicts(diagram, partRects, boardProfile) {
 }
 
 // ============================================================
+// 线-孔端点保护 + 异线共线覆盖（序列1/文档24，docs/serial1-task42-report.md 之后的增量）
+//   - 线近已用孔：导线中段经过另一个连接端点（已用孔）的保护半径 → 定向复核
+//   - 异线共线覆盖：两条不同网络/不同端点的线在直段上共线（gap≈0）或长距离近贴 → 退回候选
+//   阈值 4 沿用旧诊断口径，尚未按渲染校准；±1 内标「待核实」。
+// ============================================================
+const NEAR_HOLE_THRESHOLD = 4;   // 图纸单位（旧规则口径，未校准）
+const NEAR_HOLE_MARGIN = 1;      // 待核实带
+const NEAR_HOLE_REVIEW = 60;     // 复核说明半径（覆盖旧工具点名的 7 处）
+const HOLE_REF_RE = /^bb1:(\d+[tb]\.[a-j])$/;
+
+function detectWireFeedback(diagram, parts, opts) {
+  const conflicts = [], info = [];
+  const REPORT = !!(opts && opts.report);
+  const r2 = v => Math.round(v * 100) / 100;
+  const bb = parts.find(p => String(p.type || '').includes('breadboard'));
+  if (!bb) return { conflicts, info };
+  const conns = diagram.connections || [];
+
+  // 已用孔：所有连接端点（含 $bb 插接）出现的面包板孔
+  const used = new Set();
+  for (const c of conns) for (const ref of [c[0], c[1]]) {
+    const m = String(ref || '').match(HOLE_REF_RE);
+    if (m) used.add(ref);
+  }
+  const holes = [...used].map(ref => ({ ref, ...pinPosition(bb, ref.match(HOLE_REF_RE)[1]) }));
+
+  // 可见线（跳过 $bb 虚拟插接）
+  const wires = [];
+  conns.forEach((conn, i) => {
+    const wp = conn.length > 3 ? conn[3] : [];
+    if (wp.includes('$bb')) return;
+    const pts = connectionPath(conn, parts);
+    if (!pts || pts.length < 2) return;
+    wires.push({ i, conn, segs: polylineToSegments(pts) });
+  });
+
+  const segDist = (p, a, b) => {
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const L2 = dx * dx + dy * dy;
+    let t = L2 ? ((p.x - a.x) * dx + (p.y - a.y) * dy) / L2 : 0;
+    t = Math.max(0, Math.min(1, t));
+    return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+  };
+
+  // ① 线 vs 已用孔（端点保护）
+  const perWire = new Map();   // wire index → { conn, holes: [{ref,d}] }
+  for (const w of wires) {
+    const own = new Set([w.conn[0], w.conn[1]]);
+    const fromHole = HOLE_REF_RE.test(String(w.conn[0]));
+    const toHole = HOLE_REF_RE.test(String(w.conn[1]));
+    for (const h of holes) {
+      if (own.has(h.ref)) continue;
+      let d = Infinity;
+      for (const [a, b] of w.segs) d = Math.min(d, segDist(h, a, b));
+      if (d < NEAR_HOLE_THRESHOLD) {
+        conflicts.push({
+          type: 'near-hole', conn: w.i, hole: h.ref, dist: r2(d),
+          connStr: JSON.stringify(w.conn),
+          note: Math.abs(d - NEAR_HOLE_THRESHOLD) <= NEAR_HOLE_MARGIN ? '（阈值未校准，按待核实处理）' : ''
+        });
+      } else if (d <= NEAR_HOLE_REVIEW && fromHole !== toHole) {
+        // 复核说明：只对「一端接孔、另一端接元件/板」的引线做说明，避免板内桥接线刷屏
+        if (!perWire.has(w.i)) perWire.set(w.i, { conn: w.conn, holes: [] });
+        perWire.get(w.i).holes.push({ ref: h.ref, d: r2(d) });
+      }
+    }
+  }
+  const entries = [...perWire.values()]
+    .map(v => ({ ...v, min: Math.min(...v.holes.map(h => h.d)) }))
+    .sort((a, b) => a.min - b.min);   // 最近孔优先，确保旧工具点名的 7 项进入报告窗口
+  for (const { conn, holes, min } of entries) {
+    // 默认只报「最近已用孔落在 4..11」（一格附近）的引线，覆盖旧工具 7 项与受控压孔样本；
+    // --near-hole-report 时输出全部 60 内复核项。
+    if (!REPORT && !(min >= NEAR_HOLE_THRESHOLD && min <= NEAR_HOLE_THRESHOLD + 7)) continue;
+    holes.sort((a, b) => a.d - b.d);
+    const shown = holes.slice(0, 4).map(h => `${h.ref} d=${h.d}`).join(' / ');
+    info.push(`[近孔复核] ${conn[0]}→${conn[1]} 最近已用孔：${shown}${holes.length > 4 ? ` …共 ${holes.length} 孔` : ''}（阈值 ${NEAR_HOLE_THRESHOLD}，全部>阈值保留原走线）`);
+  }
+
+  // ② 异线共线/近贴（不同端点、互不共享引脚）；同一 (线对, 方向, 位置) 的多个分段合并为总重叠长
+  const agg = new Map();
+  for (let i = 0; i < wires.length; i++) {
+    const w1 = wires[i];
+    for (let j = i + 1; j < wires.length; j++) {
+      const w2 = wires[j];
+      if (w1.conn[0] === w2.conn[0] || w1.conn[0] === w2.conn[1] || w1.conn[1] === w2.conn[0] || w1.conn[1] === w2.conn[1]) continue;
+      for (const [a, b] of w1.segs) {
+        for (const [c, d] of w2.segs) {
+          const h1 = Math.abs(a.y - b.y) < 0.01, h2 = Math.abs(c.y - d.y) < 0.01;
+          const v1 = Math.abs(a.x - b.x) < 0.01, v2 = Math.abs(c.x - d.x) < 0.01;
+          let gap, overlap, axis, at;
+          if (h1 && h2) {
+            gap = Math.abs(a.y - c.y);
+            overlap = Math.min(Math.max(a.x, b.x), Math.max(c.x, d.x)) - Math.max(Math.min(a.x, b.x), Math.min(c.x, d.x));
+            axis = 'y'; at = a.y;
+          } else if (v1 && v2) {
+            gap = Math.abs(a.x - c.x);
+            overlap = Math.min(Math.max(a.y, b.y), Math.max(c.y, d.y)) - Math.max(Math.min(a.y, b.y), Math.min(c.y, d.y));
+            axis = 'x'; at = a.x;
+          } else continue;
+          if (overlap <= 2) continue;
+          const type = gap <= 0.5 ? 'overlap-collinear' : (gap <= 1.0 && overlap > 20 ? 'overlap-near' : null);
+          if (!type) continue;
+          const key = `${type}|${w1.i}|${w2.i}|${axis}|${r2(at)}`;
+          if (!agg.has(key)) {
+            agg.set(key, {
+              type, conn: w1.i, with: w2.i,
+              connStr: JSON.stringify(w1.conn), withStr: JSON.stringify(w2.conn),
+              axis, at: r2(at), overlap: 0, gap: r2(gap)
+            });
+          }
+          const rec = agg.get(key);
+          rec.overlap = r2(rec.overlap + overlap);
+        }
+      }
+    }
+  }
+  for (const rec of agg.values()) conflicts.push(rec);
+  return { conflicts, info };
+}
+
+// ============================================================
 // 修正 1:电气网络模型(union-find)+ 电气语义检查
 // 内部连通规则(geometry.json 同源):同列同半区 a–e/f–j 五孔一网;每条轨全长一网
 // 外部导线:connections 每条线(含 $bb)把两端并入同一网络
@@ -683,6 +805,7 @@ function main() {
   }
   const PROJECT_DIR = path.resolve(args[0]);
   const FIX = args.includes('--fix');
+  const NEAR_REPORT = args.includes('--near-hole-report');
   const soIdx = args.indexOf('--summary-out');
   const SUMMARY_OUT = soIdx >= 0 && args[soIdx + 1] ? path.resolve(args[soIdx + 1]) : null;
 
@@ -726,10 +849,15 @@ function main() {
   const conflicts = detectConflicts(diagram, partRects, boardProfile);
   // 修正 1:电气语义检查(增量,不改 detectConflicts 既有判定)
   conflicts.push(...detectElectricalConflicts(diagram, PROJECT_DIR));
+  // 序列1/文档24：线-孔端点保护 + 异线共线覆盖（增量）
+  const wireFeedback = detectWireFeedback(diagram, parts, { report: NEAR_REPORT });
+  conflicts.push(...wireFeedback.conflicts);
+  const DIAGRAM_DIGEST = require('crypto').createHash('sha256')
+    .update(fs.readFileSync(diagramPath)).digest('hex').slice(0, 12);
 
   // --summary-out <file>：写机器可读分级摘要（iterate-layout.js 用：硬伤必须修 / 软伤可妥协）
   if (SUMMARY_OUT) {
-    const HARD = ['hits-part', 'part-on-board', 'part-on-breadboard', 'parts-overlap', 'wire-through-board', 'bb-misaligned', 'rail-unpowered', 'netlist-broken'];
+    const HARD = ['hits-part', 'part-on-board', 'part-on-breadboard', 'parts-overlap', 'wire-through-board', 'bb-misaligned', 'rail-unpowered', 'netlist-broken', 'near-hole', 'overlap-collinear', 'overlap-near'];
     const EXEMPT = ['cross-i2c'];
     const hard = conflicts.filter(c => HARD.includes(c.type));
     const soft = conflicts.filter(c => !HARD.includes(c.type) && !EXEMPT.includes(c.type));
@@ -750,7 +878,7 @@ function main() {
   // T8/C8 修复:报告分级——硬冲突全量优先,软冲突补足剩余行数。
   // 原 slice(0,15) 按数组序截断,重复计数的软交叉(bb/交叉在前)会把 hits-part 等硬伤
   // 挤出报告窗口(实测 arm-VC:88 处冲突只打印前 15,10 条线穿元件一条都没露出)。
-  const HARD_TYPES = new Set(['hits-part', 'part-on-board', 'part-on-breadboard', 'parts-overlap', 'wire-through-board', 'bb-misaligned', 'rail-unpowered', 'netlist-broken']);
+  const HARD_TYPES = new Set(['hits-part', 'part-on-board', 'part-on-breadboard', 'parts-overlap', 'wire-through-board', 'bb-misaligned', 'rail-unpowered', 'netlist-broken', 'near-hole', 'overlap-collinear', 'overlap-near']);
   const hardList = conflicts.filter(c => HARD_TYPES.has(c.type));
   const softList = conflicts.filter(c => !HARD_TYPES.has(c.type));
   console.log(`[INFO] 检测到冲突 ${conflicts.length} 处(硬 ${hardList.length} / 软 ${softList.length}):`);
@@ -766,7 +894,10 @@ function main() {
     'cross-i2c': '线交叉(I2C反序)',
     'rail-unpowered': '轨无供电',
     'netlist-broken': '网表断链',
-    'column-halfzone-split': '同列跨半区'
+    'column-halfzone-split': '同列跨半区',
+    'near-hole': '线近已用孔',
+    'overlap-collinear': '共线覆盖',
+    'overlap-near': '异线近贴'
   };
   // Phase 3：suggest 层 —— 冲突类型 → 「事实 + 根因 + 建议动作 + 对应规则卡」
   // 模型读建议后按泛化闸门 record-back（见 generic-wiring.md），而非照抄实例。
@@ -783,7 +914,10 @@ function main() {
     'cross-i2c':          { 事实: 'I2C 总线 SDA/SCL 引脚顺序相反', 根因: '拓扑必然交叉，非错误布线', 建议: '可豁免：单独列出、不计入软伤', 规则: 'layout-rules.md 约束分级' },
     'rail-unpowered':     { 事实: '轨道有消费者但网络内无任何板子电源脚', 根因: '电源只馈了一侧轨或漏了轨间桥', 建议: 'UNO GND/5V 馈入该轨，或加轨间桥线（bp.x→tp.x / bn.x→tn.x）', 规则: 'breadboard.md 电源架构' },
     'netlist-broken':     { 事实: 'intent 声明相连的两个端点分属不同电气网络', 根因: '中沟隔离/孔位笔误/漏跳线，视觉上同列但电不通', 建议: '两端改落同半区同列，或显式加跳线', 规则: 'breadboard.md 孔位连通（中沟隔离）' },
-    'column-halfzone-split': { 事实: '同列号上下半区均有接线端点且分属不同网络', 根因: '中沟隔离使同列两半区不导通', 建议: '若意图连通：改同半区或加跨沟跳线；若本就是两个独立网络：忽略本提示', 规则: 'breadboard.md 孔位连通' }
+    'column-halfzone-split': { 事实: '同列号上下半区均有接线端点且分属不同网络', 根因: '中沟隔离使同列两半区不导通', 建议: '若意图连通：改同半区或加跨沟跳线；若本就是两个独立网络：忽略本提示', 规则: 'breadboard.md 孔位连通' },
+    'near-hole':          { 事实: '导线中段经过另一个已用孔的保护半径', 根因: '中段路径未绕开已占孔，可能压孔或使接点难辨', 建议: '保持两端与锁定位置，调整该线中段绕行；修订后复查邻线', 规则: 'hole-clearance@0.1（阈值未校准）' },
+    'overlap-collinear':  { 事实: '两条不同线在直段上共线覆盖', 根因: '两条线共用同一高度/列且投影重叠', 建议: '退回候选：换通道或改中段，避免异线共线', 规则: 'wiring-clearance@0.1' },
+    'overlap-near':       { 事实: '两条不同线近似平行且投影重叠', 根因: '间距不足一格，长距离并排难辨', 建议: '调整其中一条通道；端部短促靠近按文档 41 单独评估', 规则: 'wiring-clearance@0.1' }
   };
   const REPORT_CAP = 15;
   const shown = [...hardList, ...softList].slice(0, Math.max(REPORT_CAP, hardList.length));
@@ -792,12 +926,23 @@ function main() {
     const s = TYPE_SUGGEST[c.type];
     const detail = c.type === 'part-on-board' ? `(${c.part}: ${c.connStr})`
       : c.type === 'parts-overlap' ? `(${c.connStr})`
+      : c.type === 'near-hole' ? `(连接 #${c.conn} 近 ${c.hole} d=${c.dist}): ${c.connStr}${c.note || ''}`
+      : (c.type === 'overlap-collinear' || c.type === 'overlap-near') ? `(连接 #${c.conn} × #${c.with} ${c.axis}=${c.at} 重叠 ${c.overlap} 间距 ${c.gap}): ${c.connStr} × ${c.withStr}`
       : c.conn === undefined ? `(${c.connStr})`
       : `(连接 #${c.conn}${c.part ? ' 穿 ' + c.part : ''}): ${c.connStr}`;
     console.log(`  - ${label} ${detail}`);
     if (s) console.log(`      事实：${s.事实} ｜ 根因：${s.根因} ｜ 建议：${s.建议} ｜ 规则卡：${s.规则}`);
   }
   if (conflicts.length > shown.length) console.log(`  ... 等共 ${conflicts.length} 处(硬 ${hardList.length} 已全列 / 软 ${softList.length} 截断至 ${shown.length - hardList.length})`);
+
+  // 端点保护复核说明（文档24：原图 7 处旧告警应保留原走线，逐项给出实测距离）
+  if (wireFeedback.info.length) {
+    console.log(`[近孔复核] ${wireFeedback.info.length} 项（阈值 ${NEAR_HOLE_THRESHOLD}，未校准；d>阈值保留原走线）:`);
+    for (const line of wireFeedback.info.slice(0, 12)) console.log('  ' + line);
+    if (wireFeedback.info.length > 12) console.log(`  ... 等 ${wireFeedback.info.length} 项`);
+  }
+  // 证据绑定：图纸摘要 + 坐标来源 + 阈值/规则版本（文档24 验收第 1 条）
+  console.log(`[证据] 图纸 sha256=${DIAGRAM_DIGEST} ｜ 坐标来源 geometry.json ｜ 端点保护阈值 ${NEAR_HOLE_THRESHOLD}（±${NEAR_HOLE_MARGIN} 待核实）｜ 规则 hole-clearance@0.1 / wiring-clearance@0.1 ｜ 覆盖范围：直段中心线（圆角/端部未覆盖，按待核实）`);
 
   // Phase 3：默认只检测 + 报告 + 建议，不写图；--fix 才自动修正（脚本兜底不越权）
   if (!FIX) {

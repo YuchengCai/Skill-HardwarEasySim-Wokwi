@@ -1,0 +1,5 @@
+{
+  "optArgs": ["--near-hole-report"],
+  "mustInclude": ["27t.e", "22t.e", "23t.e", "24t.e", "14b.j", "13b.j", "12b.j", "rtc1:SCL", "oled1:SDA", "保留原走线"],
+  "mustNotInclude": ["线近已用孔", "共线覆盖"]
+}

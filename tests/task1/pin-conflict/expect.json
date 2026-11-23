@@ -1,0 +1,4 @@
+{
+  "mustInclude": ["线近已用孔", "bb1:22t.e", "rtc1:SCL", "bb1:21t.e", "调整该线中段"],
+  "mustNotInclude": ["共线覆盖"]
+}

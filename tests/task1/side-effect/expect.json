@@ -1,0 +1,4 @@
+{
+  "mustInclude": ["共线覆盖", "rtc1:SCL", "rtc1:5V", "76.8", "退回候选", "近孔复核", "22t.e"],
+  "mustNotInclude": ["线近已用孔"]
+}
