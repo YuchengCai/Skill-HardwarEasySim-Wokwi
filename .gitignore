@@ -26,3 +26,6 @@ __pycache__/
 
 h# holdout generated output
 tests/holdout/**/out*/
+
+# plugin build output
+dist/

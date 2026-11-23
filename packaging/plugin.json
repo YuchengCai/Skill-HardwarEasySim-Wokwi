@@ -1,0 +1,14 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "wokwi-arduino",
+  "version": "0.6.0",
+  "description": "Create, compile, simulate and upload Arduino projects with Wokwi: generate a diagram that can be wired from, verify endpoints and needed networks, and optionally flash the real board.",
+  "author": {
+    "name": "YuchengCai",
+    "url": "https://github.com/YuchengCai"
+  },
+  "homepage": "https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi",
+  "repository": "https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi",
+  "license": "MIT",
+  "keywords": ["arduino", "wokwi", "breadboard", "circuit", "simulation", "wiring"]
+}
