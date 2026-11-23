@@ -563,6 +563,8 @@ function detectWireFeedback(diagram, parts, opts) {
     if (m) used.add(ref);
   }
   const holes = [...used].map(ref => ({ ref, ...pinPosition(bb, ref.match(HOLE_REF_RE)[1]) }));
+  // 同网孔不构成「压孔」：板内导通/已有导线把该孔与线端并入同一网络时，接点是同一电气点
+  const { netOf } = buildElectricalNets(diagram);
 
   // 可见线（跳过 $bb 虚拟插接）
   const wires = [];
@@ -586,10 +588,12 @@ function detectWireFeedback(diagram, parts, opts) {
   const perWire = new Map();   // wire index → { conn, holes: [{ref,d}] }
   for (const w of wires) {
     const own = new Set([w.conn[0], w.conn[1]]);
+    const wNet = netOf(w.conn[0]) || netOf(w.conn[1]);
     const fromHole = HOLE_REF_RE.test(String(w.conn[0]));
     const toHole = HOLE_REF_RE.test(String(w.conn[1]));
     for (const h of holes) {
       if (own.has(h.ref)) continue;
+      if (wNet && netOf(h.ref) === wNet) continue;   // 同一电气网络：不是独立压孔
       let d = Infinity;
       for (const [a, b] of w.segs) d = Math.min(d, segDist(h, a, b));
       if (d < NEAR_HOLE_THRESHOLD) {

@@ -1122,7 +1122,8 @@ function main() {
           p.left = r2(rx(n) - rOff[0]);
           p.top = r2(ry('g', 'b') - bOff[1] + (holeSpan - pinSpan) / 2);
         } else { p.left = r2(rx(n) - 44.5); p.top = r2(ry('g', 'b') + 9.5); }
-      } else if (is(p, 'resistor')) {
+      } else if (is(p, 'resistor') && !/photoresistor/i.test(p.type || '')) {
+        // 注：wokwi-photoresistor-sensor 含 "resistor" 子串，不能走电阻配方（脚名是 VCC/GND/DO/AO）
         const n = resColumn[p.id];
         bbConns.push([`${p.id}:1`, `bb1:${n}b.g`, '', ['$bb']]);
         bbConns.push([`${p.id}:2`, `bb1:${n}t.c`, '', ['$bb']]);
@@ -1151,8 +1152,11 @@ function main() {
         p.left = r2(rx(n) - 25);   // A 引脚 x 对准孔
         p.top = bb.top - 80;
       } else {
-        // 未知类型：回退为直连（放板子旁）
+        // 未知类型/无插接配方：回退为直连放置。必须显式改 placement，
+        // 否则后续直连放置按 placement==='bb' 跳过，元件坐标停在 (0,0) 并叠在板角。
+        p.placement = 'board';
         boardParts.push(p);
+        console.error(`[WARN] ${p.id} (${p.type}) 没有面包板插接配方，回退为直连放置`);
       }
     });
 
@@ -1212,7 +1216,7 @@ function main() {
       });
       ordered.forEach(id => {
         const p = partById[id];
-        if (!p || p.placement === 'bb') return;
+        if (!p || (p.placement || 'bb') === 'bb') return;
         p.left = Math.round(x);
         p.top = Math.round(bottomAlign ? base.y - p.h - lift : base.y);
         x += p.w + MIN_SPACING;

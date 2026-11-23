@@ -23,3 +23,6 @@ Thumbs.db
 tests/cases/**/out/
 
 __pycache__/
+
+h# holdout generated output
+tests/holdout/**/out*/
