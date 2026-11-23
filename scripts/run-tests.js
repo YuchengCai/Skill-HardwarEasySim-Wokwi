@@ -198,5 +198,29 @@ if (fs.existsSync(TASK1_DIR)) {
   }
 }
 
+// ============================================================
+// 序列1/文档41 固定件（tests/task41/）：离体与近贴诊断（--egress-report）
+// ============================================================
+const TASK41_DIR = path.join(ROOT, 'tests', 'task41');
+if (fs.existsSync(TASK41_DIR)) {
+  for (const name of fs.readdirSync(TASK41_DIR).sort()) {
+    const dir = path.join(TASK41_DIR, name);
+    if (!fs.existsSync(path.join(dir, 'diagram.json'))) continue;
+    let expect = {};
+    const ep = path.join(dir, 'expect.json');
+    if (fs.existsSync(ep)) { try { expect = JSON.parse(fs.readFileSync(ep, 'utf8')); } catch (e) { console.log(`  [expect] ${name} 解析失败`); } }
+    const r = runCapture([OPT, dir, '--dry-run', ...(expect.optArgs || ['--egress-report'])], path.join(dir, '.opt.log'));
+    let ok = true;
+    for (const s of expect.mustInclude || []) {
+      if (!r.out.includes(s)) { console.log(`  [task41] ${name} 输出缺少「${s}」`); ok = false; }
+    }
+    for (const s of expect.mustNotInclude || []) {
+      if (r.out.includes(s)) { console.log(`  [task41] ${name} 输出不应含「${s}」`); ok = false; }
+    }
+    if (ok) { pass++; console.log(`[PASS] ${name} (task41 离体/近贴)`); }
+    else { fail++; console.log(`[FAIL] ${name}`); }
+  }
+}
+
 console.log(`\n结果：${pass} passed, ${fail} failed`);
 process.exit(fail > 0 ? 1 : 0);

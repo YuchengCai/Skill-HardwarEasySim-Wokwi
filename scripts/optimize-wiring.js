@@ -660,6 +660,95 @@ function detectWireFeedback(diagram, parts, opts) {
 }
 
 // ============================================================
+// 离体与近贴诊断（序列1/文档41，诊断模式 --egress-report）
+//   - 离体：沿边首段先越界再转弯；转弯点仍在元件本体内 → 报告
+//   - 近贴：异线平行段间距 < 1 格(9.6) 且共同投影 ≥ 20 → 报告（含不同元件/线束）
+//   阈值来自文档 41 的口径，尚未按渲染校准；本模式只输出诊断，不改图、不阻断。
+// ============================================================
+const CLEARANCE_PITCH = 9.6;
+const CLEARANCE_MIN_PROJ = 20;
+
+function detectEgressAndClearance(diagram, parts, partRects, opts) {
+  const out = [];
+  if (!(opts && opts.report)) return out;
+  const r1 = v => Math.round(v * 10) / 10;
+  const conns = diagram.connections || [];
+  const wires = [];
+  conns.forEach((conn, i) => {
+    const wp = conn.length > 3 ? conn[3] : [];
+    if (wp.includes('$bb')) return;
+    const pts = connectionPath(conn, parts);
+    if (!pts || pts.length < 2) return;
+    wires.push({ i, conn, pts, segs: polylineToSegments(pts) });
+  });
+  const inRect = (p, r, pad = 0) => p.x >= r.left - pad && p.x <= r.left + r.w + pad && p.y >= r.top - pad && p.y <= r.top + r.h + pad;
+
+  // ① 离体：引脚所在边 → 首段应朝外离开本体；沿边横/竖走或朝内进入都报告
+  for (const w of wires) {
+    for (const [k, ref] of [[0, w.conn[0]], [w.pts.length - 1, w.conn[1]]]) {
+      const pid = String(ref).split(':')[0];
+      const rect = partRects.get(pid);
+      const part = parts.find(p => p.id === pid);
+      if (!rect || !part || String(part.type || '').includes('breadboard')) continue;
+      const cur = w.pts[k];
+      const nxt = k === 0 ? w.pts[1] : w.pts[w.pts.length - 2];
+      if (!nxt) continue;
+      const segH = Math.abs(cur.y - nxt.y) < 0.01;
+      const dists = {
+        left: cur.x - rect.left,
+        right: rect.left + rect.w - cur.x,
+        top: cur.y - rect.top,
+        bottom: rect.top + rect.h - cur.y
+      };
+      const edge = Object.keys(dists).sort((a, b) => dists[a] - dists[b])[0];
+      const insideDist = dists[edge];
+      const parallel = (edge === 'top' || edge === 'bottom') ? segH : !segH;
+      const segInside = segmentInRectLen(cur.x, cur.y, nxt.x, nxt.y, rect);
+      if (parallel && insideDist > 1) {
+        out.push(`[离体] ${ref} 首段沿 ${edge} 边${segH ? '横' : '竖'}走：引脚距边 ${r1(insideDist)}，应先越界再沿边走（${k === 0 ? '源端' : '目标端'}）`);
+      } else if (!parallel && segInside > 1) {
+        out.push(`[离体] ${ref} 首段朝 ${edge} 内侧进入本体 ${r1(segInside)}（应先离开本体；${k === 0 ? '源端' : '目标端'}）`);
+      }
+    }
+  }
+
+  // ② 近贴（不同端点；含不同元件/线束）
+  const agg = new Map();
+  for (let i = 0; i < wires.length; i++) {
+    const w1 = wires[i];
+    for (let j = i + 1; j < wires.length; j++) {
+      const w2 = wires[j];
+      if (w1.conn[0] === w2.conn[0] || w1.conn[0] === w2.conn[1] || w1.conn[1] === w2.conn[0] || w1.conn[1] === w2.conn[1]) continue;
+      for (const [a, b] of w1.segs) {
+        for (const [c, d] of w2.segs) {
+          const h1 = Math.abs(a.y - b.y) < 0.01, h2 = Math.abs(c.y - d.y) < 0.01;
+          const v1 = Math.abs(a.x - b.x) < 0.01, v2 = Math.abs(c.x - d.x) < 0.01;
+          let gap, overlap, axis, at;
+          if (h1 && h2) {
+            gap = Math.abs(a.y - c.y);
+            overlap = Math.min(Math.max(a.x, b.x), Math.max(c.x, d.x)) - Math.max(Math.min(a.x, b.x), Math.min(c.x, d.x));
+            axis = 'y'; at = a.y;
+          } else if (v1 && v2) {
+            gap = Math.abs(a.x - c.x);
+            overlap = Math.min(Math.max(a.y, b.y), Math.max(c.y, d.y)) - Math.max(Math.min(a.y, b.y), Math.min(c.y, d.y));
+            axis = 'x'; at = a.x;
+          } else continue;
+          if (gap < 0.5 || gap >= CLEARANCE_PITCH || overlap < CLEARANCE_MIN_PROJ) continue;
+          const key = `${w1.i}|${w2.i}|${axis}|${r1(at)}`;
+          const rec = agg.get(key) || { w1: w1.conn, w2: w2.conn, axis, at: r1(at), gap: r1(gap), overlap: 0 };
+          rec.overlap = Math.max(rec.overlap, Math.round(overlap * 10) / 10);
+          agg.set(key, rec);
+        }
+      }
+    }
+  }
+  for (const r of agg.values()) {
+    out.push(`[近贴] ${r.w1[0]}→${r.w1[1]} × ${r.w2[0]}→${r.w2[1]} 平行段 ${r.axis}=${r.at} 间距 ${r.gap} 共同投影 ${r.overlap}（不同线束同样计入；1 格=9.6，阈值未校准）`);
+  }
+  return out;
+}
+
+// ============================================================
 // 修正 1:电气网络模型(union-find)+ 电气语义检查
 // 内部连通规则(geometry.json 同源):同列同半区 a–e/f–j 五孔一网;每条轨全长一网
 // 外部导线:connections 每条线(含 $bb)把两端并入同一网络
@@ -806,6 +895,7 @@ function main() {
   const PROJECT_DIR = path.resolve(args[0]);
   const FIX = args.includes('--fix');
   const NEAR_REPORT = args.includes('--near-hole-report');
+  const EGRESS_REPORT = args.includes('--egress-report');
   const soIdx = args.indexOf('--summary-out');
   const SUMMARY_OUT = soIdx >= 0 && args[soIdx + 1] ? path.resolve(args[soIdx + 1]) : null;
 
@@ -852,6 +942,8 @@ function main() {
   // 序列1/文档24：线-孔端点保护 + 异线共线覆盖（增量）
   const wireFeedback = detectWireFeedback(diagram, parts, { report: NEAR_REPORT });
   conflicts.push(...wireFeedback.conflicts);
+  // 序列1/文档41：离体/近贴诊断（--egress-report，只报告不改图）
+  const egressLines = detectEgressAndClearance(diagram, parts, partRects, { report: EGRESS_REPORT });
   const DIAGRAM_DIGEST = require('crypto').createHash('sha256')
     .update(fs.readFileSync(diagramPath)).digest('hex').slice(0, 12);
 
@@ -943,6 +1035,12 @@ function main() {
   }
   // 证据绑定：图纸摘要 + 坐标来源 + 阈值/规则版本（文档24 验收第 1 条）
   console.log(`[证据] 图纸 sha256=${DIAGRAM_DIGEST} ｜ 坐标来源 geometry.json ｜ 端点保护阈值 ${NEAR_HOLE_THRESHOLD}（±${NEAR_HOLE_MARGIN} 待核实）｜ 规则 hole-clearance@0.1 / wiring-clearance@0.1 ｜ 覆盖范围：直段中心线（圆角/端部未覆盖，按待核实）`);
+  // 离体/近贴诊断（文档41；--egress-report）
+  if (egressLines.length) {
+    console.log(`[离体/近贴复核] ${egressLines.length} 项（阈值未校准，只报告不改图）:`);
+    for (const line of egressLines.slice(0, 16)) console.log('  ' + line);
+    if (egressLines.length > 16) console.log(`  ... 等 ${egressLines.length} 项`);
+  }
 
   // Phase 3：默认只检测 + 报告 + 建议，不写图；--fix 才自动修正（脚本兜底不越权）
   if (!FIX) {

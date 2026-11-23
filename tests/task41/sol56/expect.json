@@ -1,0 +1,5 @@
+{
+  "optArgs": ["--egress-report"],
+  "mustInclude": ["[离体]", "pot1:VCC", "内侧进入本体"],
+  "mustNotInclude": []
+}

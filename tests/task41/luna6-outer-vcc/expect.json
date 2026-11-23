@@ -1,0 +1,5 @@
+{
+  "optArgs": ["--egress-report"],
+  "mustInclude": [],
+  "mustNotInclude": ["间距 3.7", "[离体]"]
+}

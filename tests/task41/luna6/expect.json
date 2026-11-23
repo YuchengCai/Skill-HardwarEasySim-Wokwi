@@ -1,0 +1,5 @@
+{
+  "optArgs": ["--egress-report"],
+  "mustInclude": ["[近贴]", "间距 3.7", "共同投影 341.5"],
+  "mustNotInclude": ["[离体]"]
+}

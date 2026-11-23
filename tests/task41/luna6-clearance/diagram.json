@@ -1,0 +1,113 @@
+{
+  "version": 1,
+  "author": "layout-generator",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "wokwi-breadboard-half",
+      "id": "bb1",
+      "top": 100,
+      "left": 0,
+      "rotate": 180,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-arduino-uno",
+      "id": "uno",
+      "top": 310,
+      "left": 400,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-potentiometer",
+      "id": "pot1",
+      "top": 158,
+      "left": 713,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn1",
+      "top": 316,
+      "left": 240,
+      "attrs": {},
+      "rotate": 90
+    }
+  ],
+  "connections": [
+    [
+      "btn1:1.r",
+      "bb1:27t.b",
+      "",
+      [
+        "$bb"
+      ]
+    ],
+    [
+      "btn1:2.r",
+      "bb1:29t.b",
+      "",
+      [
+        "$bb"
+      ]
+    ],
+    [
+      "btn1:1.l",
+      "bb1:27b.g",
+      "",
+      [
+        "$bb"
+      ]
+    ],
+    [
+      "btn1:2.l",
+      "bb1:29b.g",
+      "",
+      [
+        "$bb"
+      ]
+    ],
+    [
+      "pot1:VCC",
+      "bb1:tp.1",
+      "red",
+      [
+        "v69.2",
+        "v10",
+        "h-467",
+        "v-10"
+      ]
+    ],
+    [
+      "pot1:SIG",
+      "uno:A0",
+      "green",
+      [
+        "v10",
+        "v310.5",
+        "h-144",
+        "v-45.5"
+      ]
+    ],
+    [
+      "bb1:29t.c",
+      "uno:2",
+      "blue",
+      [
+        "v44.9",
+        "h602.9",
+        "v36.2"
+      ]
+    ],
+    [
+      "uno:5V",
+      "bb1:tp.25",
+      "red",
+      [
+        "v25.5",
+        "h-533.8",
+        "v-231.3"
+      ]
+    ]
+  ]
+}
