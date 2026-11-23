@@ -1015,6 +1015,57 @@ function main() {
     };
     const TYPE_STEP = { pushbutton: 5, resistor: 3, led: 3, dht: 6 };
 
+    // 通用插接拟合（无专用配方时的兜底，不按型号名硬编码）：
+    //   引脚必须共线（同 x 或同 y），相邻间距为孔距 9.6 的整数倍（容差 0.45，
+    //   超过则视为无法对齐、回退直连，避免生成 $bb 错位）。
+    const fitBBGeneric = (p) => {
+      const pd = pins[p.type] || {};
+      const names = Object.keys(pd).filter(k => Array.isArray(pd[k]));
+      if (names.length < 2) return null;
+      const base0 = pd[names[0]];
+      const sameX = names.every(k => Math.abs(pd[k][0] - base0[0]) < 0.6);
+      const sameY = names.every(k => Math.abs(pd[k][1] - base0[1]) < 0.6);
+      const bandName = bandOf[p.id] || 'right';
+      const cur = bandCursor[bandName].dht;
+      const fitAxis = (sorted, axis) => sorted.every((k, i) => {
+        const off = axis === 'y' ? pd[k][1] - pd[sorted[0]][1] : pd[k][0] - pd[sorted[0]][0];
+        const step = i === 0 ? 0 : Math.round(off / PITCH);
+        return Math.abs(off - step * PITCH) < 0.45;
+      });
+      if (sameX && !sameY) {
+        const sorted = names.slice().sort((a, b) => pd[a][1] - pd[b][1]);
+        if (sorted.length > 5 || !fitAxis(sorted, 'y')) return null;
+        bandCursor[bandName].dht = cur - (sorted.length + 1);
+        // 孔位坐标：letter 越大 y 越小 → 引脚 y 递增对应 letter 递减（e→a）
+        const letters = 'edcba';
+        const holeRef = i => `bb1:${cur}t.${letters[i]}`;
+        let left = r2(rx(cur) - pd[sorted[0]][0]);
+        let top = r2(ry(letters[0], 't') - pd[sorted[0]][1]);
+        const resY = sorted.map((k, i) => ry(letters[i], 't') - (top + pd[k][1]));
+        top = r2(top + resY.reduce((a, b) => a + b, 0) / resY.length);
+        return {
+          left, top,
+          conns: sorted.map((k, i) => [`${p.id}:${k}`, holeRef(i), '', ['$bb']])
+        };
+      }
+      if (sameY && !sameX) {
+        const sorted = names.slice().sort((a, b) => pd[a][0] - pd[b][0]);
+        if (!fitAxis(sorted, 'x')) return null;
+        bandCursor[bandName].dht = cur - (sorted.length + 1);
+        // 孔位坐标：row 越大 x 越小 → 引脚 x 递增对应 row 递减
+        const rows = sorted.map((k, i) => cur - i);
+        let left = r2(rx(cur) - pd[sorted[0]][0]);
+        const top = r2(ry('b', 't') - pd[sorted[0]][1]);
+        const resX = sorted.map((k, i) => rx(rows[i]) - (left + pd[k][0]));
+        left = r2(left + resX.reduce((a, b) => a + b, 0) / resX.length);
+        return {
+          left, top,
+          conns: sorted.map((k, i) => [`${p.id}:${k}`, `bb1:${rows[i]}t.b`, '', ['$bb']])
+        };
+      }
+      return null;
+    };
+
     // part → 有效列带：region 显式 > zone 显式 > type 推断（非法值回退 + 日志）
     const bandOf = {};
     const groupById = {};
@@ -1152,11 +1203,18 @@ function main() {
         p.left = r2(rx(n) - 25);   // A 引脚 x 对准孔
         p.top = bb.top - 80;
       } else {
-        // 未知类型/无插接配方：回退为直连放置。必须显式改 placement，
-        // 否则后续直连放置按 placement==='bb' 跳过，元件坐标停在 (0,0) 并叠在板角。
-        p.placement = 'board';
-        boardParts.push(p);
-        console.error(`[WARN] ${p.id} (${p.type}) 没有面包板插接配方，回退为直连放置`);
+        // 通用插接拟合（共线引脚 + 孔距整数倍）优先；拟合失败才回退直连。
+        const fit = fitBBGeneric(p);
+        if (fit) {
+          fit.conns.forEach(c => bbConns.push(c));
+          p.left = fit.left; p.top = fit.top; p.rotate = 0;
+        } else {
+          // 未知类型/无插接配方：回退为直连放置。必须显式改 placement，
+          // 否则后续直连放置按 placement==='bb' 跳过，元件坐标停在 (0,0) 并叠在板角。
+          p.placement = 'board';
+          boardParts.push(p);
+          console.error(`[WARN] ${p.id} (${p.type}) 没有面包板插接配方，回退为直连放置`);
+        }
       }
     });
 

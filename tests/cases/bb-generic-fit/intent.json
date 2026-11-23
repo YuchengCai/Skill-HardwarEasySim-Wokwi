@@ -1,0 +1,14 @@
+{
+  "board": "wokwi-arduino-uno",
+  "breadboard": "wokwi-breadboard-half",
+  "parts": [
+    { "id": "buz1", "type": "wokwi-buzzer", "placement": "bb", "attrs": {} }
+  ],
+  "groups": [
+    { "name": "蜂鸣器", "parts": ["buz1"], "zone": "misc", "region": "right" }
+  ],
+  "connections": [
+    { "from": "buz1:1", "to": "uno:8", "color": "orange" },
+    { "from": "buz1:2", "to": "uno:GND.1", "color": "black" }
+  ]
+}
