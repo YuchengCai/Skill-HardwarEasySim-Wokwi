@@ -29,3 +29,6 @@ tests/holdout/**/out*/
 
 # plugin build output
 dist/
+
+# intake generated output
+tests/intake/out*/

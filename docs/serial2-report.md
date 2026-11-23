@@ -48,8 +48,8 @@ node packaging/check-plugin.js
 
 | 宿主 | 状态 |
 |---|---|
-| DSH | 包内脚本冒烟通过；「新工程加载通用 skill → 自然语言绘图」的完整宿主路径待验（本会话无法模拟全新宿主安装） |
-| ChatGPT | **待验**（缺目标账号；需 Plugins → Skills → Create/Upload 实测 @ 显式与自然语言两条入口、资源读取、附件下载） |
+| DSH | **自动化宿主验证通过**：`node packaging/check-dsh-host.js` 在“无历史新工程 + 含空格路径”中加载 `dist/plugin`，包内 layout-generator/check-required/optimize-wiring 全部可执行，产出落在用户工程、硬冲突 0（8/8 项通过）；自然语言→意图的模型行为与浏览器渲染不在该脚本内 |
+| ChatGPT | **待验**（按用户要求暂不做；需目标账号实测 @ 显式与自然语言两条入口、资源读取、附件下载） |
 | WorkBuddy | 结构检查沿用 `publish-skillhub.sh`/自愈清单；市场版本 0.6.0 已发布待审核切换；插件包不等于市场包 |
 | Codex/Cursor | 可作为兼容对照，未实测运行能力（如实标注） |
 

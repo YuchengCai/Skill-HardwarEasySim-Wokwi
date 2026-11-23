@@ -1,0 +1,40 @@
+{
+  "board": "wokwi-arduino-uno",
+  "breadboard": "wokwi-breadboard-half",
+  "parts": [
+    {
+      "id": "dht1",
+      "type": "wokwi-dht22",
+      "placement": "board",
+      "attrs": {},
+      "reason": "温湿度模块直连放置（免插接）"
+    }
+  ],
+  "groups": [
+    {
+      "name": "温湿度",
+      "parts": [
+        "dht1"
+      ],
+      "zone": "sensor",
+      "region": "right"
+    }
+  ],
+  "connections": [
+    {
+      "from": "dht1:VCC",
+      "to": "uno:5V",
+      "color": "red"
+    },
+    {
+      "from": "dht1:GND",
+      "to": "uno:GND.1",
+      "color": "black"
+    },
+    {
+      "from": "dht1:SDA",
+      "to": "uno:2",
+      "color": "green"
+    }
+  ]
+}
