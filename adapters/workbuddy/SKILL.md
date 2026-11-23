@@ -71,6 +71,27 @@ description: Create, compile, simulate, and upload Arduino projects with Wokwi. 
 3. 原生操作步骤保留在 references 供降级
 4. **设计选择（C 值）归模型——脚本只做"默认兜底 + 显式覆盖"，不静默替模型决定。** 有多种合理权衡的选择（按钮对侧/同侧、zone/region、引脚分配）由模型思考；脚本只提醒后果（如按钮默认对侧、`hint.sameSide` 显式省线），不替模型做决定。
 
+## 需求入口（序列3）
+
+按用户给的信息分流，只追问能区分剩余接法的一项（完整判据见 `references/common/intake-routing.md`）：
+
+| 用户给了什么 | 下一步 |
+|---|---|
+| 功能目标、委托选型 | 复述功能关系，沿用已有器件，推荐类别/型号；只采购就停在选型，同时制作先确认会改变接法的选择 |
+| 清单 / 引脚表 / 已有接线 | 沿用已确认事实，连接充分直接画；锁定孔写显式端点，其余自动分配 |
+| 粘贴代码 / 工程 | 追板卡配置、初始化与调用；信息够就画，冲突时指出具体接点，保留源程序 |
+| 只有商品名 / 规格 / 照片 | 只问能区分剩余接法的一项；纯文本可请用户抄丝印，其余已知连接保留 |
+
+交给绘图的最小内容：本次目标 / 已选器件 / 已证信号与去向 / 锁定端点与可变动项 / 替代图例对应 / 待核实项（标 unknown，不填默认值）。
+
+## 静态展示与交付（序列4）
+
+- 生成后**主动尝试静态展示**：宿主已有 Wokwi 插件或已授权浏览器 → 直接用；都不可用时让用户选「本地 SVG / 纯文字」，用户决定后才生成。
+- 展示同版图和文件时只问「接线图清楚吗？还有疑问吗？」；按证据区分**已核对成图 / 缺浏览器证据 / 诊断草稿**，后两种写明具体未核实或失败项，错接草稿不得标为可照接。
+- 纯绘图任务到此结束；用户明确只要文件时直接交文件。
+- 用户已委托烧录：用**合并确认**说明写哪版程序、目标板型、会替换现有程序；用户同意后由本地 Agent 检测设备。详见 `references/common/interaction-delivery.md`。
+- 云端浏览器只负责展示连线；USB 枚举、串口选择、上传必须由本机 Agent 执行（`references/common/flash-workflow.md`、`scripts/flash-arduino.js`）。
+
 ## 自愈检查（强制，激活时执行）
 
 ⚠️ **WorkBuddy 市场同步可能只拉取 SKILL.md，导致 scripts/ 和 references/ 缺失。激活时必须先检查并恢复：**
@@ -78,10 +99,11 @@ description: Create, compile, simulate, and upload Arduino projects with Wokwi. 
 ```bash
 # 检查并恢复缺失文件
 BASE="https://raw.githubusercontent.com/YuchengCai/Skill-HardwarEasySim-Wokwi/main"
-# 运行时脚本（14）
+# 运行时脚本（16）
 for F in scripts/compile.sh scripts/wokwi-automate.js scripts/layout-generator.js scripts/layout-v2.js \
          scripts/optimize-wiring.js scripts/wiring-notes.js scripts/verify-wires.js scripts/wokwi-cdp.js \
          scripts/extract-diagram.js scripts/generate-part-placeholder.js scripts/chip-geometry.js \
+         scripts/check-required.js scripts/flash-arduino.js \
          scripts/placeholder-chip.wasm scripts/placeholder-chip.c scripts/wokwi-api.h; do
   if [ ! -f "$F" ]; then
     echo "缺失 $F，正在从 GitHub 恢复..."
@@ -99,6 +121,8 @@ for F in references/monaco-steps.md \
          references/common/pins-auto.json references/common/sizes-auto.json \
          references/common/metrics-policy.md references/common/wiring-profiles.md \
          references/common/env-switches.md references/common/layout-analysis.md \
+         references/common/host-integration.md references/common/intake-routing.md \
+         references/common/interaction-delivery.md references/common/flash-workflow.md \
          references/common/layout-cards/index.md references/common/layout-cards/led.md \
          references/common/layout-cards/resistor.md references/common/layout-cards/pushbutton.md \
          references/common/layout-cards/dht22.md references/common/layout-cards/oled.md references/common/layout-cards/buzzer.md \

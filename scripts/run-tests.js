@@ -222,5 +222,29 @@ if (fs.existsSync(TASK41_DIR)) {
   }
 }
 
+// ============================================================
+// 序列4/文档47：烧录封装回归（--simulate，不调用 arduino-cli / 不碰设备）
+// ============================================================
+const FLASH = path.join(__dirname, 'flash-arduino.js');
+if (fs.existsSync(FLASH)) {
+  const os = require('os');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'flash-rt-'));
+  const cases = [
+    { name: 'flash-upload-no-confirm', args: [FLASH, '--simulate', '--board', 'uno', '--dir', tmp, '--upload'], exit: 3, must: ['未提供 --confirm'], mustNot: ['上传器一次'] },
+    { name: 'flash-esp32-confirm', args: [FLASH, '--simulate', '--board', 'esp32', '--dir', tmp, '--upload', '--confirm'], exit: 0, must: ['esp32:esp32:esp32', '.bin', '上传器一次'], mustNot: [] },
+    { name: 'flash-map-nano', args: [FLASH, '--board', 'nano'], exit: 0, must: ['arduino:avr:nano'], mustNot: [] },
+    { name: 'flash-compile-plan', args: [FLASH, '--simulate', '--board', 'uno', '--dir', tmp], exit: 0, must: ['RESULT', '.hex'], mustNot: ['上传器一次'] }
+  ];
+  for (const c of cases) {
+    const r = runCapture(c.args, path.join(tmp, `rt-${c.name}.log`));
+    let ok = (r.status === c.exit);
+    if (!ok) console.log(`  [flash] ${c.name} 退出码 ${r.status}，期望 ${c.exit}；输出：${r.out.slice(0, 200)}`);
+    for (const s of c.must) if (!r.out.includes(s)) { console.log(`  [flash] ${c.name} 输出缺少「${s}」`); ok = false; }
+    for (const s of c.mustNot) if (r.out.includes(s)) { console.log(`  [flash] ${c.name} 输出不应含「${s}」`); ok = false; }
+    if (ok) { pass++; console.log(`[PASS] ${c.name} (flash)`); } else { fail++; console.log(`[FAIL] ${c.name}`); }
+  }
+  fs.rmSync(tmp, { recursive: true, force: true });
+}
+
 console.log(`\n结果：${pass} passed, ${fail} failed`);
 process.exit(fail > 0 ? 1 : 0);
