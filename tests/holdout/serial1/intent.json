@@ -2,28 +2,121 @@
   "board": "wokwi-arduino-uno",
   "breadboard": "wokwi-breadboard-half",
   "parts": [
-    { "id": "photo1", "type": "wokwi-photoresistor-sensor", "placement": "bb", "attrs": {} },
-    { "id": "btn1", "type": "wokwi-pushbutton", "hint": { "order": "left" }, "attrs": {} },
-    { "id": "buz1", "type": "wokwi-buzzer", "placement": "bb", "attrs": {} },
-    { "id": "servo1", "type": "wokwi-servo", "placement": "board", "reason": "航模舵机需板外供电与独立信号线", "attrs": {} }
+    {
+      "id": "photo1",
+      "type": "wokwi-photoresistor-sensor",
+      "placement": "bb",
+      "attrs": {}
+    },
+    {
+      "id": "btn1",
+      "type": "wokwi-pushbutton",
+      "hint": {
+        "order": "left"
+      },
+      "attrs": {}
+    },
+    {
+      "id": "buz1",
+      "type": "wokwi-buzzer",
+      "placement": "bb",
+      "attrs": {}
+    },
+    {
+      "id": "servo1",
+      "type": "wokwi-servo",
+      "placement": "board",
+      "reason": "航模舵机需板外供电与独立信号线",
+      "attrs": {}
+    }
   ],
   "groups": [
-    { "name": "光照采样", "parts": ["photo1"], "zone": "sensor", "region": "right" },
-    { "name": "按键输入", "parts": ["btn1"], "zone": "input", "region": "right" },
-    { "name": "声光输出", "parts": ["buz1", "servo1"], "zone": "output", "region": "top" }
+    {
+      "name": "光照采样",
+      "parts": [
+        "photo1"
+      ],
+      "zone": "sensor",
+      "region": "right"
+    },
+    {
+      "name": "按键输入",
+      "parts": [
+        "btn1"
+      ],
+      "zone": "input",
+      "region": "middle"
+    },
+    {
+      "name": "声光输出",
+      "parts": [
+        "buz1",
+        "servo1"
+      ],
+      "zone": "output",
+      "region": "right"
+    }
   ],
   "connections": [
-    { "from": "photo1:VCC", "to": "uno:5V", "color": "red" },
-    { "from": "photo1:AO", "to": "uno:A0", "color": "green" },
-    { "from": "photo1:GND", "to": "bb1:28b.i", "color": "black" },
-    { "from": "bb1:28b.h", "to": "bb1:bn.5", "color": "black" },
-    { "from": "uno:GND.2", "to": "bb1:bn.7", "color": "black" },
-    { "from": "btn1:1.l", "to": "uno:GND.1", "color": "black" },
-    { "from": "btn1:2.r", "to": "uno:2", "color": "yellow" },
-    { "from": "buz1:1", "to": "uno:8", "color": "orange" },
-    { "from": "buz1:2", "to": "uno:GND.1", "color": "black" },
-    { "from": "servo1:PWM", "to": "uno:9", "color": "blue" },
-    { "from": "servo1:V+", "to": "uno:5V", "color": "red" },
-    { "from": "servo1:GND", "to": "uno:GND.2", "color": "black" }
+    {
+      "from": "photo1:VCC",
+      "to": "uno:5V",
+      "color": "red"
+    },
+    {
+      "from": "photo1:AO",
+      "to": "uno:A0",
+      "color": "green"
+    },
+    {
+      "from": "photo1:GND",
+      "to": "bb1:28b.i",
+      "color": "black"
+    },
+    {
+      "from": "bb1:28b.f",
+      "to": "bb1:tn.5",
+      "color": "black"
+    },
+    {
+      "from": "uno:GND.2",
+      "to": "bb1:tn.7",
+      "color": "black"
+    },
+    {
+      "from": "btn1:1.l",
+      "to": "uno:GND.1",
+      "color": "black"
+    },
+    {
+      "from": "btn1:2.r",
+      "to": "uno:2",
+      "color": "yellow"
+    },
+    {
+      "from": "buz1:1",
+      "to": "uno:8",
+      "color": "orange"
+    },
+    {
+      "from": "buz1:2",
+      "to": "uno:GND.1",
+      "color": "black"
+    },
+    {
+      "from": "servo1:PWM",
+      "to": "uno:9",
+      "color": "blue"
+    },
+    {
+      "from": "servo1:V+",
+      "to": "uno:5V",
+      "color": "red"
+    },
+    {
+      "from": "servo1:GND",
+      "to": "uno:GND.2",
+      "color": "black"
+    }
   ]
 }

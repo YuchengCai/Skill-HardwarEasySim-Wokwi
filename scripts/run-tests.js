@@ -246,5 +246,24 @@ if (fs.existsSync(FLASH)) {
   fs.rmSync(tmp, { recursive: true, force: true });
 }
 
+// ============================================================
+// 序列1/文档46 陌生组合固定件：需求 12/12 + 几何硬冲突 0
+// （生成器的 [重叠] 软告警不计入本项；optimize 的硬冲突必须为 0）
+// ============================================================
+const HOLD46 = path.join(ROOT, 'tests', 'holdout', 'serial1');
+if (fs.existsSync(path.join(HOLD46, 'intent.json'))) {
+  const os = require('os');
+  const out = fs.mkdtempSync(path.join(os.tmpdir(), 'holdout46-'));
+  const g = runCapture([LAYOUT, path.join(HOLD46, 'intent.json'), out], path.join(out, 'gen.log'));
+  let ok = g.status === 0 && /需求对账：12\/12/.test(g.out);
+  if (!ok) console.log(`  [holdout46] 生成/对账失败：exit ${g.status}；${(g.out.match(/需求对账[^\n]*/) || [''])[0]}`);
+  const o = runCapture([OPT, out, '--dry-run'], path.join(out, 'opt.log'));
+  const m = o.out.match(/检测到冲突 \d+ 处\(硬 (\d+)/);
+  const hard = m ? +m[1] : -1;
+  if (hard !== 0) { console.log(`  [holdout46] 几何硬冲突 ${hard}，期望 0`); ok = false; }
+  fs.rmSync(out, { recursive: true, force: true });
+  if (ok) { pass++; console.log('[PASS] holdout46 (需求 12/12，硬冲突 0)'); } else { fail++; console.log('[FAIL] holdout46'); }
+}
+
 console.log(`\n结果：${pass} passed, ${fail} failed`);
 process.exit(fail > 0 ? 1 : 0);

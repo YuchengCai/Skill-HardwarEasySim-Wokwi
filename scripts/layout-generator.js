@@ -1375,6 +1375,7 @@ function main() {
     // 识别电源连线（目标 = uno:GND/5V/3V3/VIN）→ 连对应轨
     const railUsed = { bn: new Set(), bp: new Set(), tn: new Set(), tp: new Set() };
     const railXCross = {};   // 已被任一轨占用的 x（防同 x 跨轨电源线共线）
+    const explicitRailFeed = new Set();   // 意图里已显式从板电源脚接到该轨（tn/bn/tp/bp）
     // 就近选轨位（railTarget 与 A3 part↔part daisy 改写共用）：
     // 扫描 1..25 找离源 x 最近的空闲位置（一孔一接；跨轨同 x 冲突则跳过）。
     // 回避其他线的出线列(anchorCols ±4)，但不回避自己的出线列(ownCol 豁免——自己落自己列是理想落点)
@@ -1393,8 +1394,20 @@ function main() {
       if (pd) for (const k in pd) if (Array.isArray(pd[k]) && q.left + pd[k][0] > right) right = q.left + pd[k][0];
       return x >= q.left - 8 && x <= right + 8;
     });
-    const pickRail = (rail, srcX, ownCol) => {
+    const pickRail = (rail, srcX, ownCol, srcY, srcIsBB) => {
       const used = railUsed[rail];
+      // 直连元件落轨：若候选轨位的竖段会穿过位于「源→轨」之间的插面板件本体，跳过该轨位。
+      // 仅按 y 区间相交判断（源与轨之间），避免误伤无关的插面板件。
+      const railPartBlock = (x) => parts.some(q => {
+        if (!q || q.left == null) return false;
+        if ((q.placement || 'bb') !== 'bb') return false;
+        let right = q.left + (q.w || 0);
+        const pd = pins[q.type];
+        if (pd) for (const k in pd) if (Array.isArray(pd[k]) && q.left + pd[k][0] > right) right = q.left + pd[k][0];
+        if (!(x >= q.left - 8 && x <= right + 8)) return false;
+        const lo = Math.min(srcY, railY[rail]) - 4, hi = Math.max(srcY, railY[rail]) + 4;
+        return (q.top + (q.h || 0)) > lo && q.top < hi;
+      });
       let best = 1, bestDist = Infinity;
       for (let n = 1; n <= RAIL_MAX; n++) {
         const x = railX(n);
@@ -1404,14 +1417,15 @@ function main() {
         for (const c of anchorCols) {
           if (Math.abs(c - x) <= 4 && (ownCol == null || Math.abs(ownCol - c) > 4)) { nearOther = true; break; }
         }
-        if (d < bestDist && !used.has(n) && !railXCross[xKey] && !nearOther && !railDropBlock(x, rail)) { bestDist = d; best = n; }
+        const partBlocked = !srcIsBB && srcY != null && railPartBlock(x);
+        if (d < bestDist && !used.has(n) && !railXCross[xKey] && !nearOther && !railDropBlock(x, rail) && !partBlocked) { bestDist = d; best = n; }
       }
       if (process.env.DBGRAIL) console.error('DBG rail', rail, 'srcX', srcX, '->', best);
       used.add(best);
       railXCross[Math.round(railX(best) * 10)] = true;
       return best;
     };
-    const railTarget = (toRef, src, ownCol) => {
+    const railTarget = (toRef, src, ownCol, srcIsBB) => {
       const [rid, rpin] = toRef.split(':');
       if (rid !== board.id || !rpin) return null;
       const prefix = board.powerPins.find(p => rpin.startsWith(p));
@@ -1424,7 +1438,7 @@ function main() {
       const rail = isGND
         ? (Math.abs(src.y - railY.bn) <= Math.abs(railY.tn - src.y) ? 'bn' : 'tn')
         : (prefix.startsWith('3.3V') ? 'bp' : 'tp');
-      const n = pickRail(rail, src.x, ownCol);
+      const n = pickRail(rail, src.x, ownCol, src.y, srcIsBB);
       return { rail, n, ref: `bb1:${rail}.${n}` };
     };
 
@@ -1439,7 +1453,7 @@ function main() {
       if (!src) return false;
       // GND 家族就近选负轨（与 railTarget 同款规则）；5V 家族走 tp
       const rail = fam === 'GND' ? (Math.abs(src.y - railY.bn) <= Math.abs(railY.tn - src.y) ? 'bn' : 'tn') : 'tp';
-      const n = pickRail(rail, src.x, null);
+      const n = pickRail(rail, src.x, null, src.y, false);
       const fromRefD = `${pid}:${pin}`;
       const toRefD = `bb1:${rail}.${n}`;
       const posD = railPos(rail, n);
@@ -1625,8 +1639,19 @@ function main() {
           (usedHoles[key] = usedHoles[key] || new Set()).add(h.letter);
         } else {
           const r = sp[1].match(BB_RAIL_PAT);
-          if (r) railUsed[r[1]].add(parseInt(r[2], 10));
+          if (r) {
+            const n = parseInt(r[2], 10);
+            railUsed[r[1]].add(n);
+            // 显式轨位同样占 x：后续自动落轨不得与它同 x（避免不同网的落轨竖段共线）
+            railXCross[Math.round(railX(n) * 10)] = true;
+          }
         }
+      }
+      // 记录「意图已显式从板电源脚喂轨」的轨名：后续不再重复发同轨主线
+      for (const [selfRef, otherRef] of [[fromRef0, toRef0], [toRef0, fromRef0]]) {
+        if (!String(selfRef).startsWith(board.id + ':')) continue;
+        const om = String(otherRef).match(/^bb1:(bn|bp|tn|tp)\.\d+$/);
+        if (om) explicitRailFeed.add(om[1]);
       }
 
       // A2 扩展（A3）：part↔part 电源菊花链，bb 在场时默认走轨分发。
@@ -1650,7 +1675,7 @@ function main() {
       const fHolePre = pinHole[fromRef0];
       const railSrc = fHolePre ? holePos(fHolePre) : a;
       const ownCol = fHolePre ? railSrc.x : null;
-      const rt = railTarget(toRef0, railSrc, ownCol);
+      const rt = railTarget(toRef0, railSrc, ownCol, (partById[fid] && (partById[fid].placement || 'bb') === 'bb'));
       if (rt) {
         toRef = rt.ref;
         b = railPos(rt.rail, rt.n);   // 先算轨位置，供下方判断出线方向
@@ -1737,7 +1762,7 @@ function main() {
     // 否则芯片 GND 落到 tn 却无主线接入板子 GND（电气断链）。
     const rw = v => Math.round(v * 10) / 10;
     const bothRails = (railUsed['bn'].size > 0 || railUsed['tn'].size > 0) && railUsed['tp'].size > 0;
-    if (railUsed['bn'].size > 0 || railUsed['tn'].size > 0) {
+    if ((railUsed['bn'].size > 0 || railUsed['tn'].size > 0) && !explicitRailFeed.has('tn')) {
       const a = pinPos(board.id, board.railGnd), b = railPos('tn', RAIL_MAX);
       const cy = BELOW_BASE + BELOW_STEP;
       const wps = [`v${rw(cy - a.y)}`, `h${rw(b.x - a.x)}`, `v${rw(b.y - cy)}`];
@@ -1755,14 +1780,20 @@ function main() {
         pts.push([b.x, b.y]);
         wirePaths.push({ from: `${board.id}:${board.railGnd}`, to: `bb1:tn.${RAIL_MAX}`, pts });
       }
-      if (railUsed['bn'].size > 0) {
+      if (railUsed['bn'].size > 0 && !explicitRailFeed.has('bn')) {
         const A = railPos('tn', RAIL_MAX - 1), B = railPos('bn', RAIL_MAX - 1);
         wireConns.push([`bb1:tn.${RAIL_MAX - 1}`, `bb1:bn.${RAIL_MAX - 1}`, 'black',
           [`v${rw(B.y - A.y)}`]]);
         wirePaths.push({ from: `bb1:tn.${RAIL_MAX - 1}`, to: `bb1:bn.${RAIL_MAX - 1}`, pts: [[A.x, A.y], [B.x, B.y]] });
       }
     }
-    if (railUsed['tp'].size > 0) {
+    // 显式喂了 tn 但 bn 仍有消费者：仍需 tn→bn 桥（跳过主线不等于跳过桥接）
+    if (explicitRailFeed.has('tn') && railUsed['bn'].size > 0 && !explicitRailFeed.has('bn')) {
+      const A = railPos('tn', RAIL_MAX - 1), B = railPos('bn', RAIL_MAX - 1);
+      wireConns.push([`bb1:tn.${RAIL_MAX - 1}`, `bb1:bn.${RAIL_MAX - 1}`, 'black', [`v${rw(B.y - A.y)}`]]);
+      wirePaths.push({ from: `bb1:tn.${RAIL_MAX - 1}`, to: `bb1:bn.${RAIL_MAX - 1}`, pts: [[A.x, A.y], [B.x, B.y]] });
+    }
+    if (railUsed['tp'].size > 0 && !explicitRailFeed.has('tp')) {
       const n = bothRails ? RAIL_MAX - 2 : RAIL_MAX;
       const a = pinPos(board.id, board.railVcc), b = railPos('tp', n);
       const cy = BELOW_BASE;
@@ -1783,7 +1814,7 @@ function main() {
       }
     }
     // 3.3V 板馈（一网一列）：bp 有消费者时单点喂入，与 GND/5V 主线错开 x 与深度
-    if (railUsed['bp'].size > 0) {
+    if (railUsed['bp'].size > 0 && !explicitRailFeed.has('bp')) {
       const pin33 = Object.keys(pins[board.type] || {}).find(k => k.startsWith('3.3V'));
       if (!pin33) {
         console.log('[WARN] 3.3V 轨有消费者但板型无 3.3V 引脚，轨将无电源（请检查供电拓扑）');
