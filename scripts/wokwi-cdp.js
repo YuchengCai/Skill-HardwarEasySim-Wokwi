@@ -21,14 +21,15 @@ const path = require('path');
 const args = process.argv.slice(2);
 // 默认端口不用 9222:该端口是 DevTools 默认口,被安全软件/Chromium 防护定点拦截
 // (实测 Windows 上 Edge 带 --remote-debugging-port=9222 启动即 STATUS_BREAKPOINT 崩溃)
-let PORT = 9333, EDGE = null, DIR = null;
+let PORT = 9333, EDGE = null, DIR = null, URL_OVERRIDE = null;
 for (let i = 0; i < args.length; i++) {
   // 带值参数必须吃掉下一个 token，否则值会被当成位置参数 DIR（实测 bug：--port 9333 让 DIR 变成 "9333"）
   if (args[i] === '--port') PORT = parseInt(args[++i], 10);
   else if (args[i] === '--edge') EDGE = args[++i];
+  else if (args[i] === '--url') URL_OVERRIDE = args[++i];
   else DIR = args[i];
 }
-if (!DIR) { console.error('用法: node scripts/wokwi-cdp.js <project-dir> [--port 9222] [--edge <path>]'); process.exit(1); }
+if (!DIR) { console.error('用法: node scripts/wokwi-cdp.js <project-dir> [--port 9222] [--edge <path>] [--url <project-url>]'); process.exit(1); }
 DIR = path.resolve(DIR);
 const diagramPath = path.join(DIR, 'diagram.json');
 if (!fs.existsSync(diagramPath)) { console.error(`[ERROR] 未找到 ${diagramPath}`); process.exit(1); }
@@ -45,7 +46,7 @@ const BOARD_SLUG = (() => {
     return map[parts.find(t => map[t])] || 'arduino-uno';
   } catch (e) { return 'arduino-uno'; }
 })();
-const PROJECT_URL = `https://wokwi.com/projects/new/${BOARD_SLUG}`;
+const PROJECT_URL = URL_OVERRIDE || `https://wokwi.com/projects/new/${BOARD_SLUG}`;
 const sketchPath = path.join(DIR, 'sketch.ino');
 const sketchText = fs.existsSync(sketchPath) ? fs.readFileSync(sketchPath, 'utf8') : null;
 
@@ -228,6 +229,11 @@ function findBrowser() {
   // F(Fit) 适配视口(失败仅 WARN——用户可手按 F)
   try {
     await evaluate(() => { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); });
+    // 固定静态视口 1920×1080（文档验收口径），再点画布让 Wokwi 取得焦点
+    try { await send('Emulation.setDeviceMetricsOverride', { width: 1920, height: 1080, deviceScaleFactor: 1, mobile: false }); } catch (e) { /* 旧版 CDP 忽略 */ }
+    await send('Input.dispatchMouseEvent', { type: 'mousePressed', x: 1500, y: 500, button: 'left', clickCount: 1 });
+    await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: 1500, y: 500, button: 'left', clickCount: 1 });
+    await new Promise(r => setTimeout(r, 300));
     await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'f', code: 'KeyF', windowsVirtualKeyCode: 70 });
     await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'f', code: 'KeyF', windowsVirtualKeyCode: 70 });
     console.log('[INFO] 已派发 F(Fit)');
