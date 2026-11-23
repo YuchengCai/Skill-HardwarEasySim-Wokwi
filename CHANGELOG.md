@@ -22,7 +22,9 @@
 
 ### 新增：Agent Plugins 可移植包（序列2/文档43）
 
-- `packaging/build-plugin.js` + `check-plugin.js`：plugin.json / mcp.json / skills/<name>/{SKILL.md,scripts,references}，含包内生成+对账冒烟。
+- 仓库根原生布局：`plugin.json` + `mcp.json` + `skills/wokwi-arduino/SKILL.md`（规范共享入口，宿主无关措辞）；
+- `packaging/build-plugin.js` + `check-plugin.js`：以根清单/规范入口为源，组装并检查 `dist/plugin/skills/<name>/{SKILL.md,scripts,references}`，含包内生成+对账冒烟；
+- 旧 `adapters/` 保留为兼容入口；安装/更新仍由宿主机制负责。
 
 ### 新增：入口分诊、交互交付与本地烧录（序列3/4）
 

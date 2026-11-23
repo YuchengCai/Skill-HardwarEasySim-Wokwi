@@ -9,7 +9,8 @@
  *   skills/wokwi-arduino/scripts/       (运行时脚本，排除开发脚本)
  *   skills/wokwi-arduino/references/    (运行依赖资料，排除开发文档)
  *
- * 单一源：SKILL.md 来自 adapters/workbuddy/SKILL.md；scripts/references 来自仓库根目录。
+ * 单一源：仓库根 plugin.json / mcp.json；SKILL.md 来自 skills/wokwi-arduino/SKILL.md；
+ * scripts/references 来自仓库根目录（构建时复制进包，仓库本体不重复存放）。
  * 不用符号链接（跨平台/压缩包不保留），由本脚本复制。
  *
  * 用法：node packaging/build-plugin.js [--out dist/plugin] [--zip]
@@ -50,11 +51,12 @@ rmrf(OUT);
 mkdirp(path.join(OUT, 'skills', SKILL));
 
 // 1. manifest + mcp
-fs.copyFileSync(path.join(__dirname, 'plugin.json'), path.join(OUT, 'plugin.json'));
-fs.copyFileSync(path.join(__dirname, 'mcp.json'), path.join(OUT, 'mcp.json'));
+fs.copyFileSync(path.join(ROOT, 'plugin.json'), path.join(OUT, 'plugin.json'));
+fs.copyFileSync(path.join(ROOT, 'mcp.json'), path.join(OUT, 'mcp.json'));
 
-// 2. 共享 SKILL.md（产品化适配器作为共享入口）
-const skillSrc = path.join(ROOT, 'adapters', 'workbuddy', 'SKILL.md');
+// 2. 共享 SKILL.md（仓库内规范入口；适配器保留为旧入口）
+const skillSrc = path.join(ROOT, 'skills', SKILL, 'SKILL.md');
+if (!fs.existsSync(skillSrc)) { console.error('[ERR] 缺少规范入口: ' + skillSrc); process.exit(1); }
 const skillDst = path.join(OUT, 'skills', SKILL, 'SKILL.md');
 fs.copyFileSync(skillSrc, skillDst);
 

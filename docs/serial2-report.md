@@ -16,6 +16,8 @@
 
 共享入口 `SKILL.md` 采用已产品化的 `adapters/workbuddy/SKILL.md`（单一源，不复制规则正文）；构建时与 scripts/references 一起复制，包内脚本从自身位置解析资料。
 
+> 2026-11-24 追加：仓库已迁移为**原生布局**——根 `plugin.json`、`mcp.json`、`skills/wokwi-arduino/SKILL.md`（规范共享入口，去掉 WorkBuddy 专属措辞，宿主差异指向 `host-integration.md`）；`packaging/` 以根清单与规范入口为源组装 `dist/plugin`。旧 `adapters/` 保留为兼容入口，不再作为构建源。
+
 ## 2. 实跑结果
 
 ```text

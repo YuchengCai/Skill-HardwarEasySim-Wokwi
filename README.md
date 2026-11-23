@@ -143,6 +143,10 @@ Skill-HardwarEasySim-Wokwi/
 ├── install.sh                         # One-click installer
 ├── publish-skillhub.sh                # 🚀 SkillHub CLI publish script
 ├── CHANGELOG.md                       # 🗒️ Version history
+├── plugin.json                        # Agent Plugins manifest (portable package)
+├── mcp.json                           # optional browser MCP declaration
+├── skills/wokwi-arduino/SKILL.md      # canonical shared skill entry
+├── packaging/                         # build/check portable plugin package
 ├── adapters/
 │   ├── deepcode/SKILL.md              # DeepCode skill file
 │   ├── workbuddy/SKILL.md             # WorkBuddy skill file
@@ -289,6 +293,10 @@ bash path/to/install.sh
 Skill-HardwarEasySim-Wokwi/
 ├── install.sh                         # 一键安装脚本
 ├── CHANGELOG.md                       # 🗒️ 版本历史
+├── plugin.json                        # Agent Plugins 清单（可移植包）
+├── mcp.json                           # 可选浏览器 MCP 声明
+├── skills/wokwi-arduino/SKILL.md      # 规范共享入口
+├── packaging/                         # 可移植包的组装/检查脚本
 ├── adapters/
 │   ├── deepcode/SKILL.md              # DeepCode 技能文件
 │   ├── workbuddy/SKILL.md             # WorkBuddy 技能文件
