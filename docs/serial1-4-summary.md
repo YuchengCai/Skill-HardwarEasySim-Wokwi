@@ -28,3 +28,27 @@ node scripts/flash-arduino.js --simulate --board esp32 --dir <sketch> --upload -
 - 真机烧录：设备枚举/单多零板/实际上传——需具体板子、端口与明确写入授权；
 - ChatGPT 宿主：目标账号实测 @ 显式/自然语言两入口；
 - WorkBuddy 市场：本轮 SKILL 变化后需升版本重建发布包。
+
+## 最终检查与交付包（2026-11-24，版本 0.6.1）
+
+| 检查 | 结果 |
+|---|---|
+| `node scripts/run-tests.js` | **41 passed, 0 failed**（含 holdout46 需求 12/12 + 硬冲突 0、烧录模拟 4 项、task1/task41 固定件） |
+| `node packaging/build-plugin.js` + `check-plugin.js` | 16 scripts / 94 refs；**8 ok, 0 error** |
+| `node packaging/check-dsh-host.js` | **8/8 通过**（含空格新工程、包内生成/对账/几何、产出位置） |
+| `skillhub publish dist/skillhub-0.6.1 --dry-run` | **Dry-run passed: workbuddy-hardwareasysim-wokwi@0.6.1** |
+
+### 已制作、未上传的 WorkBuddy 包
+
+- `F:\workbuddy open tem\dist\0.6.1\wokwi-arduino-v0.6.1-workbuddy.zip`（WorkBuddy 开放平台包，111 条目 / 700KB，预检 12 项全绿）；
+- `F:\workbuddy open tem\dist\0.6.1\skillhub-0.6.1\`（SkillHub 市场包，94 refs / 13 scripts，dry-run 通过）；
+- 仓库内同源产物在 `dist/workbuddy-0.6.1/` 与 `dist/skillhub-0.6.1/`（gitignore，不提交）。
+
+**未上传**：SkillHub 与 WorkBuddy 开放平台均未执行发布。
+
+### 仍搁置/待验
+
+- ChatGPT 宿主实测（按用户要求暂缓）；
+- 真机烧录（设备枚举/单多零板/实际上传）；
+- 推送（GitHub Desktop，最后统一处理）；
+- 文档46 的独立读者追线测试（另期）。

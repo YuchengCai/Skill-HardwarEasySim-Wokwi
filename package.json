@@ -1,1 +1,1 @@
-{"name":"wokwi-skill-runtime","version": "0.6.0","private":true,"description":"runtime deps for automation scripts (playwright)","dependencies":{"playwright":"^1.65.0"}}
+{"name":"wokwi-skill-runtime","version": "0.6.1","private":true,"description":"runtime deps for automation scripts (playwright)","dependencies":{"playwright":"^1.65.0"}}

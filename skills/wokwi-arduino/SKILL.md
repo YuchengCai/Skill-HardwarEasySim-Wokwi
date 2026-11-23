@@ -3,7 +3,7 @@ name: wokwi-arduino
 description: Create, compile, simulate, and upload Arduino projects with Wokwi. Use when the user mentions Arduino, Wokwi, 单片机, 嵌入式, or when .ino / wokwi.toml / diagram.json files are detected. Explicitly activate with @wokwi, #arduino, or @simulate.
 ---
 
-# Arduino Wokwi Simulation Skill (v0.6.0)
+# Arduino Wokwi Simulation Skill (v0.6.1)
 
 用自然语言描述电路，自动生成可仿真的 Wokwi 工程(Arduino Uno/Mega/Nano/ESP32)：自动布局与走线、编译固件、浏览器仿真、可选烧录与串口监视。
 
@@ -141,7 +141,7 @@ done
 
 ## 版本检查
 
-当前版本: **v0.6.0**
+当前版本: **v0.6.1**
 仓库: `https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi.git`
 
 激活时按宿主的更新机制检查最新 release；有新版本询问用户是否更新（git clone + install.sh）。自行管理的安装用 `install.sh`，是否 `--global` 取决于宿主安装范围（项目级/全局）。
