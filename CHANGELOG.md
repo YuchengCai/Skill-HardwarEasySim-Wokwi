@@ -3,6 +3,38 @@
 本项目采用「语义化版本 + 面向用户的变化」记录；详细决策史见
 `references/common/handoff-layout-v2.md`。
 
+## Unreleased — 交接包四序列开发（2026-11-24）
+
+### 新增：需求对账与锁定接点（序列1/文档42）
+
+- 意图支持显式面包板端点（`bb1:8t.a` 孔 / `bb1:tn.25` 轨位）作为锁定接点；插面板元件仍自动分孔；
+- 生成前预检非法孔名/越界/重复占孔 → `exit 3`；生成后从实际 `diagram.json` 重建网络逐条对账（可见线 + `$bb` + 行半区/轨内部导通 + GND 共地），缺线/锁孔移动/网络误并 → `exit 3`，图保留为诊断草稿；
+- 新增 `scripts/check-required.js` 独立验收（0/3/1，`--json`）。
+
+### 新增：连线反馈对应实际图纸（序列1/文档24）
+
+- `optimize-wiring` 新增 `near-hole`（已用孔端点保护，d<4）与 `overlap-collinear`/`overlap-near`（异线共线/近贴）；
+- 报告绑定图纸 sha256、坐标来源、阈值/待核实带、规则版本与覆盖范围；同网已用孔不误报。
+
+### 新增：离体与近贴诊断（序列1/文档41）
+
+- `--egress-report`：沿边首段未先越界/朝内进入本体、异线平行段间距 <1 格且投影 ≥20 的诊断输出（不改图）。
+
+### 新增：Agent Plugins 可移植包（序列2/文档43）
+
+- `packaging/build-plugin.js` + `check-plugin.js`：plugin.json / mcp.json / skills/<name>/{SKILL.md,scripts,references}，含包内生成+对账冒烟。
+
+### 新增：入口分诊、交互交付与本地烧录（序列3/4）
+
+- 共享参考 `intake-routing.md`、`interaction-delivery.md`、`flash-workflow.md`、`host-integration.md`；
+- `scripts/flash-arduino.js`：CLI 检测、FQBN/core 精确检查、逐端口枚举、`--upload` 需 `--confirm`、`--simulate` 回归；ESP32 产物按 .bin 报告。
+
+### 修复
+
+- `wokwi-photoresistor-sensor` 被电阻子串匹配误判（用 1/2 脚名生成 $bb）；
+- 无配方 bb 元件回退直连时坐标停留 (0,0)；默认插接件被直连放置覆盖坐标（按钮错位根因）；
+- 通用面包板插接拟合（共线引脚 + 孔距整数倍，容差 0.45；失败回退直连）。
+
 ## v0.6.0 — 可读性引擎与接线台账（Readability Engine & Wiring Ledger）
 
 ### 新增：可读性布局（可选，需意图声明 `routing.zones` / `routing.relays`）
