@@ -8,17 +8,28 @@
 
 ## 📋 What's New / 本次大版本更新
 
-**v0.6.0 — Readability Engine & Wiring Ledger / 可读性引擎与接线台账**
+**v0.6.1 — Wiring Integrity & Portable Package / 连线完整性与可移植包**
 
-> Opt-in readability layout (declare `routing.zones` / `routing.relays`), every net explained, and judgement tiers that stop soft metrics from becoming goals.
-> 可选可读性布局（声明 `routing.zones` / `routing.relays` 即启用）、逐网接线台账，以及不让软指标变成优化目标的指标分级。
+> Locked endpoints + required-net reconciliation, diagram-bound wiring feedback, egress/clearance diagnostics, a portable Agent Plugins package, and local compile/flash — verified by 41 regression cases and a 1920×1080 holdout render.
+> 锁定接点与必需网络对账、反馈绑定实际图纸、离体/近贴诊断、Agent Plugins 可移植包、本地编译/烧录；41 项回归 + 陌生组合 1920×1080 渲染证据。
 
-- 🧠 **Readability Engine (v2)** / 可读性引擎 — same-band descent, board clears the hub corridor, nested feed lanes, seam width = wire count × 9.6 + 12 (U2 crossings 47→36 / 54→47) / 同带下行、板让开枢纽走廊、馈电四道嵌套、缝宽按过线数计算（U2 交叉 47→36 / 54→47）
-- 🧾 **Wiring Ledger** / 接线台账 — electrical network rebuilt by union-find (even bare bb jumpers), every net explained (trunk / bus relay / isolated column / direct) + cross-voltage short check / 并查集重建电气网络（裸跳线也能归网），逐网说明形态（电源干道 / 母线中继 / 列隔离 / 直连）+ 跨电位类短路检查
-- 📏 **Judgement Tiers** / 指标三级 — GATE (veto) / BUDGET (upper bound only) / DIAGNOSTIC (attribution only); soft metrics (crossings / turns / length) must never be optimization targets / GATE 一票否决 / BUDGET 只设上限 / DIAGNOSTIC 只归因；交叉、转弯、线长等软指标不得作为优化目标
-- 🧩 **Existing-Code Entry & Behavior Spec** / 存量代码入口与行为说明 — point it at an existing `.ino` / sketch / `libraries.txt` → code fingerprints + pin scan → confirm gate → intent (v0.5.8); delivery explains normal behavior in the chat and archives `BEHAVIOR.md` / 从存量代码反推意图并入主线（v0.5.8）；交付时对话内给出「正常工作状态说明」并静默归档 `BEHAVIOR.md`
+- 🔒 **Locked endpoints & net reconciliation** / 锁定接点与网络对账 — explicit bb holes/rails are locks; preflight invalid/duplicate holes → exit 3; post-generation rebuild from the real diagram + item-by-item reconciliation (missing wire / moved lock / merged net → exit 3)
+- 🧭 **Diagram-bound feedback** / 反馈绑定实际图纸 — near-hole protection, cross-wire collinear overlap / near-parallel, evidence digest + coordinate source + rule version
+- 📐 **Egress & clearance diagnostics** / 离体与近贴诊断 — `--egress-report`: leave the body before turning, parallel bands with < 1 pitch gap
+- 🧩 **Portable multi-host package** / 多宿主可移植包 — root `plugin.json` + `mcp.json` + `skills/wokwi-arduino/SKILL.md`; DSH host automation 8/8
+- 🔌 **Local compile/flash** / 本地编译烧录 — `scripts/flash-arduino.js`: detect CLI/FQBN/core, enumerate ports, `--confirm` gate; Uno/Nano/Mega/ESP32 compiled
+- 🧪 **Holdout accepted** / 陌生组合验收 — photo + button + buzzer + servo: 12/12 required nets, 0 hard conflicts, 1920×1080 render evidence
 
 **小版本更新历程**
+
+- **v0.6.1** — Wiring Integrity & Portable Package / 连线完整性与可移植包：
+  - **锁定接点 + 必需网络对账**：意图里的 `bb1:8t.a` / `bb1:tn.25` 是锁定端点；预检非法/重复孔 → exit 3；生成后从实际 diagram 重建网络逐条对账（缺线/锁孔移动/网络误并 → exit 3）
+  - **连线反馈绑定实际图纸**：`near-hole` 已用孔保护、异线共线覆盖/近贴、证据绑定（sha256/坐标来源/规则版本）
+  - **离体/近贴诊断**：`--egress-report`（沿边首段先越界、异束平行段 <1 格且投影 ≥20）
+  - **陌生组合布局验收**：光敏+按键+蜂鸣器+舵机，需求 12/12、几何硬冲突 0、1920×1080 渲染证据
+  - **Agent Plugins 多宿主包**：根 `plugin.json` + `mcp.json` + `skills/wokwi-arduino/SKILL.md`；DSH 宿主自动化 8/8
+  - **入口分诊 + 本地编译/烧录**：`intake-routing` 四类入口；`flash-arduino.js`（CLI/FQBN/core、`--confirm` 门、Uno/Nano/Mega/ESP32 编译实测）
+  - 生成器修复：光敏误匹配电阻配方、bb 元件坐标停留 (0,0)、默认插接件被直连覆盖、通用插接拟合、落轨避让/馈线去重
 
 - **v0.6.0** — Readability Engine & Wiring Ledger / 可读性引擎与接线台账：
   - 形态规则：**同带下行**（元件已在目标带内 → 直接向下，U2 交叉 47→36）、**板让开枢纽走廊**（54→47）、
@@ -85,7 +96,7 @@
 <a id="english"></a>
 ## 📘 English
 
-**Wokwi Arduino Simulation Skill** — v0.6.0 — A portable skill package for AI coding agents (DeepCode, WorkBuddy, Claude Code, Cursor) that enables automated Arduino hardware prototyping, **auto browser simulation**, circuit compilation, and firmware upload.
+**Wokwi Arduino Simulation Skill** — v0.6.1 — A portable skill package for AI coding agents (DeepCode, WorkBuddy, Claude Code, Cursor) that enables automated Arduino hardware prototyping, **auto browser simulation**, circuit compilation, and firmware upload.
 
 ### Readability layout (optional, v0.6.0)
 
@@ -101,6 +112,14 @@ Declare `routing.zones` / `routing.relays` in the intent to enable the readabili
 Layout presets: `V2_ALIGN=1` (edge-aligned), `V2_T3=1` (hub-in-band, auto-detected hub).
 Profiles: `routing.profile` = `prototype` (default) / `matrix` (bus-relay, fewest crossings, more wires).
 Judgement tiers: GATE / BUDGET / DIAGNOSTIC — see `references/common/metrics-policy.md`.
+
+### Wiring integrity & local flashing (v0.6.1)
+
+- **Locked endpoints**: write user-confirmed holes/rails directly (`bb1:8t.a`, `bb1:tn.25`); preflight rejects invalid/duplicate holes (exit 3).
+- **Required-net reconciliation**: after generation, rebuild the electrical netlist from the actual `diagram.json` (visible wires + `$bb` + breadboard rows/rails + common GND) and reconcile every required connection; missing wire / moved lock / merged net → exit 3, the diagram stays a diagnostic draft.
+- **Diagram-bound feedback**: `optimize-wiring.js` reports `near-hole` (used-hole protection) and `overlap-collinear` / `overlap-near`, bound to diagram sha256 + coordinate source + rule version; `--egress-report` adds egress/clearance diagnostics.
+- **Local compile/flash**: `node scripts/flash-arduino.js --board uno --compile <dir>` (or `--upload --port COMx --confirm`); refuses upload without `--confirm`; ESP32 artifacts are reported as `.bin`.
+- **Portable package**: `node packaging/build-plugin.js` + `check-plugin.js` (Agent Plugins 1.0.0); `node packaging/check-dsh-host.js` runs the host entry end-to-end.
 
 ### Features
 
@@ -118,6 +137,9 @@ Judgement tiers: GATE / BUDGET / DIAGNOSTIC — see `references/common/metrics-p
 - 🧾 **Existing-Code Entry (Entry B)** — Hand it an existing `.ino` / sketch / `libraries.txt`: `#include` fingerprints + pin scan → confirm gate → `layout-intent.json`; the main flow stays untouched (v0.5.8).
 - 📖 **Behavior Spec on Delivery** — Normal-operation notes in the chat (depth follows verification reachability), archived to `BEHAVIOR.md` (v0.5.8).
 - 🔎 **Electrical Semantics Checks** — Union-find net analysis: `rail-unpowered` / `netlist-broken` are hard conflicts, so "GND unconnected yet no conflict" cannot slip through (v0.5.9).
+- 🔒 **Locked Endpoints & Required Nets (v0.6.1)** — `bb1:8t.a` / `bb1:tn.25` lock real holes/rails; `check-required.js` rebuilds the netlist and reconciles every required connection; invalid/duplicate holes and missing nets fail with exit 3.
+- 🔌 **Local Compile/Flash (v0.6.1)** — `flash-arduino.js`: CLI/FQBN/core checks, per-port enumeration, upload gated by `--confirm`; Uno/Nano/Mega/ESP32 compile verified (ESP32 `.bin`).
+- 🧩 **Portable Plugin Package (v0.6.1)** — Agent Plugins 1.0.0 layout (`plugin.json` / `mcp.json` / `skills/wokwi-arduino/`), build + structure check + DSH host automation.
 
 ### Quick Start
 
@@ -146,7 +168,9 @@ Skill-HardwarEasySim-Wokwi/
 ├── plugin.json                        # Agent Plugins manifest (portable package)
 ├── mcp.json                           # optional browser MCP declaration
 ├── skills/wokwi-arduino/SKILL.md      # canonical shared skill entry
-├── packaging/                         # build/check portable plugin package
+├── packaging/                         # portable plugin package tools
+│   ├── build-plugin.js / check-plugin.js / check-dsh-host.js
+│   └── publish-workbuddy.js / build-skillhub-package.js
 ├── adapters/
 │   ├── deepcode/SKILL.md              # DeepCode skill file
 │   ├── workbuddy/SKILL.md             # WorkBuddy skill file
@@ -160,6 +184,8 @@ Skill-HardwarEasySim-Wokwi/
 │   ├── wiring-notes.js                # 🧾 wiring ledger (per-net explanation)
 │   ├── generate-part-placeholder.js   # 🧩 library-external part placeholder
 │   ├── wokwi-automate.js              # 🌐 Auto browser simulation script
+│   ├── check-required.js              # ✅ required-endpoint / net reconciliation (v0.6.1)
+│   ├── flash-arduino.js               # 🔌 local compile/flash wrapper (v0.6.1)
 │   ├── wokwi-cdp.js                   # 🌐 attach-first CDP driver
 │   └── run-tests.js                   # 🧪 regression (dev-only)
 └── references/
@@ -236,7 +262,7 @@ The agent reads `components.md` for correct pin names, generates the project, co
 <a id="chinese"></a>
 ## 📘 中文
 
-**Wokwi Arduino 仿真 Skill** — v0.6.0 — 一个可移植的技能包，专为 AI 编程助手（DeepCode、WorkBuddy、Claude Code、Cursor）设计，实现自动化硬件原型设计、**自动浏览器仿真**、代码编译和固件上传。
+**Wokwi Arduino 仿真 Skill** — v0.6.1 — 一个可移植的技能包，专为 AI 编程助手（DeepCode、WorkBuddy、Claude Code、Cursor）设计，实现自动化硬件原型设计、**自动浏览器仿真**、代码编译和固件上传。
 
 ### 可读性布局（可选，v0.6.0）
 
@@ -252,6 +278,14 @@ The agent reads `components.md` for correct pin names, generates the project, co
 布局预设：`V2_ALIGN=1`（边对齐）、`V2_T3=1`（枢纽同排，自动识别枢纽）。
 输出档位：`routing.profile` = `prototype`（默认）/ `matrix`（母线中继，交叉最少但线多）/ `device`（不支持）。
 判据三级：GATE / BUDGET / DIAGNOSTIC，见 `references/common/metrics-policy.md`。
+
+### 连线完整性与本地烧录（v0.6.1）
+
+- **锁定接点**：用户已接好的孔/轨直接写成端点（`bb1:8t.a`、`bb1:tn.25`）；预检拒绝非法/重复占孔（exit 3）。
+- **必需网络对账**：生成后从实际 `diagram.json` 重建电气网络（可见线 + `$bb` + 面包板行/轨 + 板内共地），逐条核对必需连接；缺线 / 锁孔移动 / 网络误并 → exit 3，图保留为诊断草稿。
+- **反馈绑定图纸**：`optimize-wiring.js` 报告 `near-hole`（已用孔保护）与 `overlap-collinear` / `overlap-near`，绑定图纸 sha256 + 坐标来源 + 规则版本；`--egress-report` 追加离体/近贴诊断。
+- **本地编译/烧录**：`node scripts/flash-arduino.js --board uno --compile <dir>`（或 `--upload --port COMx --confirm`）；未给 `--confirm` 拒绝上传；ESP32 产物按 `.bin` 报告。
+- **可移植包**：`node packaging/build-plugin.js` + `check-plugin.js`（Agent Plugins 1.0.0）；`node packaging/check-dsh-host.js` 做宿主入口端到端验证。
 
 ### 功能
 
@@ -269,6 +303,9 @@ The agent reads `components.md` for correct pin names, generates the project, co
 - 🧾 **存量代码入口（Entry B）** — 给一份现成的 `.ino` / sketch / `libraries.txt`：`#include` 指纹 + 引脚扫描 → 确认门 → `layout-intent.json`，主线流程零改动（v0.5.8）
 - 📖 **行为说明（呈现即对话）** — 交付时在对话内给出「正常工作状态说明」（深度随验证可达性分级），静默归档 `BEHAVIOR.md`（v0.5.8）
 - 🔎 **电气语义检查** — 并查集网络分析：`rail-unpowered` / `netlist-broken` 列为硬冲突，"GND 没接却报无冲突"不会再漏（v0.5.9）
+- 🔒 **锁定接点与必需网络（v0.6.1）** — `bb1:8t.a` / `bb1:tn.25` 锁定真实孔/轨；`check-required.js` 重建网络并逐条对账；非法/重复孔与缺网 → exit 3
+- 🔌 **本地编译/烧录（v0.6.1）** — `flash-arduino.js`：CLI/FQBN/core 检查、逐端口枚举、`--confirm` 后才上传；Uno/Nano/Mega/ESP32 编译实测（ESP32 `.bin`）
+- 🧩 **可移植插件包（v0.6.1）** — Agent Plugins 1.0.0 布局（`plugin.json` / `mcp.json` / `skills/wokwi-arduino/`），构建+结构检查+DSH 宿主自动化
 
 ### 快速开始
 
@@ -296,7 +333,9 @@ Skill-HardwarEasySim-Wokwi/
 ├── plugin.json                        # Agent Plugins 清单（可移植包）
 ├── mcp.json                           # 可选浏览器 MCP 声明
 ├── skills/wokwi-arduino/SKILL.md      # 规范共享入口
-├── packaging/                         # 可移植包的组装/检查脚本
+├── packaging/                         # 可移植包构建/检查工具
+│   ├── build-plugin.js / check-plugin.js / check-dsh-host.js
+│   └── publish-workbuddy.js / build-skillhub-package.js
 ├── adapters/
 │   ├── deepcode/SKILL.md              # DeepCode 技能文件
 │   ├── workbuddy/SKILL.md             # WorkBuddy 技能文件
@@ -310,6 +349,8 @@ Skill-HardwarEasySim-Wokwi/
 │   ├── wiring-notes.js                # 🧾 接线台账（逐网说明）
 │   ├── generate-part-placeholder.js   # 🧩 库外元件占位符
 │   ├── wokwi-automate.js              # 🌐 自动浏览器仿真脚本
+│   ├── check-required.js              # ✅ 必需端点/网络对账（v0.6.1）
+│   ├── flash-arduino.js               # 🔌 本地编译/烧录封装（v0.6.1）
 │   ├── wokwi-cdp.js                   # 🌐 attach-first CDP 驱动
 │   └── run-tests.js                   # 🧪 回归测试（开发期）
 └── references/

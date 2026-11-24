@@ -23,12 +23,12 @@ const EXCLUDE_SCRIPTS = new Set(['run-tests.js', 'extract-components.py', 'fill-
   'compose-skeleton.js', 'iterate-layout.js', '__pycache__',
   'placeholder-chip.wasm', 'placeholder-chip.c', 'wokwi-api.h']);
 const EXCLUDE_REFS = new Set(['handoff-layout-v2.md', 'routing-philosophy.md']);
-const DESC_ZH = '创建、编译、仿真并上传 Arduino 项目(Wokwi)。当用户提到 Arduino、Wokwi、单片机、嵌入式,或检测到 .ino / wokwi.toml / diagram.json 文件时使用。';
+const DESC_ZH = '创建、编译、仿真并上传 Arduino 项目(Wokwi)：锁定接点/必需网络对账、连线反馈、离体近贴检查、本地烧录。当用户提到 Arduino、Wokwi、单片机、嵌入式,或检测到 .ino / wokwi.toml / diagram.json 文件时使用。';
 const META = {
   slug: 'workbuddy-hardwareasysim-wokwi',
   version,
   displayName: 'Wokwi Arduino Simulation',
-  summary: '用自然语言创建、编译、仿真并上传 Arduino(Wokwi)项目,自动生成电路图与走线',
+  summary: '用自然语言创建、编译、仿真并上传 Arduino(Wokwi)项目，自动生成电路图与走线；v0.6.1 新增锁定接点对账、连线反馈、多宿主插件包与本地烧录',
   license: 'MIT',
   homepage: 'https://github.com/YuchengCai/Skill-HardwarEasySim-Wokwi',
   tags: '[arduino, wokwi, embedded, simulation, hardware]'

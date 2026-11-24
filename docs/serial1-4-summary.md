@@ -37,6 +37,7 @@ node scripts/flash-arduino.js --simulate --board esp32 --dir <sketch> --upload -
 | `node packaging/build-plugin.js` + `check-plugin.js` | 16 scripts / 94 refs；**8 ok, 0 error** |
 | `node packaging/check-dsh-host.js` | **8/8 通过**（含空格新工程、包内生成/对账/几何、产出位置） |
 | `skillhub publish dist/skillhub-0.6.1 --dry-run` | **Dry-run passed: workbuddy-hardwareasysim-wokwi@0.6.1** |
+| `skillhub publish … --version 0.6.1` | **已发布成功**（skillId=139485）；版本锁定安装验证 0.6.1 内容正确；latest 指针待审核切换 |
 
 ### 已制作、未上传的 WorkBuddy 包
 
